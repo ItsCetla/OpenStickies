@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The image lightbox now closes when the note that opened it is closed, trashed or deleted, and when private notes lock, so a private image no longer stays on screen after the vault locks.
 - Exporting a note with tabs, on its own or with Export all (Markdown, text, JSON, HTML, PDF and print), now includes every tab under its title instead of only the open one. JSON exports also list the tabs separately in a `tabs` field.
 - On an AI agent note with tabs, agent updates, appends and checklist ticks now go to the agent's first tab instead of overwriting whichever tab is open, so tabs the user added keep their own text.
+- Code block colors now follow how dark the note itself is, not the app theme, so code stays readable on Charcoal notes and dark custom backgrounds in the light theme, and on light custom backgrounds in the dark theme.
 
 ## [3.1.0] - 2026-10-12
 

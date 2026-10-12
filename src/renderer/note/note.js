@@ -107,7 +107,8 @@ function applyAppearance() {
   root.style.setProperty('--bar', c.bar);
   root.style.setProperty('--text', c.text);
   root.style.setProperty('--accent', c.accent);
-  applyBackground(c);
+  // Code-token colours follow how dark the note actually is, not the app theme.
+  root.dataset.noteTone = applyBackground(c) ? 'dark' : 'light';
   const font = palette.fonts.find(f => f.id === note.font) || palette.fonts[0];
   root.style.setProperty('--note-font', font.css);
   root.style.setProperty('--note-size', `${settings.fontSize || 15}px`);
@@ -1937,6 +1938,7 @@ let bgSaveTimer = null;
 let bgNativeUi = false; // a native colour picker / file dialog is open on top of the popover
 
 // Overrides the palette colours set by applyAppearance() when the note has a custom background.
+// Returns whether the note ends up dark, so the code-token colours can match it.
 function applyBackground(c) {
   const bg = safeBackground(note.background);
   const layer = $('bg-layer');
@@ -1946,7 +1948,7 @@ function applyBackground(c) {
   layer.style.removeProperty('--dim');
   delete layer.dataset.fit;
   root.style.setProperty('--bg-base', c.bg);
-  if (!bg) return;
+  if (!bg) return deriveColors(c.bg).dark;
   let d;
   if (bg.type === 'solid') {
     d = deriveColors(bg.color);
@@ -1963,6 +1965,7 @@ function applyBackground(c) {
   root.style.setProperty('--bar', d.bar);
   root.style.setProperty('--text', d.text);
   root.style.setProperty('--accent', d.accent);
+  return d.dark;
 }
 
 // Text over a picture keeps the palette's colours: the dim overlay is the palette colour, so
@@ -1970,7 +1973,7 @@ function applyBackground(c) {
 // sticky-img:// is a different origin from the page, so the canvas would be tainted.)
 function imageColors(c) {
   const dark = deriveColors(c.bg.toLowerCase()).dark;
-  return { ...c, bar: dark ? 'rgba(0, 0, 0, 0.28)' : 'rgba(255, 255, 255, 0.45)' };
+  return { ...c, bar: dark ? 'rgba(0, 0, 0, 0.28)' : 'rgba(255, 255, 255, 0.45)', dark };
 }
 
 function setBackground(bg) {

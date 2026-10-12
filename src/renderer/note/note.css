@@ -908,7 +908,7 @@ body[data-urgency]::after {
 .editor pre[data-lang-auto]::after { opacity: 0.6; }
 
 /* Token colors. ::highlight() only takes color-like properties, so comments are dimmed
-   rather than italicised. Dark notes get a brighter set. */
+   rather than italicised. Notes with a dark background (palette or custom) get a brighter set. */
 ::highlight(tok-keyword) { color: #a626a4; }
 ::highlight(tok-string) { color: #3f8a2e; }
 ::highlight(tok-number) { color: #b35c00; }
@@ -921,15 +921,15 @@ body[data-urgency]::after {
 ::highlight(tok-punctuation) { color: color-mix(in srgb, var(--text) 75%, transparent); }
 ::highlight(tok-property) { color: #b0373f; }
 
-:root[data-theme="dark"] ::highlight(tok-keyword) { color: #d58cf0; }
-:root[data-theme="dark"] ::highlight(tok-string) { color: #9bd77e; }
-:root[data-theme="dark"] ::highlight(tok-number) { color: #f0a868; }
-:root[data-theme="dark"] ::highlight(tok-function) { color: #7aaef7; }
-:root[data-theme="dark"] ::highlight(tok-type) { color: #eac46b; }
-:root[data-theme="dark"] ::highlight(tok-operator) { color: #6fd0dc; }
-:root[data-theme="dark"] ::highlight(tok-tag) { color: #f2807a; }
-:root[data-theme="dark"] ::highlight(tok-attr) { color: #e9b36a; }
-:root[data-theme="dark"] ::highlight(tok-property) { color: #ef8f96; }
+:root[data-note-tone="dark"] ::highlight(tok-keyword) { color: #d58cf0; }
+:root[data-note-tone="dark"] ::highlight(tok-string) { color: #9bd77e; }
+:root[data-note-tone="dark"] ::highlight(tok-number) { color: #f0a868; }
+:root[data-note-tone="dark"] ::highlight(tok-function) { color: #7aaef7; }
+:root[data-note-tone="dark"] ::highlight(tok-type) { color: #eac46b; }
+:root[data-note-tone="dark"] ::highlight(tok-operator) { color: #6fd0dc; }
+:root[data-note-tone="dark"] ::highlight(tok-tag) { color: #f2807a; }
+:root[data-note-tone="dark"] ::highlight(tok-attr) { color: #e9b36a; }
+:root[data-note-tone="dark"] ::highlight(tok-property) { color: #ef8f96; }
 /* ---------- custom backgrounds ---------- */
 /* Isolation gives the layer's z-index:-1 its own stacking context, so the layer paints above
    the body's own background but below every bit of note content. */
