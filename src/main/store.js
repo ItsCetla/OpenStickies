@@ -193,6 +193,7 @@ class Store extends EventEmitter {
     this.trashedTabs = []; // tabs closed from a note: [{ id, noteId, noteTitle, title, html, text, trashedAt }]
     this.templates = [];
     this.extraRefs = []; // functions returning Sets of attachment names used elsewhere (history, …)
+    this.onDropped = null; // called with ids that housekeeping removed, so their history goes too
     this.settings = structuredClone(DEFAULT_SETTINGS);
     this._saveTimer = null;
     this._settingsTimer = null;
@@ -332,12 +333,15 @@ class Store extends EventEmitter {
   }
 
   _housekeeping({ collectImages }) {
+    // No 'purge' event fires here (nothing listens yet), so dropped ids go to onDropped instead.
+    const dropped = [];
     for (const n of [...this.notes.values()]) {
       // Closed notes that were never written in are just clutter.
-      if (!n.trashed && !n.open && isBlankNote(n)) this.notes.delete(n.id);
+      if (!n.trashed && !n.open && isBlankNote(n)) { this.notes.delete(n.id); dropped.push(n.id); }
     }
-    for (const id of this._trashOverflow()) this.notes.delete(id);
+    for (const id of this._trashOverflow()) { this.notes.delete(id); dropped.push(id); }
     this._capTrashedTabs();
+    if (dropped.length && this.onDropped) this.onDropped(dropped);
     if (collectImages) this.gcAttachments();
   }
 
@@ -423,6 +427,11 @@ class Store extends EventEmitter {
     const n = this.update(id, { trashed: true, trashedAt: Date.now(), open: false });
     if (n) for (const old of this._trashOverflow()) this.purge(old);
     return n;
+  }
+
+  // For callers that add trashed notes without trash(), such as import.
+  capTrash() {
+    for (const id of this._trashOverflow()) this.purge(id);
   }
 
   // Ids of the oldest trashed notes beyond TRASH_LIMIT.

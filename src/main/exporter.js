@@ -338,6 +338,7 @@ async function importBackup({ parent, store, vault }) {
     idMap.set(raw.id, created.id);
     added++;
   }
+  store.capTrash(); // imported trashed notes skip trash(), which normally applies the limit
   for (const t of Array.isArray(data.templates) ? data.templates : []) {
     if (t && typeof t.html === 'string' && !store.templates.some(x => x.id === t.id || (x.name === t.name && x.html === t.html))) {
       store.saveTemplate({ name: t.name, html: fixRefs(t.html), color: t.color });

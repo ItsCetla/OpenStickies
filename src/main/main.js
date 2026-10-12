@@ -146,6 +146,7 @@ function init() {
   history = new History(dataDir);
   store = new Store(dataDir);
   store.extraRefs.push(() => history.refs()); // before load(): load() cleans up unused images
+  store.onDropped = (ids) => { for (const id of ids) history.removeSync(id); }; // notes housekeeping drops in load()
   store.load();
   i18n.setLanguage(store.settings.language);
   if (moved.migrated) carryOverLoginItem();

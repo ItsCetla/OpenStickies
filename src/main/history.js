@@ -124,6 +124,15 @@ class History {
     if (f) fs.rm(f, { force: true }, () => {});
   }
 
+  // Like remove(), but the file is gone on return, so a refs() right after no longer counts it.
+  removeSync(id) {
+    this.cache.delete(id);
+    for (const k of this.lastSeen.keys()) if (k === id || k.startsWith(id + ':')) this.lastSeen.delete(k);
+    this.dirty.delete(id);
+    const f = this.file(id);
+    if (f) { try { fs.rmSync(f, { force: true }); } catch { /* ignore */ } }
+  }
+
   // Images used by any snapshot, so restoring an old version brings its pictures back.
   refs() {
     const refs = new Set();
