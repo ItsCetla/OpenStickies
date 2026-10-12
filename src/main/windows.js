@@ -141,20 +141,40 @@ class WindowManager {
     win.on('focus', () => { this.lastFocusedNoteId = note.id; });
     win.on('resize', saveBounds);
     win.on('move', saveBounds);
-    win.on('moved', () => {
-      const snapped = this.store.settings.snapToEdges ? this.snap(win, note.id) : null;
-      if (this.store.settings.snapToGrid) this.snapPositionToGrid(win, snapped);
+    let snappedAt = null;
+    const snapAfterMove = () => {
+      if (win.isDestroyed()) return;
+      const s = this.store.settings;
+      if (s.snapToEdges || s.snapToGrid) {
+        const b = win.getBounds();
+        // Skip the move our own setPosition caused, or a second pass would pull an edge-snapped
+        // note back onto the grid.
+        if (!(snappedAt && snappedAt.x === b.x && snappedAt.y === b.y)) {
+          const snapped = s.snapToEdges ? this.snap(win, note.id) : null;
+          if (s.snapToGrid) this.snapPositionToGrid(win, snapped);
+          const a = win.getBounds();
+          snappedAt = { x: a.x, y: a.y };
+        }
+      }
       saveBounds();
-    });
-    // 'resized' fires once at the end of a user resize on macOS and Windows. Linux has no such
-    // event, so there we wait for the resize events to go quiet instead.
+    };
+    // 'moved' and 'resized' fire once at the end of a user drag or resize on macOS and Windows.
+    // Linux has neither, so there we wait for the move and resize events to go quiet instead.
     if (process.platform === 'linux') {
+      let moveTimer = null;
       let gridTimer = null;
+      win.on('move', () => {
+        clearTimeout(moveTimer);
+        moveTimer = setTimeout(snapAfterMove, 300);
+      });
       win.on('resize', () => {
         clearTimeout(gridTimer);
-        gridTimer = setTimeout(() => { if (this.store.settings.snapToGrid) this.snapSizeToGrid(win, note.id); }, 300);
+        gridTimer = setTimeout(() => {
+          if (!win.isDestroyed() && this.store.settings.snapToGrid) this.snapSizeToGrid(win, note.id);
+        }, 300);
       });
     } else {
+      win.on('moved', snapAfterMove);
       win.on('resized', () => { if (this.store.settings.snapToGrid) this.snapSizeToGrid(win, note.id); });
     }
 
