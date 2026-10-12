@@ -4,6 +4,7 @@ import { cascadeCheck, sinkItem, ownText, dueLabel, isoDate, parentItem } from '
 import palette from '../shared/colors.json' with { type: 'json' };
 import { IS_MAC, MODIFIER_HINT, keyLabel, localizeKeys } from '../shared/keys.js';
 import { hydrateFileChips } from '../shared/file-icons.js';
+import { urgency, playChime } from '../shared/reminder.js';
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);
@@ -462,14 +463,51 @@ function filtered() {
   return { list, pq };
 }
 
+// Matches are found on the raw text and merged before escaping, so one term can never
+// match inside another term's <mark> or inside an escaped entity.
 function highlight(text, terms) {
-  let html = escapeHtml(text);
-  for (const t of terms) {
-    const re = new RegExp(escapeHtml(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    html = html.replace(re, (m) => `<mark>${m}</mark>`);
+  const src = String(text || '');
+  const lower = src.toLowerCase();
+  const spans = [];
+  for (const t of new Set(terms.map(x => String(x).toLowerCase()).filter(Boolean))) {
+    for (let i = lower.indexOf(t); i !== -1; i = lower.indexOf(t, i + t.length)) spans.push([i, i + t.length]);
   }
-  return html;
+  spans.sort((a, b) => a[0] - b[0] || b[1] - a[1]);
+  let html = '';
+  let pos = 0;
+  for (const [s, e] of spans) {
+    if (e <= pos) continue;
+    const from = Math.max(s, pos);
+    html += escapeHtml(src.slice(pos, from)) + '<mark>' + escapeHtml(src.slice(from, e)) + '</mark>';
+    pos = e;
+  }
+  return html + escapeHtml(src.slice(pos));
 }
+
+// Everything in the search box that is looked for as text: words, "phrases" and #tags.
+function searchTerms(pq) {
+  return [...pq.words, ...pq.tags.map(t => '#' + t)];
+}
+
+function openFromList(n) {
+  const terms = state.query ? searchTerms(parseQuery(state.query)) : [];
+  return api.open(n.id, terms.length ? { highlight: terms } : undefined);
+}
+
+function urgencyDot(r) {
+  const u = urgency(r);
+  return u ? `<span class="urgency-dot" data-urgency="${u}"></span>` : '';
+}
+
+// Urgency drifts with time alone, so recolour the dots in place instead of rebuilding the list.
+setInterval(() => {
+  for (const dot of document.querySelectorAll('#list .urgency-dot')) {
+    const card = dot.closest('.note-card');
+    const n = card && notes.find(x => x.id === card.dataset.id);
+    const u = n && urgency(n.reminder);
+    if (u) dot.dataset.urgency = u;
+  }
+}, 30 * 1000);
 
 function snippet(n, terms) {
   // Show the excerpt where the words were found: the note's text, or else a picture's text.
@@ -489,7 +527,7 @@ function cardHtml(n, pq) {
   const style = `--n-bg:${c.bg};--n-bar:${c.bar};--n-text:${c.text};--n-accent:${c.accent};--n-font:${font}`;
   let content;
   if (n.privateLocked) content = `<div class="locked-card">${icon('shield', { size: 18 })}<span>Private note — locked</span></div>`;
-  else if (pq.words.length) content = snippet(n, pq.words);
+  else if (pq.words.length || pq.tags.length) content = snippet(n, searchTerms(pq));
   else {
     const html = sanitizeHtml(n.html, { mode: 'stored' });
     const short = n.text.split('\n').length < 6 && !/<img\b/.test(html);
@@ -498,12 +536,12 @@ function cardHtml(n, pq) {
   const badges = [];
   if (n.private) badges.push(`<span class="badge" title="Private">${icon('shield', { size: 13 })}</span>`);
   if (n.pinned && !n.trashed) badges.push(`<span class="badge" title="Kept on top">${icon('pinFilled', { size: 13 })}</span>`);
-  if (n.reminder && !n.trashed) badges.push(`<span class="badge" title="Reminder">${icon('bell', { size: 13 })}${escapeHtml(reminderLabel(n.reminder))}</span>`);
+  if (n.reminder && !n.trashed) badges.push(`<span class="badge" title="Reminder">${urgencyDot(n.reminder)}${icon('bell', { size: 13 })}${escapeHtml(reminderLabel(n.reminder))}</span>`);
   if (n.tasks.total) badges.push(`<span class="badge" title="Checklist progress">${icon('checklist', { size: 13 })}${n.tasks.done}/${n.tasks.total}</span>`);
   if (n.locked) badges.push(`<span class="badge" title="Locked">${icon('lock', { size: 13 })}</span>`);
   if (!n.open && !n.trashed) badges.push(`<span class="badge" title="Not on the desktop">${icon('eyeOff', { size: 13 })}</span>`);
   if (n.tabCount > 1) badges.push(`<span class="badge" title="Tabs">${n.tabCount} tabs</span>`);
-  for (const t of n.tags.slice(0, 3)) badges.push(`<span class="chip-tag">#${escapeHtml(t)}</span>`);
+  for (const t of n.tags.slice(0, 3)) badges.push(`<span class="chip-tag">${pq.tags.length ? highlight('#' + t, pq.tags.map(x => '#' + x)) : '#' + escapeHtml(t)}</span>`);
   const when = n.trashed ? `Deleted ${ago(n.trashedAt || n.updatedAt)}` : ago(n.updatedAt);
   const actions = n.trashed
     ? `<button class="card-btn" data-act="restore" title="Restore">${icon('restore', { size: 16 })}</button>
@@ -543,7 +581,7 @@ function render() {
     let sub = 'Create a note and it will show up here.';
     let action = 'New note';
     if (state.query) { title = 'No matches'; sub = `Nothing matches “${state.query}”.`; action = 'Clear search'; }
-    else if (state.view === 'trash') { title = 'Trash is empty'; sub = 'Deleted notes and closed tabs stay here for 30 days.'; action = 'Back to all notes'; }
+    else if (state.view === 'trash') { title = 'Trash is empty'; sub = 'Trash keeps up to 300 notes and 300 closed tabs until you delete them or empty it.'; action = 'Back to all notes'; }
     else if (state.view !== 'all' || state.color) {
       title = 'Nothing here';
       sub = { open: 'No notes are on the desktop right now.', pinned: 'No notes are kept on top.', reminders: 'No notes have reminders.' }[state.view] || 'No notes in this color.';
@@ -559,7 +597,11 @@ function render() {
   $('btn-hide-all').hidden = inTrash;
   $('status').textContent = `${list.length} note${list.length === 1 ? '' : 's'}`;
   if (tabList.length) $('status').textContent += `, ${tabList.length} tab${tabList.length === 1 ? '' : 's'}`;
+  $('status').title = inTrash ? TRASH_NOTE : '';
+  if (inTrash && (list.length || tabList.length)) $('status').textContent += ` · ${TRASH_NOTE}`;
 }
+
+const TRASH_NOTE = 'Trash keeps up to 300 notes and 300 closed tabs until you delete them or empty it';
 
 // Tabs closed from a note only show in the Trash, and only for plain word searches: the
 // other filters (tags, colors, dates…) describe notes.
@@ -620,7 +662,7 @@ $('list').addEventListener('click', async (e) => {
   const n = notes.find(x => x.id === card.dataset.id);
   const btn = e.target.closest('[data-act]');
   if (btn) { e.stopPropagation(); await cardAction(btn.dataset.act, n, btn); return; }
-  if (!n.trashed) api.open(n.id);
+  if (!n.trashed) openFromList(n);
 });
 
 $('list').addEventListener('contextmenu', (e) => {
@@ -640,7 +682,7 @@ $('list').addEventListener('keydown', (e) => {
     return;
   }
   const n = notes.find(x => x.id === card.dataset.id);
-  if (e.key === 'Enter') { e.preventDefault(); if (!n.trashed) api.open(n.id); }
+  if (e.key === 'Enter') { e.preventDefault(); if (!n.trashed) openFromList(n); }
   else if (e.key === 'Delete') { e.preventDefault(); cardAction(n.trashed ? 'purge' : 'trash', n); }
   else if (['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'].includes(e.key)) {
     e.preventDefault();
@@ -961,6 +1003,7 @@ function syncSettingsUi() {
     always: 'Always visible, so a note’s text area never changes size'
   }[tbMode];
   $('set-font').value = settings.defaultFont;
+  $('set-reminderSound').value = ['chime', 'soft', 'none'].includes(settings.reminderSound) ? settings.reminderSound : 'chime';
   $('set-size').value = settings.fontSize;
   $('set-size-value').textContent = `${settings.fontSize}px`;
   for (const k of SWITCHES) $(`set-${k}`).checked = settings[k] !== false && !!settings[k];
@@ -981,6 +1024,12 @@ $('set-snipTarget').addEventListener('click', (e) => { const b = e.target.closes
 $('set-toolbarMode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) update({ toolbarMode: b.dataset.v }); });
 $('set-color').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) update({ defaultColor: b.dataset.v }); });
 $('set-font').addEventListener('change', (e) => update({ defaultFont: e.target.value }));
+$('set-reminderSound').addEventListener('change', (e) => { update({ reminderSound: e.target.value }); playChime(e.target.value); });
+$('set-reminderSound-test').addEventListener('click', () => {
+  const kind = $('set-reminderSound').value;
+  if (kind === 'none') toast('Reminders are silent');
+  else playChime(kind);
+});
 $('set-size').addEventListener('input', (e) => { $('set-size-value').textContent = `${e.target.value}px`; });
 $('set-size').addEventListener('change', (e) => update({ fontSize: Number(e.target.value) }));
 for (const k of SWITCHES) $(`set-${k}`).addEventListener('change', (e) => update({ [k]: e.target.checked }));

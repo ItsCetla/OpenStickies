@@ -672,7 +672,9 @@ function cleanPatch(patch) {
       repeat: ['none', 'daily', 'weekdays', 'weekly', 'monthly'].includes(r.repeat) ? r.repeat : 'none',
       pending: !!r.pending,
       snoozeAt: Number.isFinite(r.snoozeAt) ? r.snoozeAt : null,
-      dom: Number.isInteger(r.dom) && r.dom >= 1 && r.dom <= 31 ? r.dom : new Date(r.at).getDate()
+      dom: Number.isInteger(r.dom) && r.dom >= 1 && r.dom <= 31 ? r.dom : new Date(r.at).getDate(),
+      // When the countdown started; drives the border urgency colour.
+      setAt: Number.isFinite(r.setAt) ? r.setAt : Date.now()
     };
   }
   if ('tabs' in out) out.tabs = cleanTabs(out.tabs);
@@ -968,6 +970,7 @@ function registerIpc() {
     if (Number.isFinite(p.fontSize)) clean.fontSize = Math.min(28, Math.max(10, Math.round(p.fontSize)));
     if (['new', 'last'].includes(p.snipTarget)) clean.snipTarget = p.snipTarget;
     if (['popup', 'editing', 'always'].includes(p.toolbarMode)) clean.toolbarMode = p.toolbarMode;
+    if (['chime', 'soft', 'none'].includes(p.reminderSound)) clean.reminderSound = p.reminderSound;
     if (Number.isFinite(p.autoLockMinutes)) clean.autoLockMinutes = Math.min(240, Math.max(0, Math.round(p.autoLockMinutes)));
     if (Array.isArray(p.savedSearches)) {
       clean.savedSearches = p.savedSearches.filter(s => s && typeof s.query === 'string').slice(0, 50)
@@ -1010,7 +1013,13 @@ function registerIpc() {
 
   // ----- notes list (manager window) -----
   ipcMain.handle('notes:list', (e) => { managerOnly(e); return store.all().map(noteSummary); });
-  ipcMain.handle('notes:open', (e, id) => { managerOnly(e); windows.openNote(id, { focus: true }); });
+  ipcMain.handle('notes:open', (e, id, opts) => {
+    managerOnly(e);
+    const highlight = opts && Array.isArray(opts.highlight)
+      ? opts.highlight.filter(t => typeof t === 'string' && t.trim()).map(t => t.slice(0, 100)).slice(0, 20)
+      : null;
+    windows.openNote(id, { focus: true, highlight: highlight && highlight.length ? highlight : null });
+  });
   ipcMain.handle('notes:close', (e, id) => { managerOnly(e); return windows.closeNote(id); });
   ipcMain.handle('notes:trash', (e, id) => { managerOnly(e); return windows.trashNote(id); });
   ipcMain.handle('notes:restore', (e, id) => { managerOnly(e); store.restore(id); });

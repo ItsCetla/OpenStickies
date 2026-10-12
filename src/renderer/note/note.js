@@ -7,6 +7,7 @@ import { progress, checklistItems, applyResets, setReset, clearTicked, topCheckl
 import { escapeHtml } from '../shared/sanitize.js';
 import { IS_MAC, MOD_KEY, keyLabel, localizeKeys } from '../shared/keys.js';
 import { HoverPreview } from './chips.js';
+import { urgency, relativeLabel, playChime } from '../shared/reminder.js';
 import palette from '../shared/colors.json' with { type: 'json' };
 
 const api = window.stickies;
@@ -27,6 +28,9 @@ let privateLocked = false;
 let vaultState = { configured: false, unlocked: false, hello: false, helloAvailable: false, hint: '' };
 let tabs = null; // null for a one-page note, else [{ id, title, renamed, html, text, scroll }]
 let activeTab = 0;
+// Messages that can arrive before init() has the note; applied once it does.
+let pendingHighlight = null;
+let pendingReminderFired = false;
 
 // Toolbar buttons collapse into the "more" popover in this order as the note gets narrower.
 const COLLAPSE_ORDER = ['table', 'strikeThrough', 'underline', 'link', 'insertOrderedList', 'style', 'image', 'color', 'checklist', 'insertUnorderedList', 'italic'];
@@ -78,6 +82,8 @@ async function init() {
   updateTitle(editor.getText());
   updateProgress();
   updateReminderUi();
+  if (pendingHighlight) { showSearchHighlight(pendingHighlight); pendingHighlight = null; }
+  if (pendingReminderFired) { pendingReminderFired = false; onReminderFired(); }
   if (document.hasFocus()) onFocus();
   if (privateLocked) setTimeout(() => $('lock-password').focus(), 50);
   else if (editor.isEmpty() && !note.locked) editor.focus(true);
@@ -634,7 +640,31 @@ function updateReminderUi() {
   if (r) ind.title = `Reminder: ${shortTime(r.snoozeAt || r.at)}${REPEAT_LABEL[r.repeat] ? ', ' + REPEAT_LABEL[r.repeat] : ''}`;
   $('reminder-banner').hidden = !(r && r.pending);
   if (r && r.pending) $('reminder-banner-text').textContent = `Reminder${note.title ? ': ' + note.title : ''}`;
+  refreshReminderStrip();
 }
+
+function refreshReminderStrip() {
+  const r = note && note.reminder;
+  $('reminder-strip').hidden = !r;
+  const level = urgency(r);
+  if (level) body.dataset.urgency = level;
+  else delete body.dataset.urgency;
+  if (!r) return;
+  const text = relativeLabel(r);
+  $('reminder-strip-text').textContent = text;
+  $('reminder-strip-open').title = `Reminder: ${shortTime(r.snoozeAt || r.at)} (click to change)`;
+}
+
+// Relative times ("in 2h 15m") and the urgency colour drift as time passes.
+setInterval(() => { if (note) refreshReminderStrip(); }, 30 * 1000);
+
+function onReminderFired() {
+  updateReminderUi();
+  playChime((settings && settings.reminderSound) || 'chime');
+}
+
+$('reminder-strip-open').addEventListener('click', (e) => openPop('reminder', e.currentTarget, 'below'));
+$('reminder-strip-clear').addEventListener('click', () => { patchNote({ reminder: null }); updateReminderUi(); toast('Reminder removed'); });
 
 $('reminder-quick').addEventListener('click', (e) => {
   const b = e.target.closest('.chip');
@@ -655,7 +685,7 @@ $('reminder-save').addEventListener('click', () => {
   const at = new Date($('reminder-at').value).getTime();
   if (!Number.isFinite(at)) { toast('Pick a date and time'); return; }
   if (at <= Date.now()) { toast('Pick a time in the future'); return; }
-  patchNote({ reminder: { at, repeat: $('reminder-repeat').value, pending: false, snoozeAt: null, dom: new Date(at).getDate() } });
+  patchNote({ reminder: { at, repeat: $('reminder-repeat').value, pending: false, snoozeAt: null, dom: new Date(at).getDate(), setAt: Date.now() } });
   updateReminderUi();
   closePops();
   toast(`I'll remind you ${shortTime(at).startsWith('Tomorrow') ? '' : 'at '}${shortTime(at)}`);
@@ -673,7 +703,7 @@ $('btn-snooze').addEventListener('click', () => {
   const r = note.reminder;
   if (!r) return;
   const later = Date.now() + 10 * 60000;
-  patchNote({ reminder: r.repeat && r.repeat !== 'none' ? { ...r, pending: false, snoozeAt: later } : { ...r, at: later, pending: false, snoozeAt: null } });
+  patchNote({ reminder: r.repeat && r.repeat !== 'none' ? { ...r, pending: false, snoozeAt: later, setAt: Date.now() } : { ...r, at: later, pending: false, snoozeAt: null, setAt: Date.now() } });
   updateReminderUi();
   toast('Snoozed for 10 minutes');
 });
@@ -737,7 +767,7 @@ function openFind() {
 function runFind() {
   const q = $('find-input').value;
   const n = editor.findAll(q);
-  $('find-count').textContent = q ? (n ? `${editor.find.index + 1}/${n}` : 'No results') : '';
+  $('find-count').textContent = q ? (n ? `${editor.find.index + 1} of ${n}` : 'No results') : '';
 }
 
 function closeFind(select = true) {
@@ -754,7 +784,7 @@ $('find-input').addEventListener('keydown', (e) => {
     e.preventDefault();
     editor.findStep(e.shiftKey ? -1 : 1);
     const n = editor.find.ranges.length;
-    if (n) $('find-count').textContent = `${editor.find.index + 1}/${n}`;
+    if (n) $('find-count').textContent = `${editor.find.index + 1} of ${n}`;
   } else if (e.key === 'Escape') {
     e.preventDefault();
     e.stopPropagation();
@@ -766,8 +796,54 @@ $('find-prev').addEventListener('click', () => { editor.findStep(-1); runFindCou
 $('find-close').addEventListener('click', () => closeFind(false));
 function runFindCount() {
   const n = editor.find.ranges.length;
-  if (n) $('find-count').textContent = `${editor.find.index + 1}/${n}`;
+  if (n) $('find-count').textContent = `${editor.find.index + 1} of ${n}`;
 }
+
+// ---------- search matches carried over from the notes list ----------
+// Painted with the Highlight API so the note's HTML is never touched (and never saved with marks).
+let searchHighlightOn = false;
+
+function showSearchHighlight(terms) {
+  clearSearchHighlight();
+  if (privateLocked || typeof Highlight === 'undefined' || !CSS.highlights) return;
+  const needles = [...new Set(terms.map(t => String(t).toLowerCase().trim()).filter(Boolean))];
+  if (!needles.length) return;
+  const ranges = [];
+  const walker = document.createTreeWalker(editor.el, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const text = node.data.toLowerCase();
+    for (const q of needles) {
+      for (let i = text.indexOf(q); i !== -1; i = text.indexOf(q, i + q.length)) {
+        const r = document.createRange();
+        r.setStart(node, i);
+        r.setEnd(node, i + q.length);
+        ranges.push(r);
+      }
+    }
+  }
+  if (!ranges.length) return;
+  CSS.highlights.set('search-match', new Highlight(...ranges));
+  searchHighlightOn = true;
+  const first = ranges.reduce((a, b) => (a.compareBoundaryPoints(Range.START_TO_START, b) <= 0 ? a : b));
+  const rect = first.getBoundingClientRect();
+  const cr = $('content').getBoundingClientRect();
+  if (rect.top < cr.top || rect.bottom > cr.bottom) $('content').scrollTop += rect.top - cr.top - cr.height / 3;
+}
+
+function clearSearchHighlight() {
+  if (!searchHighlightOn) return false;
+  searchHighlightOn = false;
+  if (typeof CSS !== 'undefined' && CSS.highlights) CSS.highlights.delete('search-match');
+  return true;
+}
+
+$('editor').addEventListener('input', clearSearchHighlight);
+api.onHighlight((terms) => {
+  if (!Array.isArray(terms)) return;
+  if (note) showSearchHighlight(terms);
+  else pendingHighlight = terms;
+});
 
 // ---------- confirm dialog ----------
 function confirmDialog() {
@@ -855,6 +931,7 @@ document.addEventListener('keydown', (e) => {
     if (openState) { closePops(); editor.restoreSelection(); e.preventDefault(); return; }
     if (!$('findbar').hidden) { closeFind(e.target.id === 'find-input'); e.preventDefault(); return; }
     if (body.classList.contains('source-mode')) { exitSource(false); e.preventDefault(); return; }
+    if (clearSearchHighlight()) e.preventDefault();
     return;
   }
   const mod = e.ctrlKey || e.metaKey;
@@ -945,7 +1022,7 @@ api.onCommand(({ cmd, arg }) => {
     case 'toggle-pin': togglePin(); break;
     case 'toggle-lock': toggleLock(); break;
     case 'delete': deleteNote(); break;
-    case 'reminder-fired': updateReminderUi(); break;
+    case 'reminder-fired': if (note) onReminderFired(); else pendingReminderFired = true; break;
     case 'image-size': if (target && target.nodeName === 'IMG') editor.setImageSize(target, arg); break;
     case 'image-delete': if (target && target.nodeName === 'IMG') editor.deleteImage(target); break;
     case 'image-wrap': if (target && target.nodeName === 'IMG') editor.setImageWrap(target, arg); break;

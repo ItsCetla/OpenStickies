@@ -43,7 +43,7 @@ contextBridge.exposeInMainWorld('stickies', {
 
   // notes list
   list: () => invoke('notes:list'),
-  open: (id) => invoke('notes:open', id),
+  open: (id, opts) => invoke('notes:open', id, opts),
   closeNote: (id) => invoke('notes:close', id),
   trashNote: (id) => invoke('notes:trash', id),
   restore: (id) => invoke('notes:restore', id),
@@ -135,5 +135,6 @@ contextBridge.exposeInMainWorld('stickies', {
 
   // image lightbox
   openLightbox: (url) => invoke('img:lightbox', url),
-  closeLightbox: () => invoke('lightbox:close')
+  closeLightbox: () => invoke('lightbox:close'),
+  onHighlight: listen('note:highlight')
 });
