@@ -1,4 +1,4 @@
-# Stickies
+# OpenStickies
 
 Sticky notes for the Windows desktop, rebuilt with rich formatting, images, checklists, reminders, tags, links between notes, workspaces, version history, private notes, screen snips with searchable text, and an OpenCode integration. Every note is its own small floating window, like classic Stickies.
 
