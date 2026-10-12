@@ -497,7 +497,7 @@
         <div class="section-head">
           <p class="eyebrow">Safety &amp; privacy</p>
           <h2 id="safety-title">Your notes are safe, and they stay on your computer.</h2>
-          <p>No account to sign up for. Your notes live in <code>%APPDATA%\Stickies\data\</code>, with several layers of protection against slips, crashes and prying eyes.</p>
+          <p>No account to sign up for. Your notes live in <code>%APPDATA%\OpenStickies\data\</code>, with several layers of protection against slips, crashes and prying eyes.</p>
         </div>
         <ul class="card-grid">
           <li class="card">
@@ -706,8 +706,15 @@ npm start</code></pre>
           <details>
             <summary>Where are my notes stored?</summary>
             <div class="faq-body">
-              <p>Everything stays on your computer, in <code>%APPDATA%\Stickies\data\</code>: your notes in <code>notes.json</code>, pictures in <code>attachments\</code>, version history in <code>history\</code> and daily backups in <code>backups\</code>. Settings → <strong>Open data folder</strong> takes you there.</p>
+              <p>Everything stays on your computer, in <code>%APPDATA%\OpenStickies\data\</code>: your notes in <code>notes.json</code>, pictures in <code>attachments\</code>, version history in <code>history\</code> and daily backups in <code>backups\</code>. Settings → <strong>Open data folder</strong> takes you there.</p>
               <p>One catch: if OpenStickies is started by a packaged Windows app (for example from a terminal inside Claude Desktop), Windows redirects that copy’s data to the app’s private folder, so it has its own separate notes.</p>
+            </div>
+          </details>
+          <details>
+            <summary>I used Stickies before. Where did my notes go?</summary>
+            <div class="faq-body">
+              <p>OpenStickies used to be called Stickies. The first time OpenStickies starts, it copies everything from <code>%APPDATA%\Stickies\data\</code> into its own folder: notes, pictures, version history, settings, templates and private notes. The installer also replaces the old Stickies install, so you won’t have both.</p>
+              <p>The old folder stays where it was as a backup. Once you’ve checked your notes are all there, you can delete it.</p>
             </div>
           </details>
           <details>
@@ -767,7 +774,7 @@ npm start</code></pre>
     </div>
     <div class="wrap">
       <div class="footer-bottom">
-        <p>© 2026 the Stickies authors</p>
+        <p>© 2026 the OpenStickies authors</p>
         <p class="made-for"><svg class="i" aria-hidden="true"><use href="#i-window"/></svg>Made for Windows 10 &amp; 11</p>
       </div>
     </div>

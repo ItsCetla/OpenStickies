@@ -225,7 +225,7 @@ The agent can only change stickies **it** created. It can't read, change or tick
 
 ### Local API
 
-Under the hood, OpenStickies runs a small local API on `127.0.0.1` with a random port and a token stored in `%USERPROFILE%\.stickies\api.json` (and a copy in `%APPDATA%\Stickies\data\api.json`). Requests from web pages are refused. Scripts can use it too.
+Under the hood, OpenStickies runs a small local API on `127.0.0.1` with a random port and a token stored in `%USERPROFILE%\.stickies\api.json` (and a copy in `%APPDATA%\OpenStickies\data\api.json`). Requests from web pages are refused. Scripts can use it too.
 
 <details>
 <summary><b>Example request and endpoints</b></summary>
@@ -282,7 +282,10 @@ curl -X POST http://127.0.0.1:PORT/v1/notes -H "Authorization: Bearer TOKEN" -H 
 
 ## Where your notes live
 
-Everything stays on your computer, in `%APPDATA%\Stickies\data\`.
+Everything stays on your computer, in `%APPDATA%\OpenStickies\data\`.
+
+> [!NOTE]
+> **Upgrading from Stickies?** The app used to be called Stickies and kept its notes in `%APPDATA%\Stickies\data\`. The first time OpenStickies starts, it copies them across automatically, along with your pictures, version history, settings and templates. The old folder is left in place as a backup (with a note saying so); delete it once you've checked everything is there. The installer also replaces an installed copy of Stickies, so you don't end up with both.
 
 <details>
 <summary><b>What's in that folder</b></summary>
@@ -298,7 +301,7 @@ Everything stays on your computer, in `%APPDATA%\Stickies\data\`.
 - `backups\`: daily copies of `notes.json`
 - `api.json`: the local API port and token, written while OpenStickies runs (also to `%USERPROFILE%\.stickies\api.json`, which Windows never redirects; see below)
 
-**Started from a packaged Windows app?** If OpenStickies is started by a packaged Windows app (for example from a terminal inside Claude Desktop), Windows redirects everything it writes to AppData into that app's private folder (`%LOCALAPPDATA%\Packages\<app>\LocalCache\Roaming\Stickies\`). That copy of OpenStickies then has its own notes, separate from the ones you see when you start it from the Start menu.
+**Started from a packaged Windows app?** If OpenStickies is started by a packaged Windows app (for example from a terminal inside Claude Desktop), Windows redirects everything it writes to AppData into that app's private folder (`%LOCALAPPDATA%\Packages\<app>\LocalCache\Roaming\OpenStickies\`). That copy of OpenStickies then has its own notes, separate from the ones you see when you start it from the Start menu.
 
 </details>
 
@@ -320,7 +323,7 @@ npm start
 | `npm run dev` | Runs with DevTools turned on (Ctrl+Shift+I in a note) |
 | `npm run dist` | Builds the installer and portable app into `dist/` |
 
-`Stickies.exe --quit` closes a running copy cleanly (it saves first).
+`OpenStickies.exe --quit` closes a running copy cleanly (it saves first).
 
 ### Project layout
 

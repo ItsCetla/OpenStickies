@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+### Changed
+
+- Stickies is now called **OpenStickies**: the app, its window titles, tray menu, shortcuts, installer (`OpenStickies-Setup-<version>.exe`), portable app (`OpenStickies-Portable-<version>.exe`) and program file (`OpenStickies.exe`).
+- Notes now live in `%APPDATA%\OpenStickies\data\`. On its first start, OpenStickies copies everything from `%APPDATA%\Stickies\data\` (notes, pictures, version history, backups, settings, templates and the private-notes key). The old folder is kept as a backup.
+- The installer replaces an installed copy of Stickies instead of installing next to it. Your notes are kept.
+- "Launch at login" carries over to OpenStickies, and the old Stickies login entry is removed.
+- The OpenCode plugin also looks for OpenStickies' `api.json`. Settings → OpenCode offers an update for an already connected plugin.
+
 ## [3.0.0] - 2026-10-12
 
 First public release of OpenStickies: sticky notes for the Windows desktop, where every note is its own small floating window.
