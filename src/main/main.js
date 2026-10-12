@@ -127,12 +127,19 @@ function init() {
       title: 'OpenStickies',
       message: tr('dialog.folderMissing'),
       detail: tr('dialog.folderMissingDetail', { dir: CUSTOM_DATA_DIR, defaultDir: defaultDataDir }),
-      buttons: [tr('dialog.quit'), tr('dialog.useDefaultOnce')],
+      buttons: [tr('dialog.quit'), tr('dialog.useDefaultOnce'), tr('dialog.useDefaultAlways')],
       defaultId: 0,
       cancelId: 0,
       noLink: true
     });
     if (choice === 0) { app.quit(); return; }
+    // The folder may be gone for good (retired drive, removed sync folder): forget it, so the
+    // warning stops coming back and Settings doesn't think a custom folder is still in play.
+    if (choice === 2) {
+      try { dataLocation.writeDataLocation(DEFAULT_USER_DATA, null); } catch (err) {
+        console.warn('[data] could not clear folder pointer', err.message);
+      }
+    }
     dataDir = defaultDataDir;
   }
   fs.mkdirSync(dataDir, { recursive: true });
