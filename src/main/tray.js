@@ -4,10 +4,17 @@ const { Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 
 function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSnip, onTemplate, onLock }) {
-  const img = nativeImage.createFromPath(path.join(assetsDir, 'tray.png'));
-  const hiDpi = path.join(assetsDir, 'tray@2x.png');
+  // The macOS menu bar wants a black-and-clear "template" image that it tints for light and dark
+  // bars; everywhere else gets the yellow note.
+  const mac = process.platform === 'darwin';
+  const img = nativeImage.createFromPath(path.join(assetsDir, mac ? 'trayTemplate.png' : 'tray.png'));
+  const hiDpi = path.join(assetsDir, mac ? 'trayTemplate@2x.png' : 'tray@2x.png');
   try { img.addRepresentation({ scaleFactor: 2, buffer: require('fs').readFileSync(hiDpi) }); } catch { /* optional */ }
-  const tray = new Tray(img);
+  if (mac) img.setTemplateImage(true);
+  let tray;
+  // Some Linux desktops (GNOME without the AppIndicator extension) have no tray at all. The app
+  // still works without one: the caller opens the notes list instead.
+  try { tray = new Tray(img); } catch (err) { console.warn('OpenStickies: no system tray available', err); return null; }
   tray.setToolTip('OpenStickies');
 
   const rebuild = () => {
@@ -60,7 +67,7 @@ function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSn
 
   // New tray icons start out hidden behind the taskbar's ^ arrow, and Windows doesn't let an
   // app move itself out, so point it out once.
-  if (!store.settings.trayHintShown) {
+  if (process.platform === 'win32' && !store.settings.trayHintShown) {
     setTimeout(() => {
       try {
         tray.displayBalloon({

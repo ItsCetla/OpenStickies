@@ -125,7 +125,7 @@
           <h2>Appearance</h2>
           <div class="card">
             <div class="row">
-              <div class="row-label"><i data-icon="sun" data-size="17"></i><div><div>Theme</div><div class="sub">Follows Windows when set to System</div></div></div>
+              <div class="row-label"><i data-icon="sun" data-size="17"></i><div><div>Theme</div><div class="sub">Follows your system when set to System</div></div></div>
               <div class="segmented" id="set-theme">
                 <button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button>
               </div>
@@ -146,7 +146,7 @@
 
           <h2>Behavior</h2>
           <div class="card">
-            <label class="row"><div class="row-label"><i data-icon="external" data-size="17"></i><div><div>Start with Windows</div><div class="sub">Notes reappear when you sign in</div></div></div><input type="checkbox" class="switch" id="set-launchAtLogin"></label>
+            <label class="row"><div class="row-label"><i data-icon="external" data-size="17"></i><div><div>Open at login</div><div class="sub">Notes reappear when you sign in</div></div></div><input type="checkbox" class="switch" id="set-launchAtLogin"></label>
             <label class="row"><div class="row-label"><i data-icon="notes" data-size="17"></i><div><div>Show notes in the taskbar</div><div class="sub">Off keeps your taskbar tidy; use the tray icon instead</div></div></div><input type="checkbox" class="switch" id="set-showInTaskbar"></label>
             <label class="row"><div class="row-label"><i data-icon="check" data-size="17"></i><div><div>Spell check</div></div></div><input type="checkbox" class="switch" id="set-spellcheck"></label>
             <label class="row"><div class="row-label"><i data-icon="trash" data-size="17"></i><div><div>Ask before deleting a note</div></div></div><input type="checkbox" class="switch" id="set-confirmDelete"></label>
@@ -165,7 +165,7 @@
               <div class="row-label"><i data-icon="snip" data-size="17"></i><div><div>Snips go into</div><div class="sub">You can also switch while snipping</div></div></div>
               <div class="segmented" id="set-snipTarget"><button data-v="new">New note</button><button data-v="last">Last used note</button></div>
             </div>
-            <label class="row"><div class="row-label"><i data-icon="search" data-size="17"></i><div><div>Find text in pictures</div><div class="sub">Windows reads the words in snips and images so search can find them</div></div></div><input type="checkbox" class="switch" id="set-ocrImages"></label>
+            <label class="row"><div class="row-label"><i data-icon="search" data-size="17"></i><div><div>Find text in pictures</div><div class="sub" id="ocr-sub">Windows reads the words in snips and images so search can find them</div></div></div><input type="checkbox" class="switch" id="set-ocrImages"></label>
           </div>
 
           <h2 id="privacy">Private notes</h2>

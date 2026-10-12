@@ -1,6 +1,6 @@
 // OpenStickies for OpenCode
 // -------------------------
-// Mirrors what the OpenCode agent is doing into a sticky note on your Windows desktop:
+// Mirrors what the OpenCode agent is doing into a sticky note on your desktop:
 // one note per task (session), with the agent's to-do list as a checklist — done steps
 // ticked, the current step marked, and what's still left open. Sub-agents' to-do lists
 // show up as sections of the same note.
@@ -94,7 +94,7 @@ async function makeTools(project) {
   const s = tool.schema;
   return {
     stickies_create: tool({
-      description: 'Put a sticky note on the user\'s Windows desktop (the OpenStickies app) so they can keep it in view while they work. Use it when the user asks for a sticky/note, or for plans, checklists, summaries, commands or reminders they want to keep handy. Content is Markdown: "- [ ] task" makes a checkbox, "- [x] task" a ticked one, "# " headings, **bold**, `code`, links. Returns the note id for stickies_update and stickies_check.',
+      description: 'Put a sticky note on the user\'s desktop (the OpenStickies app) so they can keep it in view while they work. Use it when the user asks for a sticky/note, or for plans, checklists, summaries, commands or reminders they want to keep handy. Content is Markdown: "- [ ] task" makes a checkbox, "- [x] task" a ticked one, "# " headings, **bold**, `code`, links. Returns the note id for stickies_update and stickies_check.',
       args: {
         title: s.string().describe('Short title shown at the top of the note'),
         content: s.string().describe('Note body in Markdown. Use "- [ ] item" lines for a checklist.'),

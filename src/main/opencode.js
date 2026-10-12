@@ -17,8 +17,13 @@ function pluginPath() {
 }
 
 function onPath() {
-  const exts = ['.cmd', '.exe', ''];
-  return String(process.env.PATH || '').split(path.delimiter).some(dir => dir && exts.some(ext => {
+  const win = process.platform === 'win32';
+  const exts = win ? ['.cmd', '.exe', ''] : [''];
+  const dirs = String(process.env.PATH || '').split(path.delimiter);
+  // Apps started from the Dock or a desktop launcher get a short PATH without the user's shell
+  // additions, so also look where the OpenCode installer and Homebrew put the binary.
+  if (!win) dirs.push(path.join(os.homedir(), '.opencode', 'bin'), path.join(os.homedir(), '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin');
+  return dirs.some(dir => dir && exts.some(ext => {
     try { return fs.existsSync(path.join(dir, 'opencode' + ext)); } catch { return false; }
   }));
 }

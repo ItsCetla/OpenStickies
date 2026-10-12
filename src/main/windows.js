@@ -12,6 +12,8 @@ const MIN_W = 200;
 const MIN_H = 130;
 const SNAP = 14;
 const WM_NCLBUTTONDBLCLK = 0x00a3;
+// macOS only (ignored elsewhere): centres the close/minimise/zoom buttons in the 44px app bar.
+const TRAFFIC_LIGHTS = { x: 14, y: 15 };
 
 class WindowManager {
   constructor({ store, preload, icon, isDev }) {
@@ -130,6 +132,15 @@ class WindowManager {
       win.hookWindowMessage(WM_NCLBUTTONDBLCLK, () => {
         setImmediate(() => this.toggleRoll(note.id));
       });
+      win.on('system-context-menu', (e) => {
+        e.preventDefault();
+        const current = this.store.get(note.id);
+        if (current) require('./context-menu').buildNoteMenu({ note: current, windows: this, noteId: note.id }).popup({ window: win });
+      });
+    }
+    if (process.platform === 'linux') {
+      // Some Linux window managers take right-clicks on the drag region for themselves and report
+      // them here rather than to the page; show the note menu either way.
       win.on('system-context-menu', (e) => {
         e.preventDefault();
         const current = this.store.get(note.id);
@@ -275,6 +286,7 @@ class WindowManager {
       backgroundColor: dark ? '#1f1f22' : '#f7f6f3',
       titleBarStyle: 'hidden',
       titleBarOverlay: this._overlay(),
+      trafficLightPosition: TRAFFIC_LIGHTS,
       webPreferences: { ...this.webPreferences(), spellcheck: false }
     });
     this.historyWindows.set(noteId, win);
@@ -537,6 +549,7 @@ class WindowManager {
       backgroundColor: dark ? '#1f1f22' : '#f7f6f3',
       titleBarStyle: 'hidden',
       titleBarOverlay: this._overlay(),
+      trafficLightPosition: TRAFFIC_LIGHTS,
       fullscreenable: false,
       webPreferences: { ...this.webPreferences(), spellcheck: false }
     });

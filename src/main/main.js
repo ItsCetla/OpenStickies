@@ -1,16 +1,16 @@
 'use strict';
 
 const {
-  app, protocol, ipcMain, shell, nativeTheme, globalShortcut, session, dialog, net, Menu, BrowserWindow, powerMonitor
+  app, protocol, ipcMain, shell, nativeTheme, globalShortcut, session, dialog, net, Menu, BrowserWindow, powerMonitor, Notification
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-const { Store, OPENABLE_RE, ATTACHMENT_RE } = require('./store');
+const { Store, OPENABLE_RE, ATTACHMENT_RE, writeFileAtomic } = require('./store');
 const { WindowManager } = require('./windows');
 const { Reminders } = require('./reminders');
 const { createTray } = require('./tray');
-const { attachNoteContextMenu } = require('./context-menu');
+const { attachNoteContextMenu, buildNoteMenu } = require('./context-menu');
 const { History } = require('./history');
 const { Vault } = require('./vault');
 const { Workspaces } = require('./workspaces');
@@ -27,6 +27,8 @@ const palette = require('../renderer/shared/colors.json');
 
 const isDev = process.argv.includes('--dev');
 if (process.env.STICKIES_USER_DATA) app.setPath('userData', process.env.STICKIES_USER_DATA);
+// Under Wayland, apps can only register system-wide shortcuts through the desktop portal.
+if (process.platform === 'linux') app.commandLine.appendSwitch('enable-features', 'GlobalShortcutsPortal');
 
 const SRC = path.join(__dirname, '..');
 const RENDERER = path.join(SRC, 'renderer');
@@ -71,7 +73,7 @@ const plain = new Map(); // decrypted private notes while unlocked: id -> { html
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.setAppUserModelId('com.openstickies.desktop');
+  if (process.platform === 'win32') app.setAppUserModelId('com.openstickies.desktop');
   app.on('second-instance', (_e, argv) => {
     if (argv.includes('--quit')) { app.quit(); return; } // lets installers/scripts close OpenStickies gracefully
     if (!windows) return;
@@ -144,8 +146,9 @@ function init() {
     onTemplate: (id) => newNoteFromTemplate(id),
     onLock: () => lockVault()
   });
-  registerHotkeys();
+  reportHotkeyFailures(registerHotkeys());
   setUserTasks();
+  if (process.platform === 'darwin') setupMac();
 
   reminders = new Reminders({ store, windows, icon: ICON });
   reminders.start();
@@ -177,14 +180,18 @@ function init() {
   });
 
   if (!store.settings.welcomed) {
-    store.create({ html: WELCOME_HTML, color: 'yellow', bounds: welcomeBounds() });
+    store.create({ html: welcomeHtml(), color: 'yellow', bounds: welcomeBounds() });
     store.updateSettings({ welcomed: true });
   }
 
-  const hidden = process.argv.includes('--hidden');
+  const hidden = process.argv.includes('--hidden') || openedAtMacLogin();
   windows.restoreOpenNotes();
   if (process.argv.includes('--new')) windows.newNote();
-  else if (!hidden && !store.active().some(n => n.open)) windows.openManager();
+  else if (!store.active().some(n => n.open) && (!hidden || !tray || (process.platform !== 'win32' && !store.active().length))) {
+    // Without a tray icon (or, on macOS and Linux, with no notes at all) a hidden start would
+    // leave nothing on screen to get back in through, so show the notes list.
+    windows.openManager();
+  }
 }
 
 function welcomeBounds() {
@@ -251,10 +258,162 @@ function broadcastSettings() {
 }
 
 function setLoginItem(enabled) {
+  if (process.platform === 'linux') { setLinuxAutostart(enabled); return; }
+  // macOS login items take no arguments; init() asks whether it was a login start instead.
+  if (process.platform === 'darwin') { app.setLoginItemSettings({ openAtLogin: !!enabled }); return; }
   const opts = { openAtLogin: !!enabled, args: ['--hidden'] };
   if (process.env.PORTABLE_EXECUTABLE_FILE) opts.path = process.env.PORTABLE_EXECUTABLE_FILE;
   else if (!app.isPackaged) { opts.path = process.execPath; opts.args = [path.resolve(SRC, '..'), '--hidden']; }
   app.setLoginItemSettings(opts);
+}
+
+// Linux desktops start whatever .desktop files are in ~/.config/autostart (the XDG autostart spec).
+function setLinuxAutostart(enabled) {
+  const dir = path.join(process.env.XDG_CONFIG_HOME || path.join(app.getPath('home'), '.config'), 'autostart');
+  const file = path.join(dir, 'openstickies.desktop');
+  try {
+    if (!enabled) { fs.rmSync(file, { force: true }); return; }
+    // Exec= quoting: reserved characters need double quotes, with " ` $ \ escaped inside them,
+    // then the whole value is unescaped once more as a desktop-file string.
+    const arg = (s) => {
+      let v = String(s).replace(/%/g, '%%');
+      if (/[\s"'\\$`<>~|&;*?#()]/.test(v)) v = `"${v.replace(/(["`$\\])/g, '\\$1')}"`;
+      return v.replace(/\\/g, '\\\\');
+    };
+    // An AppImage runs from a temporary mount, so start the .AppImage file itself.
+    const program = process.env.APPIMAGE || process.execPath;
+    const args = [...(app.isPackaged ? [] : [path.resolve(SRC, '..')]), '--hidden'];
+    fs.mkdirSync(dir, { recursive: true });
+    writeFileAtomic(file, [
+      '[Desktop Entry]',
+      'Type=Application',
+      'Name=OpenStickies',
+      'Comment=Desktop sticky notes',
+      `Exec=${[program, ...args].map(arg).join(' ')}`,
+      'Icon=openstickies',
+      'Terminal=false',
+      'X-GNOME-Autostart-enabled=true',
+      ''
+    ].join('\n'));
+  } catch (err) {
+    console.warn('OpenStickies: could not update the autostart entry', err);
+  }
+}
+
+// macOS login items can't pass --hidden, but the system says whether it started us at login.
+function openedAtMacLogin() {
+  if (process.platform !== 'darwin') return false;
+  try { return !!app.getLoginItemSettings().wasOpenedAtLogin; } catch { return false; }
+}
+
+// Shortcut text as this platform writes it: "⌥⌘N" on a Mac, "Ctrl+Alt+N" elsewhere.
+function accelLabel(acc) {
+  if (process.platform !== 'darwin') return String(acc).replace(/CommandOrControl|CmdOrCtrl/g, 'Ctrl');
+  const sym = { CommandOrControl: '⌘', CmdOrCtrl: '⌘', Command: '⌘', Cmd: '⌘', Super: '⌘', Meta: '⌘', Control: '⌃', Ctrl: '⌃', Alt: '⌥', Option: '⌥', AltGr: '⌥', Shift: '⇧' };
+  const order = ['⌃', '⌥', '⇧', '⌘'];
+  const parts = String(acc).split('+');
+  const key = parts.pop();
+  return parts.map(p => sym[p] || p).sort((a, b) => order.indexOf(a) - order.indexOf(b)).join('') + key;
+}
+
+// A shortcut another app already owns (or that a Wayland desktop refused) just does nothing, so
+// say which ones didn't register instead of failing silently.
+function reportHotkeyFailures(results) {
+  const failed = Object.entries(results || {}).filter(([, r]) => r === 'taken' || r === 'invalid').map(([k]) => store.settings.hotkeys[k]);
+  if (!failed.length) return;
+  console.warn('OpenStickies: these global shortcuts could not be registered:', failed.join(', '));
+  try {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({
+      title: 'Some OpenStickies shortcuts aren’t working',
+      body: `${failed.map(accelLabel).join(', ')} couldn’t be set up, probably because another app uses ${failed.length > 1 ? 'them' : 'it'}. Pick different keys in Settings.`
+    });
+    n.on('click', () => windows.openManager('settings'));
+    n.show();
+  } catch { /* notifications unavailable */ }
+}
+
+// macOS expects an application menu: it carries the standard Edit shortcuts (copy, paste, undo)
+// for every window plus About, Hide and Quit. Other platforms keep no menu bar.
+function setupMac() {
+  const SITE = 'https://openstickies.cetla.dev';
+  // The note and list windows already handle their own shortcuts, and the global ones belong to
+  // globalShortcut, so these only label the keys rather than registering them a second time.
+  const shown = (accelerator) => (accelerator ? { accelerator, registerAccelerator: false } : {});
+  const build = () => {
+    const hk = store.settings.hotkeys;
+    const templates = store.templates.length
+      ? store.templates.map(t => ({ label: t.name, click: () => newNoteFromTemplate(t.id) }))
+      : [{ label: 'No templates yet', enabled: false }];
+    Menu.setApplicationMenu(Menu.buildFromTemplate([
+      {
+        label: app.name,
+        submenu: [
+          { role: 'about' },
+          { type: 'separator' },
+          { label: 'Settings…', accelerator: 'Command+,', click: () => windows.openManager('settings') },
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit' }
+        ]
+      },
+      {
+        label: 'File',
+        submenu: [
+          { label: 'New Note', ...shown('Command+N'), click: () => windows.newNote() },
+          { label: 'New from Template', submenu: templates },
+          { type: 'separator' },
+          { label: 'Notes List', click: () => windows.openManager() },
+          { label: 'Tasks', click: () => windows.openManager('tasks') },
+          { type: 'separator' },
+          { label: 'Snip Screen to Note', ...shown(hk.snip), click: () => snipper.start() }
+        ]
+      },
+      {
+        label: 'Edit',
+        submenu: [
+          { role: 'undo' },
+          { role: 'redo' },
+          { type: 'separator' },
+          { role: 'cut' },
+          { role: 'copy' },
+          { role: 'paste' },
+          { role: 'pasteAndMatchStyle' },
+          { role: 'selectAll' }
+        ]
+      },
+      {
+        label: 'View',
+        submenu: [
+          { label: 'Show All Notes', ...shown(hk.showAll), click: () => windows.showAll() },
+          { label: 'Hide All Notes', click: () => windows.hideAll() },
+          ...(isDev ? [{ type: 'separator' }, { role: 'reload' }, { role: 'toggleDevTools' }] : [])
+        ]
+      },
+      { role: 'windowMenu' },
+      {
+        role: 'help',
+        submenu: [{ label: 'OpenStickies Website', click: () => openExternal(SITE) }]
+      }
+    ]));
+  };
+  build();
+  let t;
+  const soon = () => { clearTimeout(t); t = setTimeout(build, 500); };
+  store.on('templates', soon);
+  store.on('settings', soon);
+
+  // Running from source, the Dock would otherwise show Electron's icon.
+  if (!app.isPackaged) { try { app.dock.setIcon(path.join(ASSETS, 'icon.png')); } catch { /* optional */ } }
+  // Clicking the Dock icon with nothing on screen opens the notes list.
+  app.on('activate', () => {
+    if (windows && !BrowserWindow.getAllWindows().some(w => w.isVisible())) windows.openManager();
+  });
 }
 
 // "Launch at login" came across in the settings, but Windows' entry still starts the old program.
@@ -891,6 +1050,13 @@ function registerIpc() {
     return { ok: true, added: items.length };
   });
   ipcMain.handle('data:open-folder', (e) => { managerOnly(e); return shell.openPath(store.dir); });
+  // Right-click on a note's title bar outside Windows (Windows reports it natively, see windows.js).
+  ipcMain.handle('note:titlebar-menu', (e) => {
+    const id = noteOf(e);
+    const note = id && store.get(id);
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (note && win) buildNoteMenu({ note, windows, noteId: note.id }).popup({ window: win });
+  });
 }
 
 // ---------- lifecycle ----------
@@ -935,3 +1101,9 @@ const WELCOME_HTML = [
   '<li><b>Ctrl+Alt+X</b> snip the screen into a note</li>',
   '<li><b>Ctrl+Alt+S</b> bring all notes to front</li></ul>'
 ].join('');
+
+// The welcome note with its shortcuts written the way this keyboard labels them.
+function welcomeHtml() {
+  if (process.platform !== 'darwin') return WELCOME_HTML;
+  return WELCOME_HTML.replace(/Ctrl\+Alt\+/g, '⌥⌘').replace(/Ctrl\+/g, '⌘');
+}

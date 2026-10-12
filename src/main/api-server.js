@@ -2,7 +2,7 @@
 
 // A tiny local API so other programs on this PC (the OpenCode plugin, scripts) can put
 // notes on the desktop. It listens on 127.0.0.1 only, on a random port, and every call
-// needs the token written to api.json — readable only from this Windows account.
+// needs the token written to api.json — readable only from this user account.
 //
 // api.json goes to data/ and to any extra paths given. The extra copy matters on Windows: when
 // OpenStickies is started by a packaged (MSIX) app such as Claude Desktop, Windows quietly redirects
@@ -50,7 +50,11 @@ class ApiServer {
     for (const file of this.files) {
       try {
         fs.mkdirSync(path.dirname(file), { recursive: true });
+        // On macOS and Linux a new file is readable by every local user unless told otherwise;
+        // the token must stay with this account. (Windows already limits it to the user's profile.)
+        if (process.platform !== 'win32') { try { fs.chmodSync(path.dirname(file), 0o700); } catch { /* not ours to change */ } }
         writeFileAtomic(file, json);
+        if (process.platform !== 'win32') fs.chmodSync(file, 0o600);
       } catch (err) {
         console.warn(`[api] could not write ${file}:`, err.message);
       }

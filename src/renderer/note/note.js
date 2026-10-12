@@ -5,6 +5,7 @@ import { Editor, normalizeUrl } from './editor.js';
 import { Suggest, rank } from './suggest.js';
 import { progress, checklistItems, applyResets, setReset, clearTicked, topChecklist, sinkItem, TAG_RE, ownText } from './smart.js';
 import { escapeHtml } from '../shared/sanitize.js';
+import { IS_MAC, MOD_KEY, keyLabel, localizeKeys } from '../shared/keys.js';
 import palette from '../shared/colors.json' with { type: 'json' };
 
 const api = window.stickies;
@@ -28,6 +29,8 @@ let vaultState = { configured: false, unlocked: false, hello: false, helloAvaila
 const COLLAPSE_ORDER = ['table', 'strikeThrough', 'underline', 'link', 'insertOrderedList', 'style', 'image', 'color', 'checklist', 'insertUnorderedList', 'italic'];
 
 hydrateIcons();
+localizeKeys();
+$('lock-hello').lastChild.textContent = ` ${unlockMethodLabel()}`;
 
 const editor = new Editor($('editor'), {
   api,
@@ -126,7 +129,7 @@ function applyState() {
   const pin = $('btn-pin');
   pin.classList.toggle('on', !!note.pinned);
   pin.innerHTML = icon(note.pinned ? 'pinFilled' : 'pin');
-  pin.title = note.pinned ? 'Stop keeping on top (Ctrl+Shift+P)' : 'Keep on top (Ctrl+Shift+P)';
+  pin.title = keyLabel(note.pinned ? 'Stop keeping on top (Ctrl+Shift+P)' : 'Keep on top (Ctrl+Shift+P)');
   const roll = $('btn-roll');
   roll.innerHTML = icon(note.rolled ? 'chevronDown' : 'chevronUp');
   roll.title = note.rolled ? 'Unroll (double-click title bar)' : 'Roll up (double-click title bar)';
@@ -777,6 +780,17 @@ $('btn-menu').addEventListener('click', (e) => openPop('menu', e.currentTarget, 
 $('btn-close').addEventListener('click', closeNote);
 $('ind-lock').addEventListener('click', toggleLock);
 $('ind-reminder').addEventListener('click', (e) => openPop('reminder', e.currentTarget, 'below'));
+// Windows reports title bar double-clicks and right-clicks through a native hook in the main
+// process. Elsewhere the page sees them (where the drag region lets them through), so handle them here.
+if (api.platform !== 'win32') {
+  const onButton = (e) => e.target.closest('button, .tb-btn, .indicator, input, select');
+  $('titlebar').addEventListener('dblclick', (e) => { if (!onButton(e)) api.toggleRoll(); });
+  $('titlebar').addEventListener('contextmenu', (e) => {
+    if (onButton(e)) return;
+    e.preventDefault();
+    api.titlebarMenu();
+  });
+}
 
 $('opacity').addEventListener('input', (e) => {
   const v = Number(e.target.value) / 100;
@@ -802,10 +816,10 @@ window.addEventListener('blur', () => {
   if (saveTimer) save();
 });
 
-document.addEventListener('keyup', (e) => { if (e.key === 'Control') body.classList.remove('ctrl'); });
+document.addEventListener('keyup', (e) => { if (e.key === MOD_KEY) body.classList.remove('ctrl'); });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Control') body.classList.add('ctrl');
+  if (e.key === MOD_KEY) body.classList.add('ctrl');
   if (e.key === 'Escape') {
     if (!$('confirm').hidden) return;
     if (openState) { closePops(); editor.restoreSelection(); e.preventDefault(); return; }
@@ -850,7 +864,7 @@ document.addEventListener('keydown', (e) => {
 }, true);
 
 window.addEventListener('wheel', (e) => {
-  if (!e.ctrlKey) return;
+  if (!e.ctrlKey && !e.metaKey) return; // Ctrl on Windows and Linux, Command (or a pinch, which arrives as Ctrl) on a Mac
   e.preventDefault();
   setZoom((note.zoom || 1) + (e.deltaY < 0 ? 0.1 : -0.1));
 }, { passive: false });
@@ -1061,7 +1075,12 @@ async function fillBacklinks() {
 }
 
 function prettyKey(acc) {
-  return acc ? acc.replace(/CommandOrControl|CmdOrCtrl/g, 'Ctrl') : '';
+  return acc ? keyLabel(acc) : '';
+}
+
+// What the lock screen's quick-unlock button is called on this platform.
+function unlockMethodLabel() {
+  return IS_MAC ? 'Use Touch ID' : api.platform === 'win32' ? 'Use Windows Hello' : 'Use quick unlock';
 }
 
 // ---------- templates ----------
@@ -1146,7 +1165,7 @@ $('lock-form').addEventListener('submit', async (e) => {
   }
 });
 $('lock-hello').addEventListener('click', async () => {
-  if (!(await api.vaultUnlockHello())) toast('Windows Hello didn’t unlock your notes');
+  if (!(await api.vaultUnlockHello())) toast(`${IS_MAC ? 'Touch ID' : 'Windows Hello'} didn’t unlock your notes`);
 });
 $('ind-private').addEventListener('click', async () => {
   if (!privateLocked) { await flush(); api.vaultLock(); }

@@ -47,6 +47,8 @@ function readme(newDir) {
 // Returns { migrated: true, from, to } after a copy, { migrated: false } when there was nothing
 // to do, or { migrated: false, from, error } when the copy failed (the old folder is untouched).
 function migrateLegacyData({ appData, userData }) {
+  // The old Stickies app only ever shipped for Windows, so there is nothing to bring over elsewhere.
+  if (process.platform !== 'win32') return { migrated: false };
   const from = path.join(appData, LEGACY_NAME, 'data');
   const to = path.join(userData, 'data');
   if (path.resolve(from).toLowerCase() === path.resolve(to).toLowerCase()) return { migrated: false };

@@ -193,6 +193,50 @@ function encodeIco(images) {
   return Buffer.concat([header, ...entries, ...images.map(i => i.png)]);
 }
 
+// macOS menu-bar "template" image: black + alpha only, so macOS can tint it for light/dark
+// menu bars. Same note outline as the app icon, with the lines and the fold punched through.
+function renderTemplate(size) {
+  const ss = 8;
+  const px = Buffer.alloc(size * size * 4);
+  const segs = [[0.27, 0.37, 0.73, 0.37], [0.27, 0.52, 0.56, 0.52]];
+  const fx = NOTE.x1 - FOLD;
+  const fy = NOTE.y1 - FOLD;
+  for (let j = 0; j < size; j++) {
+    for (let i = 0; i < size; i++) {
+      let a = 0;
+      for (let sy = 0; sy < ss; sy++) {
+        for (let sx = 0; sx < ss; sx++) {
+          const x = (i + (sx + 0.5) / ss) / size;
+          const y = (j + (sy + 0.5) / ss) / size;
+          if (roundedRectDist(x, y, NOTE) > 0 || x + y > FOLD_LINE) continue;
+          if (segs.some(([ax, ay, bx, by]) => capsuleDist(x, y, ax, ay, bx, by, 0.045) <= 0)) continue;
+          // A thin L-shaped gap separates the folded flap from the body.
+          const gap = 0.055;
+          if (y >= fy - gap && x >= fx - gap && (x < fx || y < fy)) continue;
+          a++;
+        }
+      }
+      px[(j * size + i) * 4 + 3] = Math.round((a / (ss * ss)) * 255);
+    }
+  }
+  return encodePng(size, size, px);
+}
+
+// .icns container: 'icns' + total length, then [type, length incl. 8-byte header, PNG data] entries.
+function encodeIcns(entries) {
+  const parts = entries.map(({ type, png }) => {
+    const head = Buffer.alloc(8);
+    head.write(type, 0, 'ascii');
+    head.writeUInt32BE(png.length + 8, 4);
+    return Buffer.concat([head, png]);
+  });
+  const body = Buffer.concat(parts);
+  const head = Buffer.alloc(8);
+  head.write('icns', 0, 'ascii');
+  head.writeUInt32BE(body.length + 8, 4);
+  return Buffer.concat([head, body]);
+}
+
 fs.mkdirSync(OUT, { recursive: true });
 const icoSizes = [16, 20, 24, 32, 40, 48, 64, 128, 256];
 const images = icoSizes.map(size => ({ size, png: render(size) }));
@@ -200,4 +244,18 @@ fs.writeFileSync(path.join(OUT, 'icon.ico'), encodeIco(images));
 fs.writeFileSync(path.join(OUT, 'icon.png'), render(512));
 fs.writeFileSync(path.join(OUT, 'tray.png'), images.find(i => i.size === 16).png);
 fs.writeFileSync(path.join(OUT, 'tray@2x.png'), images.find(i => i.size === 32).png);
+const pngs = new Map();
+const png = (size) => pngs.get(size) || pngs.set(size, render(size)).get(size);
+fs.writeFileSync(path.join(OUT, 'icon.icns'), encodeIcns([
+  { type: 'ic07', png: png(128) },
+  { type: 'ic08', png: png(256) },
+  { type: 'ic09', png: png(512) },
+  { type: 'ic10', png: png(1024) },
+  { type: 'ic11', png: png(32) },
+  { type: 'ic12', png: png(64) },
+  { type: 'ic13', png: png(256) },
+  { type: 'ic14', png: png(512) }
+]));
+fs.writeFileSync(path.join(OUT, 'trayTemplate.png'), renderTemplate(22));
+fs.writeFileSync(path.join(OUT, 'trayTemplate@2x.png'), renderTemplate(44));
 console.log('Wrote icons to', OUT);

@@ -1,6 +1,6 @@
 'use strict';
 
-// Text recognition for images using the OCR engine built into Windows
+// Text recognition for images using the OCR engine built into Windows (macOS: Vision; Linux: Tesseract)
 // (Windows.Media.Ocr), driven through PowerShell so no native modules are needed.
 // Results are cached next to each attachment as "<name>.txt", so every image is
 // recognized at most once.
@@ -30,9 +30,53 @@ $result.Lines | ForEach-Object { $_.Text }
 const ENCODED = Buffer.from(SCRIPT, 'utf16le').toString('base64');
 const OCR_TYPES = /\.(png|jpg|gif|bmp)$/i; // formats the Windows decoder reads reliably
 
+// macOS: the Vision framework, reached through JavaScript for Automation so no native module or
+// helper binary is needed. osascript passes the file path to run() as its first argument.
+const MAC_SCRIPT = `
+ObjC.import('Foundation');
+ObjC.import('Vision');
+function run(argv) {
+  const url = $.NSURL.fileURLWithPath(argv[0]);
+  const request = $.VNRecognizeTextRequest.alloc.init;
+  request.recognitionLevel = 0;
+  request.usesLanguageCorrection = true;
+  const handler = $.VNImageRequestHandler.alloc.initWithURLOptions(url, $.NSDictionary.dictionary);
+  if (!handler.performRequestsError($.NSArray.arrayWithObject(request), null)) return '';
+  const results = request.results;
+  const lines = [];
+  for (let i = 0; i < results.count; i++) {
+    const top = results.objectAtIndex(i).topCandidates(1);
+    if (top.count) lines.push(top.objectAtIndex(0).string.js);
+  }
+  return lines.join('\\n');
+}
+`;
+
 let queue = Promise.resolve();
 
+function cleanLines(stdout) {
+  return String(stdout).replace(/\r/g, '').split('\n').map(s => s.trim()).filter(Boolean).join('\n');
+}
+
+function runOcrMac(file) {
+  return new Promise((resolve) => {
+    execFile('osascript', ['-l', 'JavaScript', '-e', MAC_SCRIPT, file], { timeout: 45000, maxBuffer: 4 * 1024 * 1024 },
+      (err, stdout) => resolve(err ? null : cleanLines(stdout)));
+  });
+}
+
+// Linux has no OCR engine built in; use Tesseract when the user has installed it. A missing
+// binary fails with ENOENT and resolves null, so nothing is cached and installing it later works.
+function runOcrLinux(file) {
+  return new Promise((resolve) => {
+    execFile('tesseract', [file, 'stdout'], { timeout: 45000, maxBuffer: 4 * 1024 * 1024 },
+      (err, stdout) => resolve(err ? null : cleanLines(stdout)));
+  });
+}
+
 function runOcr(file) {
+  if (process.platform === 'darwin') return runOcrMac(file);
+  if (process.platform === 'linux') return runOcrLinux(file);
   return new Promise((resolve) => {
     execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', ENCODED], {
       env: { ...process.env, STICKIES_OCR_FILE: file },
@@ -49,7 +93,7 @@ function runOcr(file) {
 // Recognize the text in an attachment file. One OCR process runs at a time.
 // Images from private notes pass { cache: false } so their text never lands on disk.
 function recognize(file, { cache = true } = {}) {
-  if (process.platform !== 'win32' || !file || !OCR_TYPES.test(file)) return Promise.resolve('');
+  if (!['win32', 'darwin', 'linux'].includes(process.platform) || !file || !OCR_TYPES.test(file)) return Promise.resolve('');
   const cacheFile = file + '.txt';
   if (cache) { try { return Promise.resolve(fs.readFileSync(cacheFile, 'utf8')); } catch { /* not cached yet */ } }
   const job = queue.then(async () => {

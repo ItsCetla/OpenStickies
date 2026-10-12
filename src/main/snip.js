@@ -4,7 +4,7 @@
 // then crop that region at full resolution and put it in a note.
 
 const crypto = require('crypto');
-const { BrowserWindow, desktopCapturer, screen } = require('electron');
+const { BrowserWindow, desktopCapturer, dialog, screen, shell, systemPreferences } = require('electron');
 
 class Snipper {
   constructor({ store, windows, preload }) {
@@ -29,6 +29,12 @@ class Snipper {
   // target: 'new' | 'last' | a note id (insert into that note)
   async start(target = this.store.settings.snipTarget || 'new') {
     if (this.session) { this.session.overlays.forEach(o => !o.win.isDestroyed() && o.win.focus()); return; }
+    // Once Screen Recording has been refused, macOS hands back wallpaper-only captures without
+    // asking again, so send the user to the setting instead.
+    if (process.platform === 'darwin' && ['denied', 'restricted'].includes(systemPreferences.getMediaAccessStatus('screen'))) {
+      this.explainFailure();
+      return;
+    }
     const displays = screen.getAllDisplays();
     const maxW = Math.max(...displays.map(d => Math.round(d.size.width * d.scaleFactor)));
     const maxH = Math.max(...displays.map(d => Math.round(d.size.height * d.scaleFactor)));
@@ -37,6 +43,7 @@ class Snipper {
       sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: maxW, height: maxH } });
     } catch (err) {
       console.error('[snip] capture failed:', err);
+      this.explainFailure();
       return;
     }
     const session = { token: crypto.randomBytes(8).toString('hex'), shots: new Map(), overlays: [], target };
@@ -44,7 +51,7 @@ class Snipper {
       const src = sources.find(s => String(s.display_id) === String(d.id)) || sources[i];
       if (src && !src.thumbnail.isEmpty()) session.shots.set(d.id, src.thumbnail);
     });
-    if (!session.shots.size) return;
+    if (!session.shots.size) { this.explainFailure(); return; }
     this.session = session;
 
     const cursor = screen.getCursorScreenPoint();
@@ -77,6 +84,27 @@ class Snipper {
       });
       win.on('closed', () => { if (this.session === session) this.cancel(); });
     }
+  }
+
+  // Outside Windows a capture can fail for reasons the user has to fix (a missing permission, a
+  // dismissed Wayland screen-sharing prompt). Without a message the shortcut would seem to do nothing.
+  explainFailure() {
+    if (process.platform === 'win32') return;
+    const mac = process.platform === 'darwin';
+    const wayland = process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY;
+    let detail = 'The screen could not be captured. Try again, or check that your desktop allows screen capture.';
+    if (mac) detail = 'OpenStickies needs Screen Recording permission to snip the screen. Turn it on for OpenStickies in System Settings > Privacy & Security > Screen & System Audio Recording, then quit and reopen OpenStickies.';
+    else if (wayland) detail = 'Your desktop asks before an app can see the screen. Choose a screen and click Share in that prompt, then try again. If no prompt appeared, check that xdg-desktop-portal and the portal for your desktop are installed.';
+    dialog.showMessageBox({
+      type: 'warning',
+      message: 'Could not snip the screen',
+      detail,
+      buttons: mac ? ['Open System Settings', 'Cancel'] : ['OK'],
+      defaultId: 0,
+      cancelId: mac ? 1 : 0
+    }).then(({ response }) => {
+      if (mac && response === 0) shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
+    }).catch(() => { /* nothing more to show */ });
   }
 
   info(webContents) {
