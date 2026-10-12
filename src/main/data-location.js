@@ -82,15 +82,17 @@ function copyDir(from, to) {
 }
 
 // Copies a data folder's contents into another folder. The source is left untouched, so the old
-// folder doubles as a backup until the person removes it.
+// folder doubles as a backup until the person removes it. notes.json goes last: hasNotes() keys
+// on it, so a copy that fails partway (disk full, no permission) never makes the destination look
+// like an existing notes folder, and a retry just overwrites the partial files.
 function copyDataFolder(from, to) {
   fs.mkdirSync(to, { recursive: true });
   let count = 0;
-  for (const f of DATA_FILES) {
+  for (const d of DATA_DIRS) count += copyDir(path.join(from, d), path.join(to, d));
+  for (const f of [...DATA_FILES.filter(n => n !== 'notes.json'), 'notes.json']) {
     const src = path.join(from, f);
     if (fs.existsSync(src)) { copyFile(src, path.join(to, f)); count++; }
   }
-  for (const d of DATA_DIRS) count += copyDir(path.join(from, d), path.join(to, d));
   return count;
 }
 
