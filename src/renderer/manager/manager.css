@@ -36,7 +36,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-left: 12px;
+  padding-left: max(calc(env(titlebar-area-x, 0px) + 12px), var(--appbar-inset, 12px));
   padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 140px)) + 4px);
   -webkit-app-region: drag;
   user-select: none;
@@ -488,3 +488,6 @@ input.switch:checked::after { transform: translateX(18px); }
 .dialog-title { font-weight: 700; font-size: 14px; }
 .dialog input { width: 100%; }
 .pop-actions { display: flex; align-items: center; gap: 6px; }
+
+/* macOS draws its close/minimise/zoom buttons at the left of the app bar; keep clear of them. */
+:root[data-platform="darwin"] { --appbar-inset: 84px; }

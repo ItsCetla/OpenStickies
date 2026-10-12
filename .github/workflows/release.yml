@@ -1,7 +1,7 @@
 name: Release
 
-# Push a tag like v3.0.0 (matching "version" in package.json) to build the Windows installer
-# and portable app and attach them to a draft GitHub release. Review the draft, then publish it.
+# Push a tag like v3.0.0 (matching "version" in package.json) to build OpenStickies for Windows,
+# macOS and Linux and attach the builds to a draft GitHub release. Review the draft, then publish it.
 
 on:
   push:
@@ -20,22 +20,67 @@ concurrency:
   group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+  # A manual run builds the tag it was given, not the branch it was started from.
+  CHECKOUT_REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
 jobs:
-  release:
-    name: Build and draft release
-    runs-on: windows-latest
-    timeout-minutes: 30
-    env:
-      TAG: ${{ inputs.tag || github.ref_name }}
-    defaults:
-      run:
-        shell: pwsh
+  version:
+    name: Check the tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.check.outputs.version }}
     steps:
       - name: Check out the tag
         uses: actions/checkout@v4
         with:
-          # A manual run builds the tag it was given, not the branch it was started from.
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: Check the tag matches package.json
+        id: check
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error title=Tag doesn't match package.json::Tag $TAG doesn't match package.json version $version. Set the version in package.json to match the tag, or tag the commit v$version instead."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build for ${{ matrix.name }}
+    needs: version
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      # One platform failing shouldn't hide whether the others build.
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            args: --win nsis portable
+            files: |
+              dist/OpenStickies-Setup-*.exe
+              dist/OpenStickies-Portable-*.exe
+          - name: macOS
+            os: macos-latest
+            args: --mac dmg zip --arm64 --x64
+            files: |
+              dist/OpenStickies-*-mac-*.dmg
+              dist/OpenStickies-*-mac-*.zip
+          - name: Linux
+            os: ubuntu-latest
+            args: --linux AppImage deb --x64
+            files: |
+              dist/OpenStickies-*-linux-*.AppImage
+              dist/openstickies_*.deb
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -43,83 +88,110 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Check the tag matches package.json
-        run: |
-          $version = (Get-Content -Raw -LiteralPath package.json | ConvertFrom-Json).version
-          if ($env:TAG -cne "v$version") {
-            Write-Output "::error title=Tag doesn't match package.json::Tag $env:TAG doesn't match package.json version $version. Set the version in package.json to match the tag, or tag the commit v$version instead."
-            exit 1
-          }
-          Add-Content -LiteralPath $env:GITHUB_ENV -Value "VERSION=$version"
-
       # The postinstall script downloads Electron.
       - name: Install dependencies
         run: npm ci
 
-      - name: Build installer and portable app
-        run: npx electron-builder --win nsis portable --publish never
+      # The Windows builds aren't signed. The macOS app is signed ad hoc (identity "-" in
+      # package.json) so Apple silicon will run it, but it isn't notarized.
+      - name: Build
+        run: npx electron-builder ${{ matrix.args }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Draft the release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: Download the builds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-*
+          path: out
+          merge-multiple: true
+
       - name: Write SHA256SUMS.txt
+        working-directory: out
         run: |
-          $lines = foreach ($name in "OpenStickies-Setup-$env:VERSION.exe", "OpenStickies-Portable-$env:VERSION.exe") {
-            $file = Join-Path dist $name
-            if (-not (Test-Path -LiteralPath $file)) { throw "Build output not found: $file" }
-            $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$hash  $name"
-          }
-          # LF line endings and no BOM, so `sha256sum -c SHA256SUMS.txt` works as well as Get-FileHash.
-          Set-Content -LiteralPath dist/SHA256SUMS.txt -Value (($lines -join "`n") + "`n") -NoNewline -Encoding utf8NoBOM
-          Get-Content -LiteralPath dist/SHA256SUMS.txt
+          ls -l
+          # Every build of this version must be there, or the release would be missing a platform.
+          for name in "OpenStickies-Setup-$VERSION.exe" "OpenStickies-Portable-$VERSION.exe" \
+                      "OpenStickies-$VERSION-mac-arm64.dmg" "OpenStickies-$VERSION-mac-x64.dmg" \
+                      "OpenStickies-$VERSION-linux-x86_64.AppImage" "openstickies_${VERSION}_amd64.deb"; do
+            if [ ! -f "$name" ]; then echo "::error::Build output not found: $name"; exit 1; fi
+          done
+          # Plain `sha256sum` output, so `sha256sum -c SHA256SUMS.txt` works on Linux and macOS.
+          find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | LC_ALL=C sort | xargs sha256sum > SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
       - name: Write release notes
         id: notes
         run: |
           # This version's section of CHANGELOG.md: everything after "## [x.y.z]" up to the next
           # "## " heading or the link definitions at the bottom of the file.
-          $section = [System.Collections.Generic.List[string]]::new()
-          if (Test-Path -LiteralPath CHANGELOG.md) {
-            $heading = '^## \[' + [regex]::Escape($env:VERSION) + '\]'
-            $found = $false
-            foreach ($line in Get-Content -LiteralPath CHANGELOG.md -Encoding utf8) {
-              if ($found) {
-                if ($line -match '^## ' -or $line -match '^\[[^\]]+\]:\s') { break }
-                $section.Add($line)
-              } elseif ($line -match $heading) {
-                $found = $true
-              }
-            }
-          }
-          $body = ($section -join "`n").Trim()
-          if (-not $body) {
-            Write-Output "::warning title=No changelog entry::CHANGELOG.md has no section for $env:VERSION, so the draft has a generic description. Edit it before publishing."
-            $body = "OpenStickies $env:VERSION for Windows 10 and 11."
-          }
+          body=''
+          if [ -f CHANGELOG.md ]; then
+            body=$(awk -v v="$VERSION" '
+              found && (/^## / || /^\[[^]]+\]:[[:space:]]/) { exit }
+              found { print }
+              index($0, "## [" v "]") == 1 { found = 1 }
+            ' CHANGELOG.md | sed -e '/[^[:space:]]/,$!d')
+          fi
+          if [ -z "$(printf '%s' "$body" | tr -d '[:space:]')" ]; then
+            echo "::warning title=No changelog entry::CHANGELOG.md has no section for $VERSION, so the draft has a generic description. Edit it before publishing."
+            body="OpenStickies $VERSION for Windows, macOS and Linux."
+          fi
 
-          $footer = @'
+          footer=$(cat <<'EOF'
           ---
 
           ### Download
 
-          | File | What it is |
-          |---|---|
-          | [`OpenStickies-Setup-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Setup-{VERSION}.exe) | **Installer.** Adds Start menu and desktop shortcuts. |
-          | [`OpenStickies-Portable-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Portable-{VERSION}.exe) | **Portable.** A single file that runs without installing anything. |
+          | Platform | File | What it is |
+          |---|---|---|
+          | Windows 10 and 11 | [`OpenStickies-Setup-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Setup-{VERSION}.exe) | **Installer.** Adds Start menu and desktop shortcuts. |
+          | Windows 10 and 11 | [`OpenStickies-Portable-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Portable-{VERSION}.exe) | **Portable.** A single file that runs without installing anything. |
+          | macOS, Apple silicon | [`OpenStickies-{VERSION}-mac-arm64.dmg`]({DOWNLOAD}/OpenStickies-{VERSION}-mac-arm64.dmg) | Disk image for M1 and later Macs. Drag OpenStickies to Applications. |
+          | macOS, Intel | [`OpenStickies-{VERSION}-mac-x64.dmg`]({DOWNLOAD}/OpenStickies-{VERSION}-mac-x64.dmg) | Disk image for Intel Macs. |
+          | Linux (x64) | [`OpenStickies-{VERSION}-linux-x86_64.AppImage`]({DOWNLOAD}/OpenStickies-{VERSION}-linux-x86_64.AppImage) | **AppImage.** Runs on most distributions without installing. |
+          | Debian, Ubuntu (x64) | [`openstickies_{VERSION}_amd64.deb`]({DOWNLOAD}/openstickies_{VERSION}_amd64.deb) | Package for `apt`. |
 
-          Both run on Windows 10 and 11 (64-bit) and keep your notes in the same place, `%APPDATA%\OpenStickies\data`, so you can switch between them.
+          The macOS apps are also attached as `.zip` files.
 
-          > **Windows protected your PC?** The builds aren't code-signed, so SmartScreen may warn you the first time. Click **More info → Run anyway**.
+          > **Windows protected your PC?** The Windows builds aren't code-signed, so SmartScreen may warn you the first time. Click **More info → Run anyway**.
 
-          To check a download, compare its SHA-256 hash with [`SHA256SUMS.txt`]({DOWNLOAD}/SHA256SUMS.txt). In PowerShell: `Get-FileHash .\OpenStickies-Setup-{VERSION}.exe`
-          '@
-          $download = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/releases/download/$env:TAG"
-          $footer = $footer.Replace('{VERSION}', $env:VERSION).Replace('{DOWNLOAD}', $download)
+          > **macOS says OpenStickies can't be opened?** The Mac builds aren't notarized by Apple. Control-click (or right-click) OpenStickies in Applications and choose **Open**, then **Open** again. On macOS 15 and later, try to open it once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. You only need to do this the first time.
 
-          $file = Join-Path $env:RUNNER_TEMP 'release-notes.md'
-          Set-Content -LiteralPath $file -Value ($body + "`n`n" + $footer.Trim() + "`n") -NoNewline -Encoding utf8NoBOM
-          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "file=$file"
-          Get-Content -LiteralPath $file
+          > **Running the AppImage:** make it executable first, then start it: `chmod +x OpenStickies-{VERSION}-linux-x86_64.AppImage && ./OpenStickies-{VERSION}-linux-x86_64.AppImage`. Some distributions need `libfuse2` installed to run AppImages. On GNOME, the tray icon needs the AppIndicator extension; without it, OpenStickies opens its notes list instead.
+
+          To check a download, compare its SHA-256 hash with [`SHA256SUMS.txt`]({DOWNLOAD}/SHA256SUMS.txt). On macOS and Linux: `shasum -a 256 -c SHA256SUMS.txt --ignore-missing`. In PowerShell: `Get-FileHash .\OpenStickies-Setup-{VERSION}.exe`
+          EOF
+          )
+          download="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$TAG"
+          footer=${footer//\{VERSION\}/$VERSION}
+          footer=${footer//\{DOWNLOAD\}/$download}
+
+          file="$RUNNER_TEMP/release-notes.md"
+          printf '%s\n\n%s\n' "$body" "$footer" > "$file"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+          cat "$file"
 
       - name: Create or update the draft release
         id: release
@@ -131,13 +203,10 @@ jobs:
           draft: true
           prerelease: ${{ contains(env.TAG, '-') }}
           fail_on_unmatched_files: true
-          files: |
-            dist/OpenStickies-Setup-${{ env.VERSION }}.exe
-            dist/OpenStickies-Portable-${{ env.VERSION }}.exe
-            dist/SHA256SUMS.txt
+          files: out/*
 
       - name: Summary
         env:
           RELEASE_URL: ${{ steps.release.outputs.url }}
         run: |
-          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Draft release for **$env:TAG** is ready to review and publish: $env:RELEASE_URL"
+          echo "Draft release for **$TAG** is ready to review and publish: $RELEASE_URL" >> "$GITHUB_STEP_SUMMARY"

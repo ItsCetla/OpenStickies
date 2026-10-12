@@ -9,6 +9,7 @@ let selected = 'current';
 let mode = 'preview';
 const htmlCache = new Map();
 
+document.documentElement.dataset.platform = api.platform || '';
 hydrateIcons();
 load();
 

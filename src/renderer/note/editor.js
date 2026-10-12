@@ -1,5 +1,6 @@
 import { sanitizeHtml, escapeHtml, BLOCK_TAGS } from '../shared/sanitize.js';
 import { decorate, syncDueDates, tagAt, sinkItem, moveItem, nudgeItem, topChecklist, cascadeCheck } from './smart.js';
+import { keyLabel } from '../shared/keys.js';
 
 const INTERNAL_MIME = 'application/x-stickies';
 const ZWSP = '​';
@@ -337,7 +338,7 @@ export class Editor {
     // Inside a checklist, Title/Heading/Subheading style the whole item and keep its checkbox.
     const items = this.checklistItems();
     if (items.length) {
-      if (tag === 'blockquote' || tag === 'pre') { this.toast('Quotes and code blocks can’t go inside a checklist — try inline code (Ctrl+E)'); return; }
+      if (tag === 'blockquote' || tag === 'pre') { this.toast(keyLabel('Quotes and code blocks can’t go inside a checklist — try inline code (Ctrl+E)')); return; }
       const cls = /^h[1-3]$/.test(tag) ? tag : null;
       const toggleOff = cls && items.every(li => li.classList.contains(cls));
       for (const li of items) {
@@ -1330,7 +1331,7 @@ export class Editor {
       const a = e.target.closest && e.target.closest('a[href]');
       if (a && !a.title) {
         const internal = a.getAttribute('href').startsWith('note://');
-        a.title = internal ? `${this.locked ? 'Click' : 'Ctrl+Click'} to open this note` : `${a.getAttribute('href')}\n${this.locked ? 'Click' : 'Ctrl+Click'} to open`;
+        a.title = internal ? `${this.locked ? 'Click' : keyLabel('Ctrl+Click')} to open this note` : `${a.getAttribute('href')}\n${this.locked ? 'Click' : keyLabel('Ctrl+Click')} to open`;
       }
     });
 

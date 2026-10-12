@@ -2,6 +2,7 @@ import { icon, hydrateIcons } from '../shared/icons.js';
 import { sanitizeHtml, escapeHtml } from '../shared/sanitize.js';
 import { cascadeCheck, sinkItem, ownText, dueLabel, isoDate, parentItem } from '../note/smart.js';
 import palette from '../shared/colors.json' with { type: 'json' };
+import { IS_MAC, MODIFIER_HINT, keyLabel, localizeKeys } from '../shared/keys.js';
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);
@@ -17,6 +18,12 @@ let menuState = null;
 let toastTimer = null;
 const state = { view: 'all', color: null, query: '', sort: 'updated', taskShow: 'open', taskGroup: 'note', taskQuery: '' };
 const VIEW_TITLES = { all: 'All notes', open: 'On desktop', pinned: 'Kept on top', reminders: 'Reminders', tasks: 'Tasks', trash: 'Trash' };
+// What the system's fingerprint/face unlock is called here (vault.js decides whether it exists).
+const QUICK_UNLOCK = IS_MAC
+  ? { name: 'Touch ID', ready: 'Use your fingerprint instead of the password', missing: 'Touch ID isn’t available on this Mac' }
+  : api.platform === 'win32'
+    ? { name: 'Windows Hello', ready: 'Use your face, fingerprint or PIN instead of the password', missing: 'Windows Hello isn’t set up on this PC' }
+    : { name: 'fingerprint', ready: 'Use your fingerprint instead of the password', missing: 'Not available on this system yet' };
 
 try {
   const saved = JSON.parse(localStorage.getItem('stickies.list') || '{}');
@@ -24,8 +31,18 @@ try {
   if (saved.taskGroup) state.taskGroup = saved.taskGroup;
 } catch { /* storage unavailable */ }
 
+root.dataset.platform = api.platform || '';
 hydrateIcons();
+localizeKeys();
+localizePlatformText();
 init();
+
+// Settings text that names the operating system doing the work.
+function localizePlatformText() {
+  const ocr = $('ocr-sub');
+  if (ocr && IS_MAC) ocr.textContent = 'macOS reads the words in snips and images so search can find them';
+  else if (ocr && api.platform !== 'win32') ocr.textContent = 'Reads the words in snips and images so search can find them (needs tesseract installed)';
+}
 
 async function init() {
   const s = await api.getSettings();
@@ -844,7 +861,7 @@ function buildSettings(s) {
   $('set-color').innerHTML = palette.order.map(k => `<button data-v="${k}" title="${palette.notes[k].name}" style="background:${palette.notes[k].swatch}"></button>`).join('') +
     '<button class="random" data-v="random" title="Random color"></button>';
   $('set-font').innerHTML = palette.fonts.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
-  const rows = (list) => list.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k">${b.split(' / ').map(x => `<kbd>${escapeHtml(x)}</kbd>`).join(' ')}</div>`).join('');
+  const rows = (list) => list.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k">${b.split(' / ').map(x => `<kbd>${escapeHtml(keyLabel(x))}</kbd>`).join(' ')}</div>`).join('');
   $('shortcuts').innerHTML = rows(NOTE_SHORTCUTS);
   $('md-shortcuts').innerHTML = MD_SHORTCUTS.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
   $('search-tips').innerHTML = SEARCH_TIPS.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
@@ -940,11 +957,11 @@ function renderPrivacy() {
       <button class="btn" id="pv-toggle">${v.unlocked ? 'Lock now' : 'Unlock…'}</button>
     </div>
     <div class="row">
-      <div class="row-label">${icon('clock', { size: 17 })}<div><div>Lock automatically</div><div class="sub">Also locks when Windows locks or sleeps</div></div></div>
+      <div class="row-label">${icon('clock', { size: 17 })}<div><div>Lock automatically</div><div class="sub">Also locks when ${IS_MAC ? 'your Mac' : 'your computer'} locks or sleeps</div></div></div>
       <select id="pv-auto">${[[0, 'Never'], [1, 'After 1 minute'], [5, 'After 5 minutes'], [15, 'After 15 minutes'], [30, 'After 30 minutes'], [60, 'After 1 hour']].map(([m, l]) => `<option value="${m}"${m === minutes ? ' selected' : ''}>${l}</option>`).join('')}</select>
     </div>
     <label class="row">
-      <div class="row-label">${icon('fingerprint', { size: 17 })}<div><div>Unlock with Windows Hello</div><div class="sub">${v.helloAvailable ? 'Use your face, fingerprint or PIN instead of the password' : 'Windows Hello isn’t set up on this PC'}</div></div></div>
+      <div class="row-label">${icon('fingerprint', { size: 17 })}<div><div>Unlock with ${QUICK_UNLOCK.name}</div><div class="sub">${v.helloAvailable ? QUICK_UNLOCK.ready : QUICK_UNLOCK.missing}</div></div></div>
       <input type="checkbox" class="switch" id="pv-hello" ${v.hello ? 'checked' : ''} ${v.helloAvailable ? '' : 'disabled'}>
     </label>
     ${v.unlocked ? `
@@ -1008,7 +1025,7 @@ $('templates-card').addEventListener('click', async (e) => {
 
 // ----- global hotkey capture -----
 function prettyAccel(acc) {
-  return acc ? acc.replace(/CommandOrControl|CmdOrCtrl/g, 'Ctrl').replace(/\+/g, ' + ') : 'Off';
+  return acc ? keyLabel(acc).replace(/\+/g, ' + ') : 'Off';
 }
 
 const KEY_NAMES = { ' ': 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', Enter: 'Enter', Tab: 'Tab', Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown', Insert: 'Insert' };
@@ -1023,10 +1040,11 @@ function accelFromEvent(e) {
   else if (e.key.length === 1 && /[`\-=[\];',./\\]/.test(e.key)) key = e.key;
   if (!key) return null;
   const mods = [];
-  if (e.ctrlKey) mods.push('CommandOrControl');
+  // Command is the main modifier on a Mac, so there Control is the extra one.
+  if (IS_MAC ? e.metaKey : e.ctrlKey) mods.push('CommandOrControl');
   if (e.altKey) mods.push('Alt');
   if (e.shiftKey) mods.push('Shift');
-  if (e.metaKey) mods.push('Super');
+  if (IS_MAC ? e.ctrlKey : e.metaKey) mods.push(IS_MAC ? 'Control' : 'Super');
   if (!mods.length && !/^F\d+$/.test(key)) return 'needs-mod';
   return [...mods, key].join('+');
 }
@@ -1039,11 +1057,11 @@ for (const input of document.querySelectorAll('.hk')) {
     e.stopPropagation();
     if (e.key === 'Escape') { input.blur(); return; }
     let acc;
-    if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.altKey) acc = '';
+    if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.metaKey && !e.altKey) acc = '';
     else {
       acc = accelFromEvent(e);
       if (acc === null) return;
-      if (acc === 'needs-mod') { input.value = 'Add Ctrl, Alt or Shift'; return; }
+      if (acc === 'needs-mod') { input.value = MODIFIER_HINT; return; }
     }
     const res = await update({ hotkeys: { [input.dataset.hk]: acc } });
     input.blur();

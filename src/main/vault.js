@@ -4,15 +4,15 @@
 //
 // A random 256-bit key encrypts private note content (AES-256-GCM). That key is stored
 // only in wrapped form: encrypted with a key derived from the user's password (scrypt),
-// and optionally with Windows' per-user data protection (safeStorage/DPAPI) so Windows
-// Hello can unlock it. While unlocked the key lives in memory; locking forgets it.
+// and optionally with the system's per-user data protection (safeStorage: DPAPI, or the macOS keychain) so Windows
+// Hello or Touch ID can unlock it. While unlocked the key lives in memory; locking forgets it.
 
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const { EventEmitter } = require('events');
-const { safeStorage } = require('electron');
+const { safeStorage, systemPreferences } = require('electron');
 const { writeFileAtomic } = require('./store');
 
 const SCRYPT = { N: 1 << 15, r: 8, p: 1, maxmem: 96 * 1024 * 1024 };
@@ -41,7 +41,23 @@ ${action === 'check'
     : "Await ([Windows.Security.Credentials.UI.UserConsentVerifier]::RequestVerificationAsync('Unlock your private sticky notes')) ([Windows.Security.Credentials.UI.UserConsentVerificationResult])"}
 `;
 
+// macOS stand-in for Windows Hello: Touch ID. It answers with the same strings as the
+// PowerShell script so the rest of the vault treats both the same way. safeStorage keeps the
+// quick-unlock key in the login keychain there.
+async function runTouchId(action) {
+  try {
+    if (!systemPreferences.canPromptTouchID()) return '';
+    if (action === 'check') return 'Available';
+    await systemPreferences.promptTouchID('unlock your private sticky notes');
+    return 'Verified';
+  } catch {
+    return ''; // cancelled, failed, or no enrolled finger
+  }
+}
+
 function runHello(action) {
+  if (process.platform === 'darwin') return runTouchId(action);
+  // Linux has no system-wide biometric prompt Electron can reach, so only the password unlocks.
   if (process.platform !== 'win32') return Promise.resolve('');
   const encoded = Buffer.from(HELLO_SCRIPT(action), 'utf16le').toString('base64');
   return new Promise((resolve) => {
@@ -124,7 +140,7 @@ class Vault extends EventEmitter {
   setHello(enabled) {
     if (!this.unlocked) throw new Error('Unlock private notes first');
     if (enabled) {
-      if (!safeStorage.isEncryptionAvailable()) throw new Error('Windows data protection is unavailable');
+      if (!safeStorage.isEncryptionAvailable()) throw new Error('System data protection is unavailable');
       this.cfg.helloKey = safeStorage.encryptString(this.key.toString('base64')).toString('base64');
     } else delete this.cfg.helloKey;
     this._save();

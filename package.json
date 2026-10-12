@@ -36,7 +36,9 @@
     "icons": "node scripts/make-icons.js",
     "screenshots": "node scripts/screenshots/capture.js",
     "dist": "electron-builder --win nsis portable",
-    "dist:portable": "electron-builder --win portable"
+    "dist:portable": "electron-builder --win portable",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
   },
   "build": {
     "appId": "com.openstickies.desktop",
@@ -68,6 +70,63 @@
     },
     "portable": {
       "artifactName": "OpenStickies-Portable-${version}.exe"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "hardenedRuntime": false,
+      "identity": "-",
+      "darkModeSupport": true,
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
+      "extendInfo": {
+        "LSUIElement": false
+      }
+    },
+    "dmg": {
+      "sign": false
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "icon": "assets/icon.png",
+      "executableName": "openstickies",
+      "maintainer": "ItsCetla <ItsCetla@users.noreply.github.com>",
+      "synopsis": "Desktop sticky notes",
+      "description": "Desktop sticky notes with rich HTML formatting, images, checklists, reminders and more.",
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}",
+      "desktop": {
+        "entry": {
+          "Name": "OpenStickies",
+          "Comment": "Desktop sticky notes",
+          "StartupWMClass": "OpenStickies",
+          "Keywords": "sticky;notes;stickies;todo;"
+        }
+      }
+    },
+    "appImage": {
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
+    },
+    "deb": {
+      "artifactName": "${name}_${version}_${arch}.${ext}"
     }
   },
   "devDependencies": {

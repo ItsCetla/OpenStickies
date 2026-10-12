@@ -3,7 +3,7 @@
 
 body { display: flex; flex-direction: column; background: var(--app-bg); color: var(--app-text); overflow: hidden; }
 .appbar {
-  height: 44px; flex: none; display: flex; align-items: center; gap: 10px; padding-left: 12px;
+  height: 44px; flex: none; display: flex; align-items: center; gap: 10px; padding-left: max(calc(env(titlebar-area-x, 0px) + 12px), var(--appbar-inset, 12px));
   padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 140px)) + 4px);
   -webkit-app-region: drag; user-select: none;
 }
@@ -64,3 +64,6 @@ body { display: flex; flex-direction: column; background: var(--app-bg); color: 
 .doc.diff { font-size: 14px; }
 .ins { background: rgba(47, 158, 79, 0.25); color: inherit; text-decoration: none; border-radius: 3px; }
 .del { background: rgba(229, 72, 77, 0.22); text-decoration: line-through; border-radius: 3px; }
+
+/* macOS draws its close/minimise/zoom buttons at the left of the app bar; keep clear of them. */
+:root[data-platform="darwin"] { --appbar-inset: 84px; }
