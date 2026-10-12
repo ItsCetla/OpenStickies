@@ -70,8 +70,15 @@ function renderBlock(el) {
       return '#'.repeat(Number(el.nodeName[1])) + ' ' + inlineOf(el.childNodes).trim();
     case 'BLOCKQUOTE':
       return renderBlocks(el.childNodes).join('\n\n').split('\n').map(l => (l ? '> ' + l : '>')).join('\n');
-    case 'PRE':
-      return '```\n' + el.textContent.replace(/\n$/, '') + '\n```';
+    case 'PRE': {
+      // A chosen language wins over the editor's guess; plain text gets a bare fence.
+      const lang = el.getAttribute('data-lang') || el.getAttribute('data-lang-auto') || '';
+      const code = el.textContent.replace(/\n$/, '');
+      // The fence must be longer than any run of backticks inside the code.
+      const runs = code.match(/`{3,}/g) || [];
+      const fence = '`'.repeat(Math.max(3, ...runs.map(r => r.length + 1)));
+      return fence + (lang === 'text' ? '' : lang) + '\n' + code + '\n' + fence;
+    }
     case 'HR':
       return '---';
     case 'UL': case 'OL':

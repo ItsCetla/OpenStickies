@@ -673,3 +673,59 @@ body.tb-popup .toolbar {
 body.tb-popup.show-toolbar .toolbar { opacity: 1; transform: none; pointer-events: auto; }
 body.tb-popup.source-mode .toolbar { opacity: 1; transform: none; pointer-events: auto; position: static; border-radius: 0; box-shadow: none; border-width: 1px 0 0; }
 body.tb-always .toolbar { display: flex; }
+
+/* Themed code blocks. The background is mixed from the note's own colors so a block
+   reads as part of the note on every palette, and long lines scroll instead of wrapping
+   so indentation stays meaningful. */
+.editor pre {
+  position: relative;
+  background: color-mix(in srgb, var(--text) 8%, var(--bg));
+  border-color: color-mix(in srgb, var(--text) 14%, transparent);
+  border-radius: 8px;
+  padding: 1.5em 0.9em 0.7em;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}
+/* The chip is a pseudo-element so it never becomes part of the note's text. */
+.editor pre[data-lang-label]::after {
+  content: attr(data-lang-label);
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: var(--ui-font, system-ui), sans-serif;
+  font-size: 10px;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--text) 70%, transparent);
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  pointer-events: none;
+  user-select: none;
+}
+/* A guessed language is shown dimmer than one the user picked. */
+.editor pre[data-lang-auto]::after { opacity: 0.6; }
+
+/* Token colors. ::highlight() only takes color-like properties, so comments are dimmed
+   rather than italicised. Dark notes get a brighter set. */
+::highlight(tok-keyword) { color: #a626a4; }
+::highlight(tok-string) { color: #3f8a2e; }
+::highlight(tok-number) { color: #b35c00; }
+::highlight(tok-comment) { color: color-mix(in srgb, var(--text) 52%, transparent); }
+::highlight(tok-function) { color: #2f63d6; }
+::highlight(tok-type) { color: #a15c00; }
+::highlight(tok-operator) { color: #0e7f8a; }
+::highlight(tok-tag) { color: #c2332e; }
+::highlight(tok-attr) { color: #9a5a00; }
+::highlight(tok-punctuation) { color: color-mix(in srgb, var(--text) 75%, transparent); }
+::highlight(tok-property) { color: #b0373f; }
+
+:root[data-theme="dark"] ::highlight(tok-keyword) { color: #d58cf0; }
+:root[data-theme="dark"] ::highlight(tok-string) { color: #9bd77e; }
+:root[data-theme="dark"] ::highlight(tok-number) { color: #f0a868; }
+:root[data-theme="dark"] ::highlight(tok-function) { color: #7aaef7; }
+:root[data-theme="dark"] ::highlight(tok-type) { color: #eac46b; }
+:root[data-theme="dark"] ::highlight(tok-operator) { color: #6fd0dc; }
+:root[data-theme="dark"] ::highlight(tok-tag) { color: #f2807a; }
+:root[data-theme="dark"] ::highlight(tok-attr) { color: #e9b36a; }
+:root[data-theme="dark"] ::highlight(tok-property) { color: #ef8f96; }

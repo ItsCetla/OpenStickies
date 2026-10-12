@@ -53,7 +53,10 @@ function mdToHtml(md) {
       i++;
       while (i < lines.length && !closes(lines[i])) body.push(lines[i++]);
       i++;
-      out.push(`<pre><code>${esc(body.join('\n'))}</code></pre>`);
+      // The first word of the info string names the language; the note window's sanitizer
+      // keeps it only if it is one the highlighter knows.
+      const lang = /^\s*([\w+#.-]{1,20})/.exec(fence[2]);
+      out.push(`<pre${lang ? ` data-lang="${lang[1]}"` : ''}><code>${esc(body.join('\n'))}</code></pre>`);
       continue;
     }
 

@@ -1,5 +1,6 @@
 import { sanitizeHtml, escapeHtml, BLOCK_TAGS } from '../shared/sanitize.js';
 import { decorate, syncDueDates, tagAt, sinkItem, moveItem, nudgeItem, topChecklist, cascadeCheck } from './smart.js';
+import { tokenize, detectLanguage, normalizeLang, langLabel, TOKEN_KINDS } from './highlight.js';
 
 const INTERNAL_MIME = 'application/x-stickies';
 const ZWSP = '​';
@@ -7,7 +8,11 @@ const SENTINEL_COLOR = 'rgb(1, 2, 3)';
 const IMAGE_SIZES = { small: '33%', medium: '50%', large: '75%', full: '100%', original: '' };
 const WRAP_MODES = ['inline', 'left', 'right', 'block', 'behind', 'front'];
 const INLINE_FORMAT = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'DEL', 'MARK', 'SUB', 'SUP', 'CODE', 'KBD', 'A', 'SPAN', 'SMALL', 'FONT']);
-const URL_TAIL_RE =/(?:^|\s)((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]'"])$/;
+// A web address: http(s)://…, www.…, or a bare domain followed by a path (example.com/x).
+// Bare domains need the path so words like "node.js" or "e.g." stay plain text.
+const URL_RE = /^(?:https?:\/\/[\w[\]-][^\s<>]*|www\.[\w-]+\.[^\s<>]+|(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,24}(?::\d{2,5})?\/[^\s<>]*)$/i;
+// Large code blocks are left uncolored rather than slowing typing down.
+const HIGHLIGHT_MAX_CHARS = 100000;
 
 export class Editor {
   constructor(el, { api, content, imgTools, dropCaret, dropHint, grip, itemDrop, onChange, onSelection, toast }) {
@@ -52,6 +57,7 @@ export class Editor {
     this.updateEmpty();
     this.localizeImages();
     this._decorateSoon(0);
+    this._highlightSoon(0);
     this.ocrImages();
   }
 
@@ -60,6 +66,8 @@ export class Editor {
     clone.querySelectorAll('img.selected, img.loading, img.dragging, li.pop, li.sinking, li.flash, .dragging-item').forEach(n => n.classList.remove('selected', 'loading', 'dragging', 'pop', 'sinking', 'flash', 'dragging-item'));
     clone.querySelectorAll('[class=""]').forEach(n => n.removeAttribute('class'));
     clone.querySelectorAll('a[title]').forEach(a => a.removeAttribute('title'));
+    // The guessed language and chip label are recomputed on load, so they aren't saved.
+    clone.querySelectorAll('pre[data-lang-auto], pre[data-lang-label]').forEach(pre => { pre.removeAttribute('data-lang-auto'); pre.removeAttribute('data-lang-label'); });
     let html = clone.innerHTML.replace(/​/g, '');
     if (/^<p><br><\/p>$/.test(html) || html === '<br>') html = '';
     return html;
@@ -82,6 +90,7 @@ export class Editor {
     this.updateEmpty();
     this.onChange();
     this._decorateSoon();
+    this._highlightSoon();
   }
 
   // Tag/date highlights and "@date" → data-due, a moment after typing stops.
@@ -92,6 +101,52 @@ export class Editor {
       decorate(this.el);
       this.ocrImages(); // pictures added by paste, drop or the image button
     }, delay);
+  }
+
+  // ---------- code blocks ----------
+  _highlightSoon(delay = 150) {
+    clearTimeout(this._highlightTimer);
+    this._highlightTimer = setTimeout(() => this.highlightCode(), delay);
+  }
+
+  // Colors every code block through CSS Custom Highlights (::highlight(tok-<kind>)), which
+  // paints over the text without touching the editable DOM, so the caret and undo are safe.
+  // Blocks without a chosen language get a guess, kept in data-lang-auto (never saved).
+  highlightCode() {
+    clearTimeout(this._highlightTimer);
+    const byKind = new Map(TOKEN_KINDS.map(k => [k, []]));
+    for (const pre of this.el.querySelectorAll('pre')) {
+      const { text, pieces } = codeText(pre);
+      const chosen = normalizeLang(pre.getAttribute('data-lang'));
+      const lang = chosen || detectLanguage(text).lang;
+      setAttr(pre, 'data-lang-auto', chosen ? null : lang);
+      setAttr(pre, 'data-lang-label', lang === 'text' ? null : langLabel(lang));
+      if (text.length > HIGHLIGHT_MAX_CHARS || !pieces.length) continue;
+      let hint = 0;
+      for (const tok of tokenize(text, lang)) {
+        const [range, next] = rangeOver(pieces, tok.start, tok.end, hint);
+        hint = next;
+        if (range) byKind.get(tok.kind).push(range);
+      }
+    }
+    if (typeof CSS === 'undefined' || !CSS.highlights || typeof Highlight === 'undefined') return;
+    for (const [kind, ranges] of byKind) {
+      const name = 'tok-' + kind;
+      if (!ranges.length) { CSS.highlights.delete(name); continue; }
+      const h = new Highlight();
+      for (const r of ranges) h.add(r);
+      CSS.highlights.set(name, h);
+    }
+  }
+
+  // Pins a code block's language; 'auto' (or anything unknown) goes back to guessing.
+  setCodeLang(pre, lang) {
+    if (this.locked || !pre || pre.nodeName !== 'PRE' || !this.el.contains(pre)) return;
+    const id = lang === 'auto' ? null : normalizeLang(lang);
+    if (id) pre.setAttribute('data-lang', id);
+    else pre.removeAttribute('data-lang');
+    this.changed();
+    this.highlightCode();
   }
 
   // ---------- inserting things ----------
@@ -1057,7 +1112,11 @@ export class Editor {
       }
     }
     this.find = { ranges, index: ranges.length ? 0 : -1 };
-    if (ranges.length) CSS.highlights.set('find', new Highlight(...ranges));
+    if (ranges.length) {
+      const h = new Highlight(...ranges);
+      h.priority = 1; // above code-block colors
+      CSS.highlights.set('find', h);
+    }
     this._showFind();
     return ranges.length;
   }
@@ -1072,7 +1131,9 @@ export class Editor {
   _showFind() {
     const r = this.find.ranges[this.find.index];
     if (!r) { CSS.highlights && CSS.highlights.delete('find-current'); return; }
-    CSS.highlights.set('find-current', new Highlight(r));
+    const current = new Highlight(r);
+    current.priority = 2;
+    CSS.highlights.set('find-current', current);
     const rect = r.getBoundingClientRect();
     const cr = this.content.getBoundingClientRect();
     if (rect.top < cr.top + 30 || rect.bottom > cr.bottom - 10) {
@@ -1176,22 +1237,24 @@ export class Editor {
     return false;
   }
 
-  _linkifyBeforeCaret(offsetFromCaret = 0) {
+  // Links the address just before the caret. Trailing punctuation ("see x.com/a.") and an
+  // unbalanced ")" stay outside the link. With `closing` (a typed ")"), an address that
+  // still has an open "(" is left alone because the ")" is probably part of it.
+  _linkifyBeforeCaret(offsetFromCaret = 0, closing = false) {
     const sel = getSelection();
     if (!sel.isCollapsed || !sel.anchorNode || sel.anchorNode.nodeType !== 3) return false;
     if (this.closest('a, code, pre')) return false;
     const node = sel.anchorNode;
-    const end = sel.anchorOffset - offsetFromCaret;
-    const m = URL_TAIL_RE.exec(node.data.slice(0, end));
-    if (!m) return false;
-    const url = m[1];
-    const start = end - url.length;
     const caret = sel.anchorOffset;
+    const hit = urlAtEnd(node.data.slice(0, caret - offsetFromCaret));
+    if (!hit) return false;
+    if (closing && countOf(hit.url, '(') > countOf(hit.url, ')')) return false;
+    const { url, start, end } = hit;
     const r = document.createRange();
     r.setStart(node, start);
     r.setEnd(node, end);
     this.selectRange(r);
-    document.execCommand('createLink', false, url.startsWith('www.') ? 'https://' + url : url);
+    document.execCommand('createLink', false, normalizeUrl(url));
     // Put the caret back after the space that triggered the link.
     const a = this.closest('a');
     const after = a && a.nextSibling;
@@ -1215,6 +1278,9 @@ export class Editor {
       this._fixBlockNesting();
       if (e.inputType === 'insertText' && e.data === ' ') {
         if (!this._autoformatBlock()) this._linkifyBeforeCaret(1);
+      } else if (e.inputType === 'insertText' && (e.data === ',' || e.data === ';' || e.data === ')')) {
+        // "." "?" "!" and ":" can sit inside an address still being typed, so only these link early.
+        this._linkifyBeforeCaret(1, e.data === ')');
       } else if (e.inputType === 'insertText' && e.data && '*_~`='.includes(e.data)) {
         this._autoformatInline(e.data);
       } else if (e.inputType === 'insertParagraph') {
@@ -1350,6 +1416,7 @@ export class Editor {
       if (t.nodeName !== 'IMG' && el.contains(t)) t = this._behindImageAt(e.clientX, e.clientY, e.altKey) || t;
       const isImg = t.nodeName === 'IMG' && el.contains(t);
       this.ctxTarget = t;
+      const codePre = t.closest && el.contains(t) ? t.closest('pre') : null;
       window.__stickiesCtx = {
         editor: el.contains(t),
         inTable: !!(t.closest && t.closest('td, th') && el.contains(t)),
@@ -1359,7 +1426,9 @@ export class Editor {
         imageText: isImg ? (t.getAttribute('alt') || '') : '',
         inChecklist: !!(t.closest && t.closest('ul.checklist') && el.contains(t)),
         checklistReset: ((topChecklist(t, el) || {}).dataset || {}).reset || 'never',
-        onLink: !!(t.closest && t.closest('a[href]'))
+        onLink: !!(t.closest && t.closest('a[href]')),
+        inCode: !!codePre,
+        codeLang: codePre ? (normalizeLang(codePre.getAttribute('data-lang')) || 'auto') : null
       };
       if (isImg) this.selectImage(t);
     }, true);
@@ -1407,13 +1476,18 @@ export class Editor {
           this.insertRule();
           return;
         }
-        if (/^(```|~~~)[\w-]*$/.test(text)) {
+        const fence = /^(```|~~~)([\w+#.-]*)$/.exec(text);
+        if (fence) {
           e.preventDefault();
           const r = document.createRange();
           r.selectNodeContents(block);
           this.selectRange(r);
           document.execCommand('delete');
           this.exec('formatBlock', 'pre');
+          // ```js picks the language; a bare fence leaves it to detection.
+          const lang = normalizeLang(fence[2]);
+          const pre = this.closest('pre');
+          if (pre && lang) { pre.setAttribute('data-lang', lang); this.changed(); }
           return;
         }
       }
@@ -1499,7 +1573,9 @@ export class Editor {
         this.insertHTML(`<a href="${escapeHtml(normalizeUrl(t))}">${escapeHtml(t)}</a>${ZWSP}`);
         return;
       }
-      this.insertPlainText(text);
+      const linked = this.closest('a, code, pre') ? null : linkifyText(text);
+      if (linked) this.insertHTML(linked);
+      else this.insertPlainText(text);
     }
   }
 
@@ -1564,6 +1640,84 @@ export class Editor {
 
 function stripTags(html) {
   return String(html).replace(/<!--[\s\S]*?-->/g, '').replace(/<(style|script)[\s\S]*?<\/\1>/gi, '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ');
+}
+
+// The web address that ends `text`, ignoring trailing punctuation, as { url, start, end }.
+function urlAtEnd(text) {
+  const ws = /\S*$/.exec(text);
+  let start = ws.index;
+  let word = ws[0];
+  const lead = /^[(\[<"'\u2018\u201c]*/.exec(word)[0].length;
+  start += lead;
+  word = word.slice(lead);
+  for (;;) {
+    const last = word.slice(-1);
+    if (/[.,;:!?'"*_\u2019\u201d>]/.test(last)) word = word.slice(0, -1);
+    else if (last === ')' && countOf(word, ')') > countOf(word, '(')) word = word.slice(0, -1);
+    else if (last === ']' && countOf(word, ']') > countOf(word, '[')) word = word.slice(0, -1);
+    else break;
+  }
+  if (!word || !URL_RE.test(word)) return null;
+  return { url: word, start, end: start + word.length };
+}
+
+function countOf(s, ch) {
+  return s.split(ch).length - 1;
+}
+
+// Escaped HTML for pasted plain text with each web address linked, or null if it has none.
+function linkifyText(text) {
+  const src = String(text || '').replace(/\r\n?/g, '\n');
+  const plain = (t) => escapeHtml(t).replace(/\n/g, '<br>');
+  let html = '';
+  let last = 0;
+  for (const m of src.matchAll(/\S+/g)) {
+    const hit = urlAtEnd(m[0]);
+    if (!hit) continue;
+    const s = m.index + hit.start;
+    html += plain(src.slice(last, s)) + `<a href="${escapeHtml(normalizeUrl(hit.url))}">${escapeHtml(hit.url)}</a>`;
+    last = s + hit.url.length;
+  }
+  if (!last) return null;
+  // Text typed after a closing link shouldn't become part of it.
+  return html + (last < src.length ? plain(src.slice(last)) : ZWSP);
+}
+
+// A code block's text as the tokenizer sees it (<br> counts as a newline), with where
+// each text node starts in it.
+function codeText(pre) {
+  const pieces = [];
+  let text = '';
+  const walk = (n) => {
+    for (let c = n.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType === 3) { pieces.push({ node: c, at: text.length }); text += c.data; }
+      else if (c.nodeName === 'BR') text += '\n';
+      else if (c.nodeType === 1) walk(c);
+    }
+  };
+  walk(pre);
+  return { text, pieces };
+}
+
+// A Range covering [start, end) of codeText's text. Tokens come in order, so the search
+// resumes from `hint`; returns [range or null, next hint].
+function rangeOver(pieces, start, end, hint) {
+  let i = hint;
+  while (i < pieces.length && pieces[i].at + pieces[i].node.length <= start) i++;
+  if (i >= pieces.length || pieces[i].at >= end) return [null, i];
+  let j = i;
+  while (j + 1 < pieces.length && pieces[j + 1].at < end) j++;
+  const a = pieces[i];
+  const b = pieces[j];
+  const r = document.createRange();
+  r.setStart(a.node, Math.max(0, start - a.at));
+  r.setEnd(b.node, Math.min(b.node.length, end - b.at));
+  return [r.collapsed ? null : r, i];
+}
+
+function setAttr(el, name, value) {
+  if (value == null) { if (el.hasAttribute(name)) el.removeAttribute(name); }
+  else if (el.getAttribute(name) !== value) el.setAttribute(name, value);
 }
 
 export function normalizeUrl(url) {

@@ -4,6 +4,8 @@
 // mode 'paste'  — foreign HTML from the clipboard / files: keeps structure and emphasis,
 //                 drops foreign colors, fonts and sizes so notes stay readable in any theme.
 
+import { normalizeLang } from '../note/highlight.js';
+
 const DROP = new Set([
   'SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META', 'TITLE', 'HEAD', 'NOSCRIPT', 'TEMPLATE',
   'SVG', 'MATH', 'FORM', 'INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'OPTION', 'CANVAS', 'VIDEO', 'AUDIO',
@@ -12,7 +14,7 @@ const DROP = new Set([
 
 const ATTRS = {
   P: [], DIV: [], BR: [], SPAN: [], B: [], STRONG: [], I: [], EM: [], U: [], S: [], MARK: [], SUB: [], SUP: [],
-  SMALL: [], CODE: [], KBD: [], PRE: [], BLOCKQUOTE: [], H1: [], H2: [], H3: [], UL: ['data-reset', 'data-reset-at'], OL: ['start'], LI: ['data-due', 'data-due-src'],
+  SMALL: [], CODE: [], KBD: [], PRE: ['data-lang'], BLOCKQUOTE: [], H1: [], H2: [], H3: [], UL: ['data-reset', 'data-reset-at'], OL: ['start'], LI: ['data-due', 'data-due-src'],
   A: ['href', 'title'], IMG: ['src', 'alt', 'title', 'width', 'data-wrap'], HR: [], TABLE: [], THEAD: [], TBODY: [], TFOOT: [],
   TR: [], TD: ['colspan', 'rowspan'], TH: ['colspan', 'rowspan'], CAPTION: [], DETAILS: ['open'], SUMMARY: [],
   FIGURE: [], FIGCAPTION: []
@@ -165,6 +167,7 @@ export function sanitizeHtml(html, { mode = 'stored', normalize = mode === 'past
       else if (name === 'data-due') v = mode === 'stored' && /^\d{4}-\d\d-\d\d$/.test(v) ? v : null;
       else if (name === 'data-due-src') v = mode === 'stored' ? String(v).slice(0, 40) : null;
       else if (name === 'alt') v = String(v).slice(0, 20000); // may hold text recognized in the image
+      else if (name === 'data-lang') v = normalizeLang(v); // only known code-block language ids
       else v = String(v).slice(0, 300);
       if (v != null) el.setAttribute(name, v);
     }

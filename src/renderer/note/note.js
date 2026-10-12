@@ -95,6 +95,8 @@ function applyAppearance() {
   body.classList.toggle('tb-popup', mode === 'popup');
   body.classList.toggle('tb-always', mode === 'always');
   updateToolbarVisibility();
+  // Token colors follow the theme through CSS; repainting picks up blocks changed meanwhile.
+  editor.highlightCode();
 }
 
 // ---------- pop-up toolbar ----------
@@ -939,6 +941,7 @@ api.onCommand(({ cmd, arg }) => {
       if (target && target.alt) { navigator.clipboard.writeText(target.alt); toast('Copied the text in the picture'); }
       break;
     case 'format': if (arg === 'clear') editor.command('removeFormat'); break;
+    case 'code-lang': { const pre = target && target.closest && target.closest('pre'); if (pre) editor.setCodeLang(pre, arg); break; }
     default: break;
   }
 });
