@@ -72,15 +72,9 @@
     <h1>Page not found</h1>
     <p>The page you’re looking for isn’t here. It may have moved, or the link may be mistyped.</p>
     <div class="actions">
-      <a class="btn btn-primary" data-home href="/OpenStickies/">Back to OpenStickies</a>
-      <a class="btn btn-secondary" data-home="#download" href="/OpenStickies/#download">Download OpenStickies</a>
+      <a class="btn btn-primary" href="/">Back to OpenStickies</a>
+      <a class="btn btn-secondary" href="/#download">Download OpenStickies</a>
     </div>
   </main>
-  <script>
-    // On a local preview the site is served from "/", not "/OpenStickies/".
-    if (location.pathname.indexOf('/OpenStickies/') !== 0) {
-      document.querySelectorAll('[data-home]').forEach(function (a) { a.setAttribute('href', '/' + a.getAttribute('data-home')); });
-    }
-  </script>
 </body>
 </html>

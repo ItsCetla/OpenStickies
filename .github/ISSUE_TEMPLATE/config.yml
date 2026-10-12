@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: OpenStickies website
-    url: https://itscetla.github.io/OpenStickies/
+    url: https://openstickies.cetla.dev/
     about: Features, screenshots and downloads.
   - name: Report a security vulnerability
     url: https://github.com/ItsCetla/OpenStickies/security/policy

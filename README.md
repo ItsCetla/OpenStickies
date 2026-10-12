@@ -17,7 +17,7 @@
 <p>
   <a href="https://github.com/ItsCetla/OpenStickies/releases/latest"><b>Download</b></a>
   &nbsp;·&nbsp;
-  <a href="https://itscetla.github.io/OpenStickies/">Website</a>
+  <a href="https://openstickies.cetla.dev/">Website</a>
   &nbsp;·&nbsp;
   <a href="#highlights">Features</a>
   &nbsp;·&nbsp;

@@ -48,7 +48,7 @@ In PowerShell the variable stays set until you close that window. Delete the fol
 
 The [Project layout](README.md#project-layout) section of the README maps out `src/`: the Electron main process in `src/main/`, the code for each window in `src/renderer/`, the bridge between them in `src/preload.js`, and the OpenCode plugin in `src/integrations/`.
 
-The website at https://itscetla.github.io/OpenStickies/ is served by GitHub Pages from the `docs/` folder on `main`.
+The website at https://openstickies.cetla.dev/ is served by GitHub Pages from the `docs/` folder on `main`. The custom domain is set by `docs/CNAME`.
 
 ## Code style
 
