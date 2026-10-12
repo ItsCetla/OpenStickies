@@ -266,7 +266,7 @@ async function exportBackup({ parent, store, vault }) {
   const { managerBounds, ...settings } = store.settings;
   const data = {
     app: 'stickies', version: 3, exportedAt: new Date().toISOString(), settings, notes: store.all(), attachments,
-    templates: store.templates, encryptedAttachments,
+    templates: store.templates, trashedTabs: store.trashedTabs, encryptedAttachments,
     vault: vault ? vault.exportConfig() : null // the key stays wrapped by the password
   };
   fs.writeFileSync(filePath, JSON.stringify(data));
@@ -314,29 +314,53 @@ async function importBackup({ parent, store, vault }) {
 
   let added = 0;
   let skippedPrivate = 0;
-  const existingHtml = new Set(store.all().filter(n => !n.private).map(n => n.html));
-  const existingCipher = new Set(store.all().filter(n => n.private && n.cipher).map(n => n.cipher.data));
+  // Map html/cipher -> id so a skipped duplicate still gives its closed tabs a parent note.
+  const existingHtml = new Map(store.all().filter(n => !n.private).map(n => [n.html, n.id]));
+  const existingCipher = new Map(store.all().filter(n => n.private && n.cipher).map(n => [n.cipher.data, n.id]));
+  // Restored notes get new ids; closed tabs in the backup still point at the old ones.
+  const idMap = new Map();
   for (const raw of notes) {
     if (!raw) continue;
     if (raw.private) {
       if (!sameVault || !raw.cipher) { skippedPrivate++; continue; }
-      if (existingCipher.has(raw.cipher.data)) continue;
-      store.create({ ...raw, background: fixBackground(raw.background), open: false, bounds: raw.bounds || null });
+      if (existingCipher.has(raw.cipher.data)) { idMap.set(raw.id, existingCipher.get(raw.cipher.data)); continue; }
+      const created = store.create({ ...raw, background: fixBackground(raw.background), open: false, bounds: raw.bounds || null });
+      idMap.set(raw.id, created.id);
       added++;
       continue;
     }
     if (typeof raw.html !== 'string') continue;
     const html = fixRefs(raw.html);
-    if (existingHtml.has(html)) continue; // skip exact duplicates
+    if (existingHtml.has(html)) { idMap.set(raw.id, existingHtml.get(html)); continue; } // skip exact duplicates
     // Tabs carry their own copy of the page HTML, so their image links need the same renaming.
     const tabs = Array.isArray(raw.tabs) ? raw.tabs.map(t => (t && typeof t.html === 'string' ? { ...t, html: fixRefs(t.html) } : t)) : null;
-    store.create({ ...raw, html, tabs, background: fixBackground(raw.background), open: false, trashed: !!raw.trashed, bounds: raw.bounds || null });
+    const created = store.create({ ...raw, html, tabs, background: fixBackground(raw.background), open: false, trashed: !!raw.trashed, bounds: raw.bounds || null });
+    idMap.set(raw.id, created.id);
     added++;
   }
   for (const t of Array.isArray(data.templates) ? data.templates : []) {
     if (t && typeof t.html === 'string' && !store.templates.some(x => x.id === t.id || (x.name === t.name && x.html === t.html))) {
       store.saveTemplate({ name: t.name, html: fixRefs(t.html), color: t.color });
     }
+  }
+  // Closed tabs in the Trash; skip ones this Trash already holds so a second restore adds nothing.
+  const seenTabs = new Set(store.trashedTabs.map(t => t.html));
+  let tabsAdded = 0;
+  for (const t of Array.isArray(data.trashedTabs) ? data.trashedTabs : []) {
+    if (!t || typeof t.html !== 'string') continue;
+    const html = fixRefs(t.html);
+    if (seenTabs.has(html)) continue;
+    // id: null gets a fresh tab id, so restored tabs can't collide with existing ones.
+    const norm = store._normalizeTrashedTab({ ...t, html, id: null, noteId: idMap.get(t.noteId) || '' });
+    if (!norm) continue;
+    store.trashedTabs.push(norm);
+    seenTabs.add(html);
+    tabsAdded++;
+  }
+  if (tabsAdded) {
+    store._capTrashedTabs();
+    store.saveSoon();
+    store.emit('changed', { type: 'tab-restore', id: null });
   }
   return { ok: true, added, skipped: notes.length - added - skippedPrivate, skippedPrivate };
 }

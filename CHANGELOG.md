@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - On an AI agent note with tabs, agent updates, appends and checklist ticks now go to the agent's first tab instead of overwriting whichever tab is open, so tabs the user added keep their own text.
 - Code block colors now follow how dark the note itself is, not the app theme, so code stays readable on Charcoal notes and dark custom backgrounds in the light theme, and on light custom backgrounds in the dark theme.
 - If copying notes to a new data location fails partway (for example, the disk is full), choosing the same folder again now works instead of being refused because the folder "already has OpenStickies notes".
+- Backups now include closed tabs from the Trash, and restoring a backup puts them back in the Trash, where they can still be reopened in their own note.
 
 ## [3.1.0] - 2026-10-12
 
