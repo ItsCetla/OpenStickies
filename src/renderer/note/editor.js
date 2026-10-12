@@ -1446,14 +1446,21 @@ export class Editor {
     el.addEventListener('copy', (e) => this._onCopy(e, false));
     el.addEventListener('cut', (e) => this._onCopy(e, true));
 
-    el.addEventListener('dragstart', () => { this.internalDrag = true; });
-    el.addEventListener('dragend', () => { this.internalDrag = false; });
     // A file chip is dragged as the real file, so it can be dropped into a folder, an email or
     // another app. That replaces moving the chip around as text: dropping it back into this note
     // (within a little while) moves the chip there instead of adding a second one.
     el.addEventListener('dragstart', (e) => {
       const chip = e.target && e.target.nodeType === 1 && e.target.closest('a.file-chip');
-      if (!chip || !el.contains(chip)) return;
+      if (!chip || !el.contains(chip)) {
+        this.internalDrag = true;
+        // Carry the selection in our own format too, so another note keeps chips and
+        // formatting the way copy and paste does.
+        const r = this.range();
+        if (r && !r.collapsed && el.contains(r.commonAncestorContainer)) {
+          e.dataTransfer.setData(INTERNAL_MIME, this._selectionHTML(r));
+        }
+        return;
+      }
       e.preventDefault();
       this.internalDrag = false;
       this._chipDragged = true;
@@ -1463,6 +1470,7 @@ export class Editor {
         if (ok === false) { chip.classList.add('missing'); this.toast(tr('chip.missing')); }
       }).catch(() => {});
     });
+    el.addEventListener('dragend', () => { this.internalDrag = false; });
     el.addEventListener('mousedown', () => { this._chipDragged = false; }, true);
     this.content.addEventListener('dragover', (e) => {
       if (this.locked) return;
@@ -1750,9 +1758,8 @@ export class Editor {
     }
   }
 
-  _onCopy(e, cut) {
-    const r = this.range();
-    if (!r || r.collapsed) return;
+  // The selection as HTML for the clipboard or a drag.
+  _selectionHTML(r) {
     const holder = document.createElement('div');
     holder.appendChild(r.cloneContents());
     // A selection inside <b>/<span style=color>… doesn't include those elements, so
@@ -1767,7 +1774,13 @@ export class Editor {
       anc = anc.parentNode;
     }
     holder.querySelectorAll('img.selected, li.pop').forEach(n => n.classList.remove('selected', 'pop'));
-    const html = holder.innerHTML.replace(/​/g, '');
+    return holder.innerHTML.replace(/​/g, '');
+  }
+
+  _onCopy(e, cut) {
+    const r = this.range();
+    if (!r || r.collapsed) return;
+    const html = this._selectionHTML(r);
     e.preventDefault();
     e.clipboardData.setData('text/html', html);
     e.clipboardData.setData('text/plain', getSelection().toString().replace(/​/g, ''));
@@ -1780,9 +1793,10 @@ export class Editor {
     if (this.locked || this.internalDrag) return;
     const dt = e.dataTransfer;
     const files = [...(dt.files || [])];
+    const internal = dt.getData(INTERNAL_MIME);
     const html = dt.getData('text/html');
     const text = dt.getData('text/plain');
-    if (!files.length && !html && !text) return;
+    if (!files.length && !internal && !html && !text) return;
     e.preventDefault();
     const pos = document.caretRangeFromPoint(e.clientX, e.clientY);
     const range = pos && this.el.contains(pos.startContainer) ? pos : null;
@@ -1804,6 +1818,8 @@ export class Editor {
       if (others.length) await this.insertFileChips(others);
       return;
     }
+    // A selection dragged from another note: keep its chips, as copy and paste does.
+    if (internal) { this.insertHTML(sanitizeHtml(internal, { mode: 'stored' })); this.localizeImages(); this.refreshChips(); return; }
     if (html) {
       const clean = sanitizeHtml(html, { mode: 'paste' });
       if (clean.trim()) { this.insertHTML(clean); this.localizeImages(); return; }

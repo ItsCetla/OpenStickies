@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Backups now include closed tabs from the Trash, and restoring a backup puts them back in the Trash, where they can still be reopened in their own note.
 - Restoring a version from Version history on a note with tabs now puts it back into the tab it came from and switches to that tab, instead of replacing whichever tab was open. The history list shows which tab each version belongs to, and each tab now gets its own snapshot when you start editing it.
 - On Linux desktops without a system tray (such as stock GNOME without the AppIndicator extension), starting at login now opens the notes list instead of running with no window and no tray icon. OpenStickies now asks the session bus for a tray host instead of relying on the tray failing to load.
+- Dragging a selected passage that contains a file chip from one note into another now keeps the chip and its file, as copy and paste does, instead of turning it into plain text.
 
 ## [3.1.0] - 2026-10-12
 
