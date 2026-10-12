@@ -42,7 +42,7 @@ function renderList() {
       <span class="w1">${escapeHtml(fmt(v.t, { hour: 'numeric', minute: '2-digit' }))}</span>
       <span class="w2">${escapeHtml(v.title || 'Untitled')} · ${v.words} word${v.words === 1 ? '' : 's'}</span></button>`);
   }
-  if (!data.versions.length) rows.push('<div class="none">No earlier versions yet. Stickies keeps a copy each time you come back to edit this note after a few minutes away.</div>');
+  if (!data.versions.length) rows.push('<div class="none">No earlier versions yet. OpenStickies keeps a copy each time you come back to edit this note after a few minutes away.</div>');
   $('versions').innerHTML = rows.join('');
 }
 

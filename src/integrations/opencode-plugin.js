@@ -1,5 +1,5 @@
-// Stickies for OpenCode
-// ---------------------
+// OpenStickies for OpenCode
+// -------------------------
 // Mirrors what the OpenCode agent is doing into a sticky note on your Windows desktop:
 // one note per task (session), with the agent's to-do list as a checklist — done steps
 // ticked, the current step marked, and what's still left open. Sub-agents' to-do lists
@@ -7,23 +7,26 @@
 //
 // It also gives the agent tools to make notes on request: stickies_create, stickies_update,
 // stickies_check and stickies_list. The agent can only change notes it created.
-// While Stickies runs it asks the agent to plan every multi-part task as a to-do list, so
+// While OpenStickies runs it asks the agent to plan every multi-part task as a to-do list, so
 // each one gets a sticky (Settings → OpenCode → "Always plan multi-part tasks").
 //
-// Installed by Stickies (Settings → OpenCode → Connect) into ~/.config/opencode/plugins/.
-// Talks only to Stickies on 127.0.0.1, using the token Stickies writes to its api.json.
-// Does nothing if Stickies isn't running.
+// Installed by OpenStickies (Settings → OpenCode → Connect) into ~/.config/opencode/plugins/.
+// Talks only to OpenStickies on 127.0.0.1, using the token OpenStickies writes to its api.json.
+// Does nothing if OpenStickies isn't running.
 
 import { readFileSync, statSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
 
-// Stickies writes the same api.json to both places. The home-folder copy is the one to trust on
-// Windows: if Stickies was started by a packaged app (e.g. Claude Desktop), its AppData copy lands
-// in that app's private folder and can't be seen from here. Older Stickies builds only write AppData.
+// OpenStickies writes the same api.json to both places. The home-folder copy is the one to trust on
+// Windows: if OpenStickies was started by a packaged app (e.g. Claude Desktop), its AppData copy lands
+// in that app's private folder and can't be seen from here. Older builds only write AppData, and
+// builds from before the rename write it under %APPDATA%\Stickies rather than %APPDATA%\OpenStickies.
+const APPDATA = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
 const API_FILES = process.env.STICKIES_API_FILE ? [process.env.STICKIES_API_FILE] : [
   join(homedir(), '.stickies', 'api.json'),
-  join(process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'), 'Stickies', 'data', 'api.json')
+  join(APPDATA, 'OpenStickies', 'data', 'api.json'),
+  join(APPDATA, 'Stickies', 'data', 'api.json')
 ];
 
 // The most recently written file wins, so a copy left behind by an older run can't shadow a live one.
@@ -41,22 +44,26 @@ function readApi() {
 
 const isPlaceholderTitle = (t) => !t || /^(New|Child) session - /i.test(t);
 
-// Added to the agent's instructions while Stickies is running (Settings → OpenCode →
+// Added to the agent's instructions while OpenStickies is running (Settings → OpenCode →
 // "Always plan multi-part tasks"), so every task with more than one part gets a sticky.
 const PLAN_RULE = [
-  'The user\'s desktop sticky notes (Stickies) are connected to this session.',
+  'The user\'s desktop sticky notes (OpenStickies) are connected to this session.',
   'Whenever a request involves two or more distinct subtasks or steps, use the todowrite tool BEFORE starting the work',
   'to write the plan as a to-do list (one item per subtask), then keep it current: mark the item you are working on',
   'in_progress and mark each item completed as soon as it is done. Each to-do list appears as a sticky note on the user\'s desktop,',
   'so do this even for short tasks that have more than one part. Single-step requests and plain questions do not need a to-do list.'
 ].join(' ');
 
+// How to spot the rule among the agent's instructions so it is only added once. The second
+// marker is the wording used before the app was renamed, in case an older copy of this plugin added it.
+const PLAN_RULE_MARKERS = ['desktop sticky notes (OpenStickies)', 'desktop sticky notes (Stickies)'];
+
 // A note appears once a plan has at least this many items (across the task and its sub-agents).
 const MIN_ITEMS = 2;
 
 async function callStickies(method, route, body) {
   const api = readApi();
-  if (!api || !api.port || !api.token) throw new Error(`Can’t find Stickies on this PC (no ${API_FILES[0]}), so no note can be shown. Ask the user to start Stickies, or to quit and reopen it if it’s already open.`);
+  if (!api || !api.port || !api.token) throw new Error(`Can’t find OpenStickies on this PC (no ${API_FILES[0]}), so no note can be shown. Ask the user to start OpenStickies, or to quit and reopen it if it’s already open.`);
   let res;
   try {
     res = await fetch(`http://127.0.0.1:${api.port}${route}`, {
@@ -66,10 +73,10 @@ async function callStickies(method, route, body) {
       signal: AbortSignal.timeout(5000)
     });
   } catch {
-    throw new Error('Couldn’t reach Stickies. It may have just been closed; ask the user to start it.');
+    throw new Error('Couldn’t reach OpenStickies. It may have just been closed; ask the user to start it.');
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Stickies answered ${res.status}`);
+  if (!res.ok) throw new Error(data.error || `OpenStickies answered ${res.status}`);
   return data;
 }
 
@@ -87,7 +94,7 @@ async function makeTools(project) {
   const s = tool.schema;
   return {
     stickies_create: tool({
-      description: 'Put a sticky note on the user\'s Windows desktop (the Stickies app) so they can keep it in view while they work. Use it when the user asks for a sticky/note, or for plans, checklists, summaries, commands or reminders they want to keep handy. Content is Markdown: "- [ ] task" makes a checkbox, "- [x] task" a ticked one, "# " headings, **bold**, `code`, links. Returns the note id for stickies_update and stickies_check.',
+      description: 'Put a sticky note on the user\'s Windows desktop (the OpenStickies app) so they can keep it in view while they work. Use it when the user asks for a sticky/note, or for plans, checklists, summaries, commands or reminders they want to keep handy. Content is Markdown: "- [ ] task" makes a checkbox, "- [x] task" a ticked one, "# " headings, **bold**, `code`, links. Returns the note id for stickies_update and stickies_check.',
       args: {
         title: s.string().describe('Short title shown at the top of the note'),
         content: s.string().describe('Note body in Markdown. Use "- [ ] item" lines for a checklist.'),
@@ -189,7 +196,7 @@ export const StickiesPlugin = async ({ directory, worktree }) => {
         signal: AbortSignal.timeout(3000)
       });
       if (res.ok) root.shown = true;
-    } catch { /* Stickies closed or busy: the next update will catch up */ }
+    } catch { /* OpenStickies closed or busy: the next update will catch up */ }
   }
 
   const schedule = (id) => {
@@ -205,8 +212,8 @@ export const StickiesPlugin = async ({ directory, worktree }) => {
     'experimental.chat.system.transform': async (_input, output) => {
       if (!output || !Array.isArray(output.system)) return;
       const api = readApi();
-      if (!api || (api.options && api.options.planNudge === false)) return; // Stickies off, or the user turned this off
-      if (!output.system.some(s => typeof s === 'string' && s.includes('desktop sticky notes (Stickies)'))) output.system.push(PLAN_RULE);
+      if (!api || (api.options && api.options.planNudge === false)) return; // OpenStickies off, or the user turned this off
+      if (!output.system.some(s => typeof s === 'string' && PLAN_RULE_MARKERS.some(m => s.includes(m)))) output.system.push(PLAN_RULE);
     },
     event: async ({ event }) => {
       const p = (event && event.properties) || {};

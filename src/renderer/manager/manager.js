@@ -88,7 +88,7 @@ function setView(view) {
   $('view-settings').hidden = true;
   $('btn-back').hidden = true;
   $('btn-settings').hidden = false;
-  $('appbar-title').textContent = 'Stickies';
+  $('appbar-title').textContent = 'OpenStickies';
   $('view-list').hidden = view === 'tasks';
   $('view-tasks').hidden = view !== 'tasks';
   closeDrawer();
@@ -108,7 +108,7 @@ async function renderOpenCode() {
     : '<button class="btn primary" id="oc-connect">Connect</button>';
   const foot = st.connected
     ? 'Restart OpenCode after connecting. Task notes are locked so typing can’t clash with the agent, and they’re tagged #opencode and with the project name.'
-    : 'Connecting adds a small plugin to OpenCode (in your user folder) that talks only to Stickies on this PC.';
+    : 'Connecting adds a small plugin to OpenCode (in your user folder) that talks only to OpenStickies on this PC.';
   $('opencode-card').innerHTML = `
     <div class="row">
       <div class="row-label">${icon('checklist', { size: 17 })}<div>
@@ -849,7 +849,7 @@ function buildSettings(s) {
   $('md-shortcuts').innerHTML = MD_SHORTCUTS.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
   $('search-tips').innerHTML = SEARCH_TIPS.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
   $('data-dir').textContent = s.dataDir;
-  $('about').innerHTML = `Stickies ${escapeHtml(s.version)}<br>Your notes are stored only on this computer.`;
+  $('about').innerHTML = `OpenStickies ${escapeHtml(s.version)}<br>Your notes are stored only on this computer.`;
   syncSettingsUi();
 }
 

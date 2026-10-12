@@ -532,7 +532,7 @@ class WindowManager {
       minWidth: 320,
       minHeight: 400,
       show: false,
-      title: 'Stickies',
+      title: 'OpenStickies',
       icon: this.icon,
       backgroundColor: dark ? '#1f1f22' : '#f7f6f3',
       titleBarStyle: 'hidden',

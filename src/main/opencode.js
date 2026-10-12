@@ -1,6 +1,6 @@
 'use strict';
 
-// Installs/removes the Stickies plugin in OpenCode's global plugin folder.
+// Installs/removes the OpenStickies plugin in OpenCode's global plugin folder.
 
 const fs = require('fs');
 const os = require('os');

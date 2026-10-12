@@ -5,7 +5,7 @@
 // needs the token written to api.json — readable only from this Windows account.
 //
 // api.json goes to data/ and to any extra paths given. The extra copy matters on Windows: when
-// Stickies is started by a packaged (MSIX) app such as Claude Desktop, Windows quietly redirects
+// OpenStickies is started by a packaged (MSIX) app such as Claude Desktop, Windows quietly redirects
 // its AppData writes into that app's private folder, so other programs never see data/api.json.
 //
 //   GET  /v1/ping                      → { ok, app, version }            (no token needed)

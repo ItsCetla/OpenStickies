@@ -22,6 +22,7 @@ const ocr = require('./ocr');
 const scan = require('./html-scan');
 const { htmlToText, titleFromText } = require('./store-text');
 const exporter = require('./exporter');
+const { migrateLegacyData, LEGACY_LOGIN_ITEM } = require('./migrate');
 const palette = require('../renderer/shared/colors.json');
 
 const isDev = process.argv.includes('--dev');
@@ -85,12 +86,34 @@ function init() {
   if (process.argv.includes('--quit')) { app.quit(); return; }
   Menu.setApplicationMenu(null);
 
+  // The app used to be called Stickies: bring its notes over on the first start. Runs with their
+  // own data folder (STICKIES_USER_DATA, used for testing) leave the old folder alone.
+  const moved = process.env.STICKIES_USER_DATA
+    ? { migrated: false }
+    : migrateLegacyData({ appData: app.getPath('appData'), userData: app.getPath('userData') });
+  if (moved.error) {
+    const choice = dialog.showMessageBoxSync({
+      type: 'error',
+      title: 'OpenStickies',
+      message: 'Your notes couldn’t be brought over from Stickies',
+      detail: `They’re safe where they were, in ${moved.from}\n\n${moved.error.message}\n\n` +
+        'Quit and try again, or start without them. To bring them over later, quit OpenStickies and copy that folder’s contents into ' +
+        `${path.join(app.getPath('userData'), 'data')}.`,
+      buttons: ['Quit', 'Start without them'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true
+    });
+    if (choice === 0) { app.quit(); return; }
+  }
+
   const dataDir = path.join(app.getPath('userData'), 'data');
   fs.mkdirSync(dataDir, { recursive: true });
   history = new History(dataDir);
   store = new Store(dataDir);
   store.extraRefs.push(() => history.refs()); // before load(): load() cleans up unused images
   store.load();
+  if (moved.migrated) carryOverLoginItem();
   vault = new Vault(dataDir);
   nativeTheme.themeSource = store.settings.theme;
   session.defaultSession.setSpellCheckerEnabled(!!store.settings.spellcheck);
@@ -232,6 +255,12 @@ function setLoginItem(enabled) {
   if (process.env.PORTABLE_EXECUTABLE_FILE) opts.path = process.env.PORTABLE_EXECUTABLE_FILE;
   else if (!app.isPackaged) { opts.path = process.execPath; opts.args = [path.resolve(SRC, '..'), '--hidden']; }
   app.setLoginItemSettings(opts);
+}
+
+// "Launch at login" came across in the settings, but Windows' entry still starts the old program.
+function carryOverLoginItem() {
+  if (process.platform === 'win32') app.setLoginItemSettings({ openAtLogin: false, name: LEGACY_LOGIN_ITEM });
+  if (store.settings.launchAtLogin) setLoginItem(true);
 }
 
 function setUserTasks() {
