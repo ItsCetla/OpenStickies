@@ -34,6 +34,7 @@ npm start
 | `npm run dist:linux` | Builds the Linux AppImage and `.deb` into `dist/` (run it on Linux) |
 | `npm run icons` | Redraws the app icons in `assets/` |
 | `npm run screenshots` | Regenerates the screenshots in `docs/screenshots/` (see [below](#screenshots)) |
+| `npm run check:locales` | Checks the translation files in `src/locales/` against `src/locales/en.json` and the keys used in code (see [below](#translations)) |
 
 ### Keep your real notes out of it
 
@@ -92,6 +93,10 @@ There's no automated test suite yet, so try your change by hand in the running a
 The screenshots on the README and the website are generated, not taken by hand. `npm run screenshots` starts OpenStickies with sample notes in a throwaway data folder, captures its windows, and writes the images to `docs/screenshots/`. It runs on Windows, or on Linux under Xvfb, and needs nothing beyond `npm install`. See [scripts/screenshots/README.md](scripts/screenshots/README.md) for how scenes work.
 
 Rerun it when your change alters something visible, and include the updated images in your pull request.
+
+## Translations
+
+The interface strings live in `src/locales/`, one JSON file per language, with `en.json` as the reference. Code looks strings up by key, so to fix a translation edit the value in that language's file, and to add a string add it to `en.json` first and then to the other files (a missing key falls back to English). To add a language, copy `en.json` to `<code>.json`, translate the values and keep every `{placeholder}` as it is, then add the code to the `SUPPORTED` list in `src/main/i18n.js` and the language, named in itself, to the Language setting in `src/renderer/manager/manager.html`. `npm run check:locales` reports keys that are missing, unknown or have the wrong placeholders. The welcome note and the built-in templates stay in English.
 
 ## Pull requests
 

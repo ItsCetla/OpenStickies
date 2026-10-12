@@ -423,8 +423,10 @@ src/
     api-server.js        local API for OpenCode and scripts
     agent-notes.js       AI task notes (OpenCode)
     opencode.js          installs/removes the OpenCode plugin
+    i18n.js              loads the interface language for the main process
     reminders.js, exporter.js, markdown.js, context-menu.js, tray.js
   integrations/opencode-plugin.js   the plugin that runs inside OpenCode
+  locales/               interface strings, one JSON file per language (en.json is the reference)
   preload.js             the safe API the windows are allowed to use
   renderer/
     note/                editor engine, tabs, "/" "#" "[[" suggestions, smart checklists,
@@ -433,7 +435,7 @@ src/
     history/             version history window
     snip/                screen snip overlay
     lightbox/            full-size picture viewer
-    shared/              palette, icons, backgrounds, shortcut labels, reminders, HTML sanitizer, HTML → Markdown
+    shared/              palette, icons, backgrounds, shortcut labels, reminders, translations, HTML sanitizer, HTML → Markdown
 ```
 
 </details>
