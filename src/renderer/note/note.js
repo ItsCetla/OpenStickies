@@ -115,6 +115,8 @@ function applyAppearance() {
   body.classList.toggle('tb-popup', mode === 'popup');
   body.classList.toggle('tb-always', mode === 'always');
   updateToolbarVisibility();
+  // Token colors follow the theme through CSS; repainting picks up blocks changed meanwhile.
+  editor.highlightCode();
 }
 
 // ---------- pop-up toolbar ----------
@@ -1067,6 +1069,7 @@ api.onCommand(({ cmd, arg }) => {
     case 'close-tab': if (tabs) closeTab(Number.isInteger(arg) ? arg : activeTab); break;
     case 'file-remove': { const a = target && target.closest && target.closest('a.file-chip'); if (a) editor.removeChip(a); break; }
     case 'file-open': { const a = target && target.closest && target.closest('a.file-chip'); if (a) editor.openChip(a); break; }
+    case 'code-lang': { const pre = target && target.closest && target.closest('pre'); if (pre) editor.setCodeLang(pre, arg); break; }
     default: break;
   }
 });

@@ -5,6 +5,29 @@ const { OPENABLE_RE, MAX_TABS } = require('./store');
 const exporter = require('./exporter');
 const files = require('./files');
 
+// Same ids and labels as LANGUAGES in src/renderer/note/highlight.js (an ES module the
+// main process can't require), in the order the menu shows them.
+const CODE_LANGUAGES = [
+  ['text', 'Plain text'],
+  ['javascript', 'JavaScript'],
+  ['typescript', 'TypeScript'],
+  ['python', 'Python'],
+  ['sql', 'SQL'],
+  ['html', 'HTML'],
+  ['xml', 'XML'],
+  ['css', 'CSS'],
+  ['json', 'JSON'],
+  ['bash', 'Shell'],
+  ['c', 'C'],
+  ['cpp', 'C++'],
+  ['java', 'Java'],
+  ['csharp', 'C#'],
+  ['go', 'Go'],
+  ['rust', 'Rust'],
+  ['yaml', 'YAML'],
+  ['markdown', 'Markdown']
+];
+
 function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
   const wc = win.webContents;
   const cmd = (name, arg) => () => windows.emitCommand(noteId(), name, arg);
@@ -130,6 +153,19 @@ function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
           { label: 'Delete row', click: cmd('table', 'row-delete') },
           { label: 'Delete column', click: cmd('table', 'col-delete') },
           { label: 'Delete table', click: cmd('table', 'delete') }
+        ]
+      });
+      t.push({ type: 'separator' });
+    }
+
+    if (ctx.inCode && !locked) {
+      const current = ctx.codeLang || 'auto';
+      const lang = (id, label) => ({ label, type: 'radio', checked: current === id, click: cmd('code-lang', id) });
+      t.push({
+        label: 'Code language', submenu: [
+          lang('auto', 'Auto-detect'),
+          { type: 'separator' },
+          ...CODE_LANGUAGES.map(([id, label]) => lang(id, label))
         ]
       });
       t.push({ type: 'separator' });
