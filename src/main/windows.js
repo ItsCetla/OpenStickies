@@ -37,7 +37,12 @@ class WindowManager {
 
   colorsFor(note) {
     const entry = palette.notes[note.color] || palette.notes.yellow;
-    return entry[this.theme()];
+    const colors = entry[this.theme()];
+    // The window's own background shows while the page loads/resizes, so match a custom one.
+    const bg = note.background;
+    if (bg && bg.type === 'solid') return { ...colors, bg: bg.color };
+    if (bg && bg.type === 'gradient') return { ...colors, bg: bg.from };
+    return colors;
   }
 
   webPreferences() {
@@ -237,7 +242,8 @@ class WindowManager {
     const note = this.store.create({
       html: src.html, text: src.text, color: src.color, font: src.font,
       private: src.private, cipher: src.cipher, refs: src.refs,
-      opacity: src.opacity, zoom: src.zoom, bounds: this.placeNewBounds(src), open: true
+      opacity: src.opacity, zoom: src.zoom, bounds: this.placeNewBounds(src), open: true,
+      background: src.background
     });
     this.openNote(note.id);
     return note;
@@ -332,7 +338,7 @@ class WindowManager {
       win.__opacityPreviewUntil = Date.now() + 1500; // let the user see the new opacity while dragging the slider
       if (note.opacity < 1) this.startHoverWatch();
     }
-    if (keys.includes('color')) win.setBackgroundColor(this.colorsFor(note).bg);
+    if (keys.includes('color') || keys.includes('background')) win.setBackgroundColor(this.colorsFor(note).bg);
     if (keys.includes('title')) win.setTitle(note.title || 'Sticky note');
     if (keys.includes('rolled')) this._applyRoll(win, note);
   }

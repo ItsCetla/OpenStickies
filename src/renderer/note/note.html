@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="note.css">
 </head>
 <body>
+  <!-- Custom background (gradient / picture). Sits behind everything and never takes clicks. -->
+  <div class="bg-layer" id="bg-layer" aria-hidden="true" hidden></div>
   <header class="titlebar" id="titlebar">
     <button class="tb-btn" id="btn-new" title="New note (Ctrl+N)"><i data-icon="plus"></i></button>
     <div class="title-text" id="title-text"></div>
@@ -110,6 +112,7 @@
       <label for="font-select" class="grow">Font</label>
       <select id="font-select"></select>
     </div>
+    <button class="menu-item" data-action="custom-background"><i data-icon="palette" data-size="16"></i><span>Custom background…</span></button>
     <div class="menu-sep"></div>
     <button class="menu-item" data-action="toggle-pin"><i data-icon="pin" data-size="16"></i><span>Keep on top</span><span class="check" id="chk-pin"></span></button>
     <button class="menu-item" data-action="toggle-lock"><i data-icon="lock" data-size="16"></i><span>Lock editing</span><span class="check" id="chk-lock"></span></button>
@@ -230,6 +233,57 @@
       <span class="grow"></span>
       <button class="btn ghost" id="reminder-cancel">Cancel</button>
       <button class="btn primary" id="reminder-save">Set</button>
+    </div>
+  </div>
+
+  <div class="pop form-pop bg-pop" id="pop-bg" hidden>
+    <div class="pop-title">Note background</div>
+    <div class="bg-tabs" role="tablist" aria-label="Background type">
+      <button type="button" class="bg-tab" role="tab" id="bg-tab-solid" data-bg-tab="solid" aria-controls="bg-panel-solid">Color</button>
+      <button type="button" class="bg-tab" role="tab" id="bg-tab-gradient" data-bg-tab="gradient" aria-controls="bg-panel-gradient">Gradient</button>
+      <button type="button" class="bg-tab" role="tab" id="bg-tab-image" data-bg-tab="image" aria-controls="bg-panel-image">Image</button>
+    </div>
+    <div class="bg-panel" role="tabpanel" id="bg-panel-solid" aria-labelledby="bg-tab-solid">
+      <div class="bg-row">
+        <input type="color" id="bg-color" aria-label="Pick a color">
+        <input type="text" id="bg-hex" maxlength="7" spellcheck="false" placeholder="#ffcc00" aria-label="Hex color">
+      </div>
+    </div>
+    <div class="bg-panel" role="tabpanel" id="bg-panel-gradient" aria-labelledby="bg-tab-gradient" hidden>
+      <div class="bg-presets" id="bg-presets"></div>
+      <div class="bg-row">
+        <label class="bg-pair">From <input type="color" id="bg-from"></label>
+        <label class="bg-pair">To <input type="color" id="bg-to"></label>
+      </div>
+      <div class="bg-row">
+        <label for="bg-angle" class="grow">Angle</label>
+        <input type="range" id="bg-angle" min="0" max="360" step="5">
+        <span class="value" id="bg-angle-value">135°</span>
+      </div>
+    </div>
+    <div class="bg-panel" role="tabpanel" id="bg-panel-image" aria-labelledby="bg-tab-image" hidden>
+      <div class="bg-row">
+        <div class="bg-thumb" id="bg-thumb" aria-hidden="true"></div>
+        <button type="button" class="btn" id="bg-pick">Image…</button>
+      </div>
+      <div class="bg-row">
+        <label for="bg-fit" class="grow">Fit</label>
+        <select id="bg-fit">
+          <option value="cover">Fill</option>
+          <option value="contain">Fit</option>
+          <option value="tile">Tile</option>
+        </select>
+      </div>
+      <div class="bg-row">
+        <label for="bg-dim" class="grow">Dim</label>
+        <input type="range" id="bg-dim" min="0" max="80" step="5">
+        <span class="value" id="bg-dim-value">0%</span>
+      </div>
+    </div>
+    <div class="pop-actions">
+      <button type="button" class="btn ghost" id="bg-reset">Reset to note color</button>
+      <span class="grow"></span>
+      <button type="button" class="btn primary" id="bg-done">Done</button>
     </div>
   </div>
 

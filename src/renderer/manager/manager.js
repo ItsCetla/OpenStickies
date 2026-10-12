@@ -2,6 +2,7 @@ import { icon, hydrateIcons } from '../shared/icons.js';
 import { sanitizeHtml, escapeHtml } from '../shared/sanitize.js';
 import { cascadeCheck, sinkItem, ownText, dueLabel, isoDate, parentItem } from '../note/smart.js';
 import palette from '../shared/colors.json' with { type: 'json' };
+import { deriveColors, deriveGradientColors, gradientCss, safeBackground } from '../shared/backgrounds.js';
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);
@@ -460,9 +461,15 @@ function snippet(n, terms) {
 }
 
 function cardHtml(n, pq) {
-  const c = (palette.notes[n.color] || palette.notes.yellow)[theme];
+  let c = (palette.notes[n.color] || palette.notes.yellow)[theme];
+  // Custom colours and gradients preview on the card; a picture would be too busy at this size,
+  // so it gets a badge instead and the card keeps the palette colour it is tinted with.
+  const bg = safeBackground(n.background);
+  let bgImage = '';
+  if (bg && bg.type === 'solid') c = deriveColors(bg.color);
+  else if (bg && bg.type === 'gradient') { c = deriveGradientColors(bg.from, bg.to); bgImage = gradientCss(bg); }
   const font = (palette.fonts.find(f => f.id === n.font) || palette.fonts[0]).css.replace(/"/g, "'");
-  const style = `--n-bg:${c.bg};--n-bar:${c.bar};--n-text:${c.text};--n-accent:${c.accent};--n-font:${font}`;
+  const style = `--n-bg:${c.bg};--n-bar:${c.bar};--n-text:${c.text};--n-accent:${c.accent};--n-font:${font}${bgImage ? `;--n-bgimg:${bgImage}` : ''}`;
   let content;
   if (n.privateLocked) content = `<div class="locked-card">${icon('shield', { size: 18 })}<span>Private note — locked</span></div>`;
   else if (pq.words.length) content = snippet(n, pq.words);
@@ -476,6 +483,7 @@ function cardHtml(n, pq) {
   if (n.pinned && !n.trashed) badges.push(`<span class="badge" title="Kept on top">${icon('pinFilled', { size: 13 })}</span>`);
   if (n.reminder && !n.trashed) badges.push(`<span class="badge" title="Reminder">${icon('bell', { size: 13 })}${escapeHtml(reminderLabel(n.reminder))}</span>`);
   if (n.tasks.total) badges.push(`<span class="badge" title="Checklist progress">${icon('checklist', { size: 13 })}${n.tasks.done}/${n.tasks.total}</span>`);
+  if (bg && bg.type === 'image') badges.push(`<span class="badge" title="Picture background">${icon('image', { size: 13 })}</span>`);
   if (n.locked) badges.push(`<span class="badge" title="Locked">${icon('lock', { size: 13 })}</span>`);
   if (!n.open && !n.trashed) badges.push(`<span class="badge" title="Not on the desktop">${icon('eyeOff', { size: 13 })}</span>`);
   for (const t of n.tags.slice(0, 3)) badges.push(`<span class="chip-tag">#${escapeHtml(t)}</span>`);
@@ -486,7 +494,7 @@ function cardHtml(n, pq) {
     : `<button class="card-btn" data-act="${n.open ? 'hide' : 'open'}" title="${n.open ? 'Hide from desktop' : 'Show on desktop'}">${icon(n.open ? 'eyeOff' : 'eye', { size: 16 })}</button>
        <button class="card-btn danger" data-act="trash" title="Delete">${icon('trash', { size: 16 })}</button>
        <button class="card-btn" data-act="menu" title="More">${icon('more', { size: 16 })}</button>`;
-  return `<div class="note-card${n.open ? '' : ' closed'}${n.trashed ? ' trashed' : ''}" tabindex="0" data-id="${n.id}" style="${style}">
+  return `<div class="note-card${n.open ? '' : ' closed'}${n.trashed ? ' trashed' : ''}${bgImage ? ' has-bgimg' : ''}" tabindex="0" data-id="${n.id}" style="${style}">
     <div class="card-body">${content}</div>
     <div class="card-meta">${badges.join('')}<span class="grow"></span><span>${escapeHtml(when)}</span></div>
     <div class="card-actions">${actions}</div>

@@ -434,7 +434,8 @@ function noteSummary(n) {
     open: n.open, pinned: n.pinned, locked: n.locked, trashed: n.trashed, trashedAt: n.trashedAt,
     reminder: n.reminder, createdAt: n.createdAt, updatedAt: n.updatedAt,
     tags: n.tags || [], links: n.links || [], imageText: (n.imageText || '').slice(0, 4000), tasks: n.tasks || { total: 0, done: 0 },
-    private: !!n.private, privateLocked: false
+    private: !!n.private, privateLocked: false,
+    background: n.background || null
   };
   if (n.private) {
     const p = privatePlain(n);
@@ -457,7 +458,8 @@ function wireEvents() {
 }
 
 // ---------- IPC ----------
-const NOTE_PATCH_KEYS = ['html', 'text', 'title', 'color', 'font', 'pinned', 'opacity', 'zoom', 'locked', 'reminder', 'tasks', 'imageText'];
+const NOTE_PATCH_KEYS = ['html', 'text', 'title', 'color', 'font', 'pinned', 'opacity', 'zoom', 'locked', 'reminder', 'tasks', 'imageText',
+  'background'];
 
 function cleanPatch(patch) {
   const out = {};
@@ -484,6 +486,8 @@ function cleanPatch(patch) {
       dom: Number.isInteger(r.dom) && r.dom >= 1 && r.dom <= 31 ? r.dom : new Date(r.at).getDate()
     };
   }
+  // null resets to the palette color; anything invalid also normalizes to null.
+  if ('background' in out) out.background = store.normalizeBackground(out.background);
   return out;
 }
 

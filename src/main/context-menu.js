@@ -145,6 +145,7 @@ function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
     if (ctx.editor) {
       t.push({ type: 'separator' });
       t.push({ label: locked ? 'Unlock note' : 'Lock note', click: cmd('toggle-lock') });
+      t.push({ label: 'Custom background…', click: cmd('custom-background') });
     }
 
     while (t.length && t[t.length - 1].type === 'separator') t.pop();
@@ -164,7 +165,9 @@ function buildNoteMenu({ note, windows, noteId }) {
     { type: 'separator' },
     { label: 'Duplicate', click: () => windows.duplicateNote(noteId) },
     { label: 'Close', accelerator: 'CmdOrCtrl+W', click: () => windows.closeNote(noteId) },
-    { label: 'Delete note', accelerator: 'CmdOrCtrl+D', click: emit('delete') }
+    { label: 'Delete note', accelerator: 'CmdOrCtrl+D', click: emit('delete') },
+    { type: 'separator' },
+    { label: 'Custom background…', click: emit('custom-background') }
   ]);
 }
 
