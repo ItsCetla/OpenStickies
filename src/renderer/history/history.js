@@ -1,4 +1,6 @@
+import { applyTranslations } from '../shared/i18n.js';
 import { hydrateIcons } from '../shared/icons.js';
+import { t, tp, lang } from '../shared/i18n.js';
 import { sanitizeHtml, escapeHtml } from '../shared/sanitize.js';
 import palette from '../shared/colors.json' with { type: 'json' };
 import { hydrateFileChips } from '../shared/file-icons.js';
@@ -11,40 +13,41 @@ let mode = 'preview';
 const htmlCache = new Map();
 
 document.documentElement.dataset.platform = api.platform || '';
+applyTranslations();
 hydrateIcons();
 load();
 
 async function load() {
   data = await api.historyList();
   document.documentElement.dataset.theme = data.theme;
-  if (!data.note) { $('doc').textContent = 'This note no longer exists.'; return; }
+  if (!data.note) { $('doc').textContent = t('history.gone'); return; }
   const c = (palette.notes[data.note.color] || palette.notes.yellow)[data.theme];
   const doc = $('doc');
   doc.style.setProperty('--n-bg', c.bg);
   doc.style.setProperty('--n-bar', c.bar);
   doc.style.setProperty('--n-text', c.text);
   doc.style.setProperty('--n-accent', c.accent);
-  $('note-title').textContent = data.note.title || 'Untitled note';
+  $('note-title').textContent = data.note.title || t('note.untitled');
   htmlCache.set('current', data.note.html);
   renderList();
   show(selected);
 }
 
-function fmt(t, opts) { return new Date(t).toLocaleString(undefined, opts); }
+function fmt(t, opts) { return new Date(t).toLocaleString(lang(), opts); }
 
 function renderList() {
   const rows = [];
-  rows.push(`<div class="day">Now</div><button class="ver${selected === 'current' ? ' on' : ''}" data-t="current">
-    <span class="w1">Current version <span class="tagnow">Live</span></span><span class="w2">${escapeHtml(data.note.title || 'Untitled note')}</span></button>`);
+  rows.push(`<div class="day">${escapeHtml(t('history.now'))}</div><button class="ver${selected === 'current' ? ' on' : ''}" data-t="current">
+    <span class="w1">${escapeHtml(t('history.currentVersion'))} <span class="tagnow">${escapeHtml(t('history.live'))}</span></span><span class="w2">${escapeHtml(data.note.title || t('note.untitled'))}</span></button>`);
   let lastDay = '';
   for (const v of data.versions) {
     const day = fmt(v.t, { weekday: 'long', month: 'long', day: 'numeric' });
     if (day !== lastDay) { rows.push(`<div class="day">${escapeHtml(day)}</div>`); lastDay = day; }
     rows.push(`<button class="ver${selected === v.t ? ' on' : ''}" data-t="${v.t}">
       <span class="w1">${escapeHtml(fmt(v.t, { hour: 'numeric', minute: '2-digit' }))}</span>
-      <span class="w2">${escapeHtml(v.title || 'Untitled')} · ${v.words} word${v.words === 1 ? '' : 's'}</span></button>`);
+      <span class="w2">${escapeHtml(v.title || t('history.untitled'))} · ${escapeHtml(tp('history.words', v.words))}</span></button>`);
   }
-  if (!data.versions.length) rows.push('<div class="none">No earlier versions yet. OpenStickies keeps a copy each time you come back to edit this note after a few minutes away.</div>');
+  if (!data.versions.length) rows.push(`<div class="none">${escapeHtml(t('history.none'))}</div>`);
   $('versions').innerHTML = rows.join('');
 }
 
@@ -58,7 +61,7 @@ async function htmlOf(key) {
 async function show(key) {
   selected = key;
   for (const b of document.querySelectorAll('.ver')) b.classList.toggle('on', String(b.dataset.t) === String(key));
-  $('when').textContent = key === 'current' ? 'Current version' : fmt(key, { dateStyle: 'full', timeStyle: 'short' });
+  $('when').textContent = key === 'current' ? t('history.currentVersion') : fmt(key, { dateStyle: 'full', timeStyle: 'short' });
   $('restore').disabled = key === 'current';
   const html = await htmlOf(key);
   const doc = $('doc');
@@ -74,7 +77,7 @@ async function show(key) {
   const older = data.versions[idx + 1];
   const before = older ? await htmlOf(older.t) : '';
   doc.classList.add('diff');
-  doc.innerHTML = older ? diffHtml(textOf(before), textOf(html)) : `<i>This is the oldest saved version.</i>\n\n${escapeHtml(textOf(html))}`;
+  doc.innerHTML = older ? diffHtml(textOf(before), textOf(html)) : `<i>${escapeHtml(t('history.oldest'))}</i>\n\n${escapeHtml(textOf(html))}`;
 }
 
 function textOf(html) {
@@ -92,7 +95,7 @@ function textOf(html) {
 function diffHtml(a, b) {
   const A = a.split(/(\s+)/).filter(Boolean);
   const B = b.split(/(\s+)/).filter(Boolean);
-  if (A.length * B.length > 9e6) return `<i>Too many changes to show word by word.</i>\n\n${escapeHtml(b)}`;
+  if (A.length * B.length > 9e6) return `<i>${escapeHtml(t('history.tooMany'))}</i>\n\n${escapeHtml(b)}`;
   const n = A.length;
   const m = B.length;
   const dp = new Uint32Array((n + 1) * (m + 1));
@@ -134,9 +137,9 @@ $('mode').addEventListener('click', (e) => {
 $('restore').addEventListener('click', async () => {
   if (selected === 'current') return;
   const when = fmt(selected, { dateStyle: 'medium', timeStyle: 'short' });
-  if (!confirm(`Restore the version from ${when}?\n\nThe current text is kept in the history, so you can switch back.`)) return;
+  if (!confirm(t('history.restoreConfirm', { when }))) return;
   if (await api.historyRestore(selected)) {
-    toast('Restored — the previous text is saved in the history');
+    toast(t('history.restored'));
     htmlCache.clear();
     selected = 'current';
     await load();

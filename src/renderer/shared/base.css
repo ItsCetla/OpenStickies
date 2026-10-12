@@ -107,7 +107,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   min-height: 30px;
   padding: 5px 8px;
   border-radius: 6px;
-  text-align: left;
+  text-align: start;
   white-space: nowrap;
 }
 .menu-item > span:first-of-type { flex: 1; }
@@ -120,7 +120,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .menu-sep { height: 1px; background: var(--pop-border); margin: 5px 4px; }
 .menu-row { display: flex; align-items: center; gap: 10px; padding: 5px 8px; min-height: 32px; }
 .menu-row .grow, .grow { flex: 1; }
-.menu-row .value { width: 36px; text-align: right; color: var(--pop-muted); font-variant-numeric: tabular-nums; }
+.menu-row .value { width: 36px; text-align: end; color: var(--pop-muted); font-variant-numeric: tabular-nums; }
 
 input[type="text"], input[type="search"], input[type="datetime-local"], select, textarea {
   font: inherit;
@@ -207,3 +207,13 @@ a.file-chip[data-path].missing {
   border-style: dashed;
   text-decoration: line-through;
 }
+
+/* ---------- right-to-left languages ---------- */
+/* Code, URLs and file paths read left to right even inside Arabic text; plaintext lets each
+   paragraph of user text pick its own direction from its first strong character. */
+pre, code, kbd, .url, a[href^="http"], a[href^="mailto:"], a.file-chip[data-path] { unicode-bidi: plaintext; }
+[dir="rtl"] :is(pre, code, kbd, .url, a[href^="http"], a[href^="mailto:"]) { direction: ltr; }
+[dir="rtl"] pre { text-align: left; }
+[dir="rtl"] a.file-chip[data-path] { padding: 0 1.5em 0 0.4em; background-position: calc(100% - 0.32em) 50%; }
+[dir="rtl"] .menu-row .value { text-align: left; }
+[dir="rtl"] :is([data-icon="chevronRight"], [data-icon="chevronLeft"]) { transform: scaleX(-1); }

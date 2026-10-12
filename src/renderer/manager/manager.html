@@ -9,15 +9,15 @@
 </head>
 <body>
   <header class="appbar">
-    <button class="icon-btn" id="btn-sidebar" title="Show sidebar"><i data-icon="menu" data-size="18"></i></button>
+    <button class="icon-btn" id="btn-sidebar" title="Show sidebar" data-i18n-title="manager.showSidebar"><i data-icon="menu" data-size="18"></i></button>
     <div class="brand"><span class="logo"><i data-icon="notes" data-size="18"></i></span><span id="appbar-title">OpenStickies</span></div>
     <div class="appbar-actions">
-      <button class="icon-btn" id="btn-back" title="Back to notes" hidden><i data-icon="chevronLeft" data-size="18"></i></button>
+      <button class="icon-btn" id="btn-back" title="Back to notes" hidden data-i18n-title="manager.backToNotes"><i data-icon="chevronLeft" data-size="18"></i></button>
       <div class="split">
-        <button class="icon-btn" id="btn-new" title="New note (Ctrl+N)"><i data-icon="plus" data-size="19"></i></button>
-        <button class="icon-btn caret" id="btn-new-menu" title="New from template, snip…"><i data-icon="chevronDown" data-size="14"></i></button>
+        <button class="icon-btn" id="btn-new" title="New note (Ctrl+N)" data-i18n-title="manager.newNoteHint"><i data-icon="plus" data-size="19"></i></button>
+        <button class="icon-btn caret" id="btn-new-menu" title="New from template, snip…" data-i18n-title="manager.newFromTemplateSnip"><i data-icon="chevronDown" data-size="14"></i></button>
       </div>
-      <button class="icon-btn" id="btn-settings" title="Settings (Ctrl+,)"><i data-icon="settings" data-size="18"></i></button>
+      <button class="icon-btn" id="btn-settings" title="Settings (Ctrl+,)" data-i18n-title="manager.settingsHint"><i data-icon="settings" data-size="18"></i></button>
     </div>
   </header>
 
@@ -25,30 +25,30 @@
     <!-- ===== Sidebar ===== -->
     <aside class="sidebar" id="sidebar">
       <nav class="side-group" id="views">
-        <button class="side-item" data-view="all"><i data-icon="notes" data-size="16"></i><span>All notes</span><span class="count" id="count-all"></span></button>
-        <button class="side-item" data-view="open"><i data-icon="eye" data-size="16"></i><span>On desktop</span><span class="count" id="count-open"></span></button>
-        <button class="side-item" data-view="pinned"><i data-icon="pin" data-size="16"></i><span>Kept on top</span><span class="count" id="count-pinned"></span></button>
-        <button class="side-item" data-view="reminders"><i data-icon="bell" data-size="16"></i><span>Reminders</span><span class="count" id="count-reminders"></span></button>
-        <button class="side-item" data-view="tasks"><i data-icon="checklist" data-size="16"></i><span>Tasks</span><span class="count" id="count-tasks"></span></button>
-        <button class="side-item" data-view="trash"><i data-icon="trash" data-size="16"></i><span>Trash</span><span class="count" id="count-trash"></span></button>
+        <button class="side-item" data-view="all"><i data-icon="notes" data-size="16"></i><span data-i18n="manager.allNotes">All notes</span><span class="count" id="count-all"></span></button>
+        <button class="side-item" data-view="open"><i data-icon="eye" data-size="16"></i><span data-i18n="manager.onDesktop">On desktop</span><span class="count" id="count-open"></span></button>
+        <button class="side-item" data-view="pinned"><i data-icon="pin" data-size="16"></i><span data-i18n="manager.keptOnTop">Kept on top</span><span class="count" id="count-pinned"></span></button>
+        <button class="side-item" data-view="reminders"><i data-icon="bell" data-size="16"></i><span data-i18n="manager.reminders">Reminders</span><span class="count" id="count-reminders"></span></button>
+        <button class="side-item" data-view="tasks"><i data-icon="checklist" data-size="16"></i><span data-i18n="manager.tasks">Tasks</span><span class="count" id="count-tasks"></span></button>
+        <button class="side-item" data-view="trash"><i data-icon="trash" data-size="16"></i><span data-i18n="manager.trash">Trash</span><span class="count" id="count-trash"></span></button>
       </nav>
 
       <section class="side-group">
-        <div class="side-head"><span>Saved searches</span></div>
+        <div class="side-head"><span data-i18n="manager.savedSearches">Saved searches</span></div>
         <div id="saved-list"></div>
-        <button class="side-add" id="btn-save-search" hidden><i data-icon="plus" data-size="14"></i>Save this search</button>
+        <button class="side-add" id="btn-save-search" hidden><i data-icon="plus" data-size="14"></i><span data-i18n="manager.saveThisSearch">Save this search</span></button>
       </section>
 
       <section class="side-group">
-        <div class="side-head"><span>Tags</span></div>
+        <div class="side-head"><span data-i18n="manager.tags">Tags</span></div>
         <div id="tag-list"></div>
-        <div class="side-empty" id="tag-empty">Type <b>#something</b> in a note to tag it.</div>
+        <div class="side-empty" id="tag-empty" data-i18n-html="manager.tagEmpty">Type <b>#something</b> in a note to tag it.</div>
       </section>
 
       <section class="side-group" id="workspaces-section">
-        <div class="side-head"><span>Workspaces</span></div>
+        <div class="side-head"><span data-i18n="manager.workspaces">Workspaces</span></div>
         <div id="ws-list"></div>
-        <button class="side-add" id="btn-save-ws"><i data-icon="plus" data-size="14"></i>Save current layout…</button>
+        <button class="side-add" id="btn-save-ws"><i data-icon="plus" data-size="14"></i><span data-i18n="manager.saveCurrentLayout">Save current layout…</span></button>
       </section>
     </aside>
     <div class="scrim" id="scrim" hidden></div>
@@ -59,19 +59,19 @@
         <div class="filters">
           <label class="search">
             <i data-icon="search" data-size="16"></i>
-            <input type="search" id="search" placeholder="Search — try #tag, has:unchecked, edited:week" autocomplete="off" spellcheck="false">
+            <input type="search" id="search" placeholder="Search — try #tag, has:unchecked, edited:week" autocomplete="off" spellcheck="false" data-i18n-placeholder="manager.searchPlaceholder">
             <kbd>Ctrl+F</kbd>
           </label>
           <div class="subfilters">
-            <span class="view-title" id="view-title">All notes</span>
+            <span class="view-title" id="view-title" data-i18n="manager.allNotes">All notes</span>
             <div class="color-filter" id="color-filter"></div>
             <label class="sort">
               <i data-icon="sort" data-size="15"></i>
               <select id="sort">
-                <option value="updated">Last edited</option>
-                <option value="created">Date created</option>
-                <option value="title">Title</option>
-                <option value="color">Color</option>
+                <option value="updated" data-i18n="manager.lastEdited">Last edited</option>
+                <option value="created" data-i18n="manager.dateCreated">Date created</option>
+                <option value="title" data-i18n="manager.title">Title</option>
+                <option value="color" data-i18n="manager.color">Color</option>
               </select>
             </label>
           </div>
@@ -80,16 +80,16 @@
         <div class="list" id="list" tabindex="-1"></div>
         <div class="empty" id="empty" hidden>
           <div class="empty-art"><i data-icon="notes" data-size="40"></i></div>
-          <div class="empty-title" id="empty-title">No notes yet</div>
-          <div class="empty-sub" id="empty-sub">Create a note and it will show up here.</div>
-          <button class="btn primary" id="empty-action">New note</button>
+          <div class="empty-title" id="empty-title" data-i18n="manager.noNotesYet">No notes yet</div>
+          <div class="empty-sub" id="empty-sub" data-i18n="manager.createANoteAndIt">Create a note and it will show up here.</div>
+          <button class="btn primary" id="empty-action" data-i18n="manager.newNoteButton">New note</button>
         </div>
 
         <footer class="listbar">
-          <button class="link-btn" id="btn-show-all"><i data-icon="eye" data-size="15"></i>Show all</button>
-          <button class="link-btn" id="btn-hide-all"><i data-icon="eyeOff" data-size="15"></i>Hide all</button>
+          <button class="link-btn" id="btn-show-all"><i data-icon="eye" data-size="15"></i><span data-i18n="manager.showAll">Show all</span></button>
+          <button class="link-btn" id="btn-hide-all"><i data-icon="eyeOff" data-size="15"></i><span data-i18n="manager.hideAll">Hide all</span></button>
           <span class="grow"></span>
-          <button class="link-btn danger" id="btn-empty-trash" hidden><i data-icon="trash" data-size="15"></i>Empty trash</button>
+          <button class="link-btn danger" id="btn-empty-trash" hidden><i data-icon="trash" data-size="15"></i><span data-i18n="manager.emptyTrash">Empty trash</span></button>
           <span class="status" id="status"></span>
         </footer>
       </section>
@@ -99,141 +99,160 @@
         <div class="filters">
           <label class="search">
             <i data-icon="search" data-size="16"></i>
-            <input type="search" id="task-search" placeholder="Filter tasks" autocomplete="off" spellcheck="false">
+            <input type="search" id="task-search" placeholder="Filter tasks" autocomplete="off" spellcheck="false" data-i18n-placeholder="manager.filterTasks">
           </label>
           <div class="subfilters">
             <div class="segmented small" id="task-show">
-              <button data-v="open" class="on">To do</button><button data-v="all">All</button>
+              <button data-v="open" class="on" data-i18n="manager.toDo">To do</button><button data-v="all" data-i18n="manager.all">All</button>
             </div>
             <span class="grow"></span>
             <div class="segmented small" id="task-group">
-              <button data-v="note" class="on">By note</button><button data-v="due">By date</button>
+              <button data-v="note" class="on" data-i18n="manager.byNote">By note</button><button data-v="due" data-i18n="manager.byDate">By date</button>
             </div>
           </div>
         </div>
         <div class="tasks" id="tasks"></div>
         <div class="empty" id="tasks-empty" hidden>
           <div class="empty-art"><i data-icon="checklist" data-size="40"></i></div>
-          <div class="empty-title" id="tasks-empty-title">Nothing to do</div>
-          <div class="empty-sub">Checklist items from every note show up here. Add <b>@fri</b>, <b>@tomorrow</b> or <b>@10/20</b> to give one a due date.</div>
+          <div class="empty-title" id="tasks-empty-title" data-i18n="manager.nothingToDo">Nothing to do</div>
+          <div class="empty-sub" data-i18n-html="manager.tasksEmptySub">Checklist items from every note show up here. Add <b>@fri</b>, <b>@tomorrow</b> or <b>@10/20</b> to give one a due date.</div>
         </div>
       </section>
 
       <!-- ===== Settings ===== -->
       <section class="view settings" id="view-settings" hidden>
         <div class="settings-scroll" id="settings-scroll">
-          <h2>Appearance</h2>
+          <h2 data-i18n="manager.appearance">Appearance</h2>
           <div class="card">
             <div class="row">
-              <div class="row-label"><i data-icon="sun" data-size="17"></i><div><div>Theme</div><div class="sub">Follows your system when set to System</div></div></div>
+              <div class="row-label"><i data-icon="sun" data-size="17"></i><div><div data-i18n="manager.theme">Theme</div><div class="sub" data-i18n="manager.followsYourSystemWhenSet">Follows your system when set to System</div></div></div>
               <div class="segmented" id="set-theme">
-                <button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button>
+                <button data-v="system" data-i18n="manager.system">System</button><button data-v="light" data-i18n="manager.light">Light</button><button data-v="dark" data-i18n="manager.dark">Dark</button>
               </div>
             </div>
             <div class="row column">
-              <div class="row-label"><i data-icon="palette" data-size="17"></i><div><div>New note color</div></div></div>
+              <div class="row-label"><i data-icon="palette" data-size="17"></i><div><div data-i18n="manager.newNoteColor">New note color</div></div></div>
               <div class="color-pick" id="set-color"></div>
             </div>
             <div class="row">
-              <div class="row-label"><i data-icon="textSize" data-size="17"></i><div><div>New note font</div></div></div>
+              <div class="row-label"><i data-icon="textSize" data-size="17"></i><div><div data-i18n="manager.newNoteFont">New note font</div></div></div>
               <select id="set-font"></select>
             </div>
             <div class="row">
-              <div class="row-label"><i data-icon="textSize" data-size="17"></i><div><div>Text size</div><div class="sub">Applies to every note</div></div></div>
+              <div class="row-label"><i data-icon="textSize" data-size="17"></i><div><div data-i18n="manager.textSize">Text size</div><div class="sub" data-i18n="manager.appliesToEveryNote">Applies to every note</div></div></div>
               <div class="range-wrap"><input type="range" id="set-size" min="12" max="22" step="1"><span id="set-size-value">15px</span></div>
             </div>
+            <div class="row">
+              <div class="row-label"><i data-icon="globe" data-size="17"></i><div><div data-i18n="manager.language">Language</div><div class="sub" data-i18n="manager.languageSub">System follows your computer’s language</div></div></div>
+              <!-- Each language is named in itself, so nobody has to read a language they don't know to find their own. -->
+              <select id="set-language">
+                <option value="system" data-i18n="manager.languageSystem">System</option>
+                <option value="en" lang="en">English</option>
+                <option value="de" lang="de">Deutsch</option>
+                <option value="es" lang="es">Español</option>
+                <option value="fr" lang="fr">Français</option>
+                <option value="it" lang="it">Italiano</option>
+                <option value="pt-BR" lang="pt-BR">Português (Brasil)</option>
+                <option value="nl" lang="nl">Nederlands</option>
+                <option value="pl" lang="pl">Polski</option>
+                <option value="ru" lang="ru">Русский</option>
+                <option value="ja" lang="ja">日本語</option>
+                <option value="zh-CN" lang="zh-CN">中文（简体）</option>
+                <option value="ar" lang="ar" dir="rtl">العربية</option>
+              </select>
+            </div>
           </div>
 
-          <h2>Behavior</h2>
+          <h2 data-i18n="manager.behavior">Behavior</h2>
           <div class="card">
-            <label class="row"><div class="row-label"><i data-icon="external" data-size="17"></i><div><div>Open at login</div><div class="sub">Notes reappear when you sign in</div></div></div><input type="checkbox" class="switch" id="set-launchAtLogin"></label>
-            <label class="row"><div class="row-label"><i data-icon="notes" data-size="17"></i><div><div>Show notes in the taskbar</div><div class="sub">Off keeps your taskbar tidy; use the tray icon instead</div></div></div><input type="checkbox" class="switch" id="set-showInTaskbar"></label>
-            <label class="row"><div class="row-label"><i data-icon="check" data-size="17"></i><div><div>Spell check</div></div></div><input type="checkbox" class="switch" id="set-spellcheck"></label>
-            <label class="row"><div class="row-label"><i data-icon="trash" data-size="17"></i><div><div>Ask before deleting a note</div></div></div><input type="checkbox" class="switch" id="set-confirmDelete"></label>
-            <label class="row"><div class="row-label"><i data-icon="table" data-size="17"></i><div><div>Snap to screen edges and other notes</div></div></div><input type="checkbox" class="switch" id="set-snapToEdges"></label>
-            <label class="row"><div class="row-label"><i data-icon="table" data-size="17"></i><div><div>Snap notes to a grid</div><div class="sub">Lines notes up when you move or resize them; screen edges still win when close</div></div></div><input type="checkbox" class="switch" id="set-snapToGrid"></label>
+            <label class="row"><div class="row-label"><i data-icon="external" data-size="17"></i><div><div data-i18n="manager.openAtLogin">Open at login</div><div class="sub" data-i18n="manager.notesReappearWhenYouSign">Notes reappear when you sign in</div></div></div><input type="checkbox" class="switch" id="set-launchAtLogin"></label>
+            <label class="row"><div class="row-label"><i data-icon="notes" data-size="17"></i><div><div data-i18n="manager.showNotesInTheTaskbar">Show notes in the taskbar</div><div class="sub" data-i18n="manager.offKeepsYourTaskbarTidy">Off keeps your taskbar tidy; use the tray icon instead</div></div></div><input type="checkbox" class="switch" id="set-showInTaskbar"></label>
+            <label class="row"><div class="row-label"><i data-icon="check" data-size="17"></i><div><div data-i18n="manager.spellCheck">Spell check</div></div></div><input type="checkbox" class="switch" id="set-spellcheck"></label>
+            <label class="row"><div class="row-label"><i data-icon="trash" data-size="17"></i><div><div data-i18n="manager.askBeforeDeletingANote">Ask before deleting a note</div></div></div><input type="checkbox" class="switch" id="set-confirmDelete"></label>
+            <label class="row"><div class="row-label"><i data-icon="table" data-size="17"></i><div><div data-i18n="manager.snapToScreenEdgesAnd">Snap to screen edges and other notes</div></div></div><input type="checkbox" class="switch" id="set-snapToEdges"></label>
+            <label class="row"><div class="row-label"><i data-icon="table" data-size="17"></i><div><div data-i18n="manager.snapNotesToAGrid">Snap notes to a grid</div><div class="sub" data-i18n="manager.linesNotesUpWhenYou">Lines notes up when you move or resize them; screen edges still win when close</div></div></div><input type="checkbox" class="switch" id="set-snapToGrid"></label>
             <div class="row">
-              <div class="row-label"><i data-icon="table" data-size="17"></i><div><div>Grid size</div></div></div>
+              <div class="row-label"><i data-icon="table" data-size="17"></i><div><div data-i18n="manager.gridSize">Grid size</div></div></div>
               <div class="range-wrap"><input type="range" id="set-gridSize" min="8" max="64" step="4"><span id="set-gridSize-value">24px</span></div>
             </div>
-            <label class="row"><div class="row-label"><i data-icon="drop" data-size="17"></i><div><div>Solid while hovered</div><div class="sub">Translucent notes become opaque under the mouse</div></div></div><input type="checkbox" class="switch" id="set-opaqueOnHover"></label>
+            <label class="row"><div class="row-label"><i data-icon="drop" data-size="17"></i><div><div data-i18n="manager.solidWhileHovered">Solid while hovered</div><div class="sub" data-i18n="manager.translucentNotesBecomeOpaqueUnder">Translucent notes become opaque under the mouse</div></div></div><input type="checkbox" class="switch" id="set-opaqueOnHover"></label>
             <div class="row">
-              <div class="row-label"><i data-icon="bold" data-size="17"></i><div><div>Formatting toolbar</div><div class="sub" id="tb-mode-sub"></div></div></div>
-              <div class="segmented" id="set-toolbarMode"><button data-v="popup">Pop up</button><button data-v="editing">While editing</button><button data-v="always">Always</button></div>
+              <div class="row-label"><i data-icon="bold" data-size="17"></i><div><div data-i18n="manager.formattingToolbar">Formatting toolbar</div><div class="sub" id="tb-mode-sub"></div></div></div>
+              <div class="segmented" id="set-toolbarMode"><button data-v="popup" data-i18n="manager.popUp">Pop up</button><button data-v="editing" data-i18n="manager.whileEditing">While editing</button><button data-v="always" data-i18n="manager.always">Always</button></div>
             </div>
-            <label class="row"><div class="row-label"><i data-icon="checklist" data-size="17"></i><div><div>Move ticked items to the bottom</div><div class="sub">Off keeps every item where you put it</div></div></div><input type="checkbox" class="switch" id="set-sinkTicked"></label>
+            <label class="row"><div class="row-label"><i data-icon="checklist" data-size="17"></i><div><div data-i18n="manager.moveTickedItemsToThe">Move ticked items to the bottom</div><div class="sub" data-i18n="manager.offKeepsEveryItemWhere">Off keeps every item where you put it</div></div></div><input type="checkbox" class="switch" id="set-sinkTicked"></label>
           </div>
 
-          <h2>Screen snips &amp; pictures</h2>
+          <h2 data-i18n="manager.screenSnipsPictures">Screen snips &amp; pictures</h2>
           <div class="card">
             <div class="row">
-              <div class="row-label"><i data-icon="snip" data-size="17"></i><div><div>Snips go into</div><div class="sub">You can also switch while snipping</div></div></div>
-              <div class="segmented" id="set-snipTarget"><button data-v="new">New note</button><button data-v="last">Last used note</button></div>
+              <div class="row-label"><i data-icon="snip" data-size="17"></i><div><div data-i18n="manager.snipsGoInto">Snips go into</div><div class="sub" data-i18n="manager.youCanAlsoSwitchWhile">You can also switch while snipping</div></div></div>
+              <div class="segmented" id="set-snipTarget"><button data-v="new" data-i18n="manager.newNoteButton">New note</button><button data-v="last" data-i18n="manager.lastUsedNote">Last used note</button></div>
             </div>
-            <label class="row"><div class="row-label"><i data-icon="search" data-size="17"></i><div><div>Find text in pictures</div><div class="sub" id="ocr-sub">Windows reads the words in snips and images so search can find them</div></div></div><input type="checkbox" class="switch" id="set-ocrImages"></label>
+            <label class="row"><div class="row-label"><i data-icon="search" data-size="17"></i><div><div data-i18n="manager.findTextInPictures">Find text in pictures</div><div class="sub" id="ocr-sub" data-i18n="manager.windowsReadsTheWordsIn">Windows reads the words in snips and images so search can find them</div></div></div><input type="checkbox" class="switch" id="set-ocrImages"></label>
           </div>
 
-          <h2 id="privacy">Private notes</h2>
+          <h2 id="privacy" data-i18n="manager.privateNotes">Private notes</h2>
           <div class="card" id="privacy-card"></div>
 
-          <h2 id="opencode">OpenCode</h2>
+          <h2 id="opencode" data-i18n="manager.opencode">OpenCode</h2>
           <div class="card" id="opencode-card"></div>
 
-          <h2>Workspaces</h2>
+          <h2 data-i18n="manager.workspaces">Workspaces</h2>
           <div class="card">
-            <label class="row"><div class="row-label"><i data-icon="layers" data-size="17"></i><div><div>Switch when monitors change</div><div class="sub">Plugging into a dock brings back the layout you used there</div></div></div><input type="checkbox" class="switch" id="set-autoWorkspace"></label>
-            <div class="row note-row">Save layouts from the sidebar. Each workspace remembers changes when you switch away from it.</div>
+            <label class="row"><div class="row-label"><i data-icon="layers" data-size="17"></i><div><div data-i18n="manager.switchWhenMonitorsChange">Switch when monitors change</div><div class="sub" data-i18n="manager.pluggingIntoADockBrings">Plugging into a dock brings back the layout you used there</div></div></div><input type="checkbox" class="switch" id="set-autoWorkspace"></label>
+            <div class="row note-row" data-i18n="manager.saveLayoutsFromTheSidebar">Save layouts from the sidebar. Each workspace remembers changes when you switch away from it.</div>
           </div>
 
-          <h2>Templates</h2>
+          <h2 data-i18n="manager.templates">Templates</h2>
           <div class="card" id="templates-card"></div>
 
-          <h2>Global shortcuts</h2>
+          <h2 data-i18n="manager.globalShortcuts">Global shortcuts</h2>
           <div class="card">
-            <div class="row"><div class="row-label"><i data-icon="plus" data-size="17"></i><div><div>New note</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="newNote"><span class="hk-status" data-hk-status="newNote"></span></div></div>
-            <div class="row"><div class="row-label"><i data-icon="snip" data-size="17"></i><div><div>Snip the screen into a note</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="snip"><span class="hk-status" data-hk-status="snip"></span></div></div>
-            <div class="row"><div class="row-label"><i data-icon="eye" data-size="17"></i><div><div>Bring all notes to front</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="showAll"><span class="hk-status" data-hk-status="showAll"></span></div></div>
-            <div class="row"><div class="row-label"><i data-icon="eyeOff" data-size="17"></i><div><div>Show / hide all notes</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="toggleAll"><span class="hk-status" data-hk-status="toggleAll"></span></div></div>
-            <div class="row"><div class="row-label"><i data-icon="layers" data-size="17"></i><div><div>Next workspace</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="nextWorkspace"><span class="hk-status" data-hk-status="nextWorkspace"></span></div></div>
-            <div class="row note-row">Click a box and press a key combination. Backspace clears it.</div>
+            <div class="row"><div class="row-label"><i data-icon="plus" data-size="17"></i><div><div data-i18n="manager.newNoteButton">New note</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="newNote"><span class="hk-status" data-hk-status="newNote"></span></div></div>
+            <div class="row"><div class="row-label"><i data-icon="snip" data-size="17"></i><div><div data-i18n="manager.snipTheScreenIntoA">Snip the screen into a note</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="snip"><span class="hk-status" data-hk-status="snip"></span></div></div>
+            <div class="row"><div class="row-label"><i data-icon="eye" data-size="17"></i><div><div data-i18n="manager.bringAllNotesToFront">Bring all notes to front</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="showAll"><span class="hk-status" data-hk-status="showAll"></span></div></div>
+            <div class="row"><div class="row-label"><i data-icon="eyeOff" data-size="17"></i><div><div data-i18n="manager.showHideAllNotes">Show / hide all notes</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="toggleAll"><span class="hk-status" data-hk-status="toggleAll"></span></div></div>
+            <div class="row"><div class="row-label"><i data-icon="layers" data-size="17"></i><div><div data-i18n="manager.nextWorkspace">Next workspace</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="nextWorkspace"><span class="hk-status" data-hk-status="nextWorkspace"></span></div></div>
+            <div class="row note-row" data-i18n="manager.clickABoxAndPress">Click a box and press a key combination. Backspace clears it.</div>
           </div>
 
-          <h2>Your notes</h2>
+          <h2 data-i18n="manager.yourNotes">Your notes</h2>
           <div class="card">
-            <button class="row action" id="act-backup"><div class="row-label"><i data-icon="download" data-size="17"></i><div><div>Back up all notes…</div><div class="sub">One file with every note, image and template</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
-            <button class="row action" id="act-restore"><div class="row-label"><i data-icon="upload" data-size="17"></i><div><div>Restore from backup…</div><div class="sub">Adds the backup's notes alongside your current ones</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
-            <button class="row action" id="act-import"><div class="row-label"><i data-icon="notes" data-size="17"></i><div><div>Import text, Markdown or HTML files…</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
-            <button class="row action" id="act-export-md"><div class="row-label"><i data-icon="download" data-size="17"></i><div><div>Export all as Markdown…</div><div class="sub">One .md file per note, pictures in an assets folder</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
-            <button class="row action" id="act-export-txt"><div class="row-label"><i data-icon="download" data-size="17"></i><div><div>Export all as text…</div><div class="sub">One plain .txt file per note</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
-            <button class="row action" id="act-export-json"><div class="row-label"><i data-icon="download" data-size="17"></i><div><div>Export all as JSON…</div><div class="sub">One file other apps and scripts can read</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
-            <button class="row action" id="act-folder"><div class="row-label"><i data-icon="folder" data-size="17"></i><div><div>Open data folder</div><div class="sub" id="data-dir"></div></div></div><i data-icon="external" data-size="16"></i></button>
+            <button class="row action" id="act-backup"><div class="row-label"><i data-icon="download" data-size="17"></i><div><div data-i18n="manager.backUpAllNotes">Back up all notes…</div><div class="sub" data-i18n="manager.oneFileWithEveryNote">One file with every note, image and template</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
+            <button class="row action" id="act-restore"><div class="row-label"><i data-icon="upload" data-size="17"></i><div><div data-i18n="manager.restoreFromBackup">Restore from backup…</div><div class="sub" data-i18n="manager.addsTheBackupsNotesAlongside">Adds the backup's notes alongside your current ones</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
+            <button class="row action" id="act-import"><div class="row-label"><i data-icon="notes" data-size="17"></i><div><div data-i18n="manager.importTextMarkdownOrHtml">Import text, Markdown or HTML files…</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
+            <button class="row action" id="act-export-md"><div class="row-label"><i data-icon="download" data-size="17"></i><div><div data-i18n="manager.exportAllAsMarkdown">Export all as Markdown…</div><div class="sub" data-i18n="manager.oneMdFilePerNote">One .md file per note, pictures in an assets folder</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
+            <button class="row action" id="act-export-txt"><div class="row-label"><i data-icon="download" data-size="17"></i><div><div data-i18n="manager.exportAllAsText">Export all as text…</div><div class="sub" data-i18n="manager.onePlainTxtFilePer">One plain .txt file per note</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
+            <button class="row action" id="act-export-json"><div class="row-label"><i data-icon="download" data-size="17"></i><div><div data-i18n="manager.exportAllAsJson">Export all as JSON…</div><div class="sub" data-i18n="manager.oneFileOtherAppsAnd">One file other apps and scripts can read</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
+            <button class="row action" id="act-folder"><div class="row-label"><i data-icon="folder" data-size="17"></i><div><div data-i18n="manager.openDataFolder">Open data folder</div><div class="sub" id="data-dir"></div></div></div><i data-icon="external" data-size="16"></i></button>
             <div class="row">
-              <div class="row-label"><i data-icon="folder" data-size="17"></i><div><div>Where your notes live</div><div class="sub path-sub" id="data-location"></div></div></div>
-              <div class="inline-btns"><button class="btn" id="act-location-change">Change…</button><button class="btn" id="act-location-reset">Use default</button></div>
+              <div class="row-label"><i data-icon="folder" data-size="17"></i><div><div data-i18n="manager.whereYourNotesLive">Where your notes live</div><div class="sub path-sub" id="data-location"></div></div></div>
+              <div class="inline-btns"><button class="btn" id="act-location-change" data-i18n="manager.change">Change…</button><button class="btn" id="act-location-reset" data-i18n="manager.useDefault">Use default</button></div>
             </div>
-            <div class="row note-row">You can keep notes in a synced folder (Dropbox, OneDrive, iCloud Drive…). Only run OpenStickies on one computer at a time against a synced folder — two copies writing at once can overwrite each other’s changes.</div>
+            <div class="row note-row" data-i18n="manager.youCanKeepNotesIn">You can keep notes in a synced folder (Dropbox, OneDrive, iCloud Drive…). Only run OpenStickies on one computer at a time against a synced folder — two copies writing at once can overwrite each other’s changes.</div>
           </div>
 
-          <h2>Search tips</h2>
+          <h2 data-i18n="manager.searchTips">Search tips</h2>
           <div class="card shortcuts" id="search-tips"></div>
 
-          <h2>Keyboard shortcuts in a note</h2>
+          <h2 data-i18n="manager.keyboardShortcutsInANote">Keyboard shortcuts in a note</h2>
           <div class="card shortcuts" id="shortcuts"></div>
 
-          <h2>Typing shortcuts</h2>
+          <h2 data-i18n="manager.typingShortcuts">Typing shortcuts</h2>
           <div class="card shortcuts" id="md-shortcuts"></div>
 
-          <h2>Reminders</h2>
+          <h2 data-i18n="manager.reminders">Reminders</h2>
           <div class="card">
             <div class="row">
-              <div class="row-label"><i data-icon="bell" data-size="17"></i><div><div>Reminder sound</div><div class="sub">Plays from the note when its reminder goes off</div></div></div>
+              <div class="row-label"><i data-icon="bell" data-size="17"></i><div><div data-i18n="manager.reminderSound">Reminder sound</div><div class="sub" data-i18n="manager.playsFromTheNoteWhen">Plays from the note when its reminder goes off</div></div></div>
               <div class="sound-pick">
                 <select id="set-reminderSound">
-                  <option value="chime">Chime</option>
-                  <option value="soft">Soft</option>
-                  <option value="none">None</option>
+                  <option value="chime" data-i18n="manager.chime">Chime</option>
+                  <option value="soft" data-i18n="manager.soft">Soft</option>
+                  <option value="none" data-i18n="manager.none">None</option>
                 </select>
-                <button class="btn" id="set-reminderSound-test" title="Play the selected sound">Play</button>
+                <button class="btn" id="set-reminderSound-test" title="Play the selected sound" data-i18n-title="manager.playTheSelectedSound" data-i18n="manager.play">Play</button>
               </div>
             </div>
           </div>
@@ -248,12 +267,12 @@
 
   <div class="modal" id="prompt" hidden>
     <form class="dialog" id="prompt-form">
-      <div class="dialog-title" id="prompt-title">Name</div>
+      <div class="dialog-title" id="prompt-title" data-i18n="common.name">Name</div>
       <input type="text" id="prompt-input" maxlength="80">
       <div class="pop-actions">
         <span class="grow"></span>
-        <button class="btn ghost" type="button" id="prompt-cancel">Cancel</button>
-        <button class="btn primary" type="submit" id="prompt-ok">Save</button>
+        <button class="btn ghost" type="button" id="prompt-cancel" data-i18n="common.cancel">Cancel</button>
+        <button class="btn primary" type="submit" id="prompt-ok" data-i18n="common.save">Save</button>
       </div>
     </form>
   </div>

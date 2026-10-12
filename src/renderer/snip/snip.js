@@ -1,4 +1,8 @@
+import { applyTranslations } from '../shared/i18n.js';
 import { escapeHtml } from '../shared/sanitize.js';
+import { t } from '../shared/i18n.js';
+
+applyTranslations();
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);
@@ -14,8 +18,8 @@ async function init() {
   $('shot').src = info.image;
   choice = info.target === 'note' ? 'note' : (info.target === 'last' && info.lastTitle ? 'last' : 'new');
   const opts = info.target === 'note'
-    ? [['note', `Add to “${info.lastTitle}”`]]
-    : [['new', 'New note'], ...(info.lastTitle ? [['last', `Add to “${info.lastTitle}”`]] : [])];
+    ? [['note', t('snip.addTo', { title: info.lastTitle })]]
+    : [['new', t('snip.newNote')], ...(info.lastTitle ? [['last', t('snip.addTo', { title: info.lastTitle })]] : [])];
   $('target').innerHTML = opts.map(([v, label]) => `<button data-v="${v}" class="${v === choice ? 'on' : ''}" title="${escapeHtml(label)}">${escapeHtml(label)}</button>`).join('');
   window.focus();
 }

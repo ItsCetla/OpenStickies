@@ -1,5 +1,8 @@
 // Full-screen image viewer opened by double-clicking an image in a note.
+import { applyTranslations } from '../shared/i18n.js';
 import { hydrateIcons } from '../shared/icons.js';
+
+applyTranslations();
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);

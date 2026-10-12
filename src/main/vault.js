@@ -10,6 +10,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { t: tr } = require('./i18n');
 const { execFile } = require('child_process');
 const { EventEmitter } = require('events');
 const { safeStorage, systemPreferences } = require('electron');
@@ -100,8 +101,8 @@ class Vault extends EventEmitter {
   }
 
   setup(password, hint) {
-    if (this.configured) throw new Error('Private notes are already set up');
-    if (String(password).length < 4) throw new Error('Use at least 4 characters');
+    if (this.configured) throw new Error(tr('vault.alreadySetUp'));
+    if (String(password).length < 4) throw new Error(tr('vault.tooShort'));
     const key = crypto.randomBytes(32);
     const salt = crypto.randomBytes(16).toString('base64');
     this.cfg = { v: 1, id: crypto.randomBytes(8).toString('hex'), salt, wrapped: seal(this._kek(password, salt), key), hint: String(hint || '').slice(0, 120) };
@@ -138,9 +139,9 @@ class Vault extends EventEmitter {
   }
 
   setHello(enabled) {
-    if (!this.unlocked) throw new Error('Unlock private notes first');
+    if (!this.unlocked) throw new Error(tr('vault.unlockFirst'));
     if (enabled) {
-      if (!safeStorage.isEncryptionAvailable()) throw new Error('System data protection is unavailable');
+      if (!safeStorage.isEncryptionAvailable()) throw new Error(tr('vault.noProtection'));
       this.cfg.helloKey = safeStorage.encryptString(this.key.toString('base64')).toString('base64');
     } else delete this.cfg.helloKey;
     this._save();
@@ -148,8 +149,8 @@ class Vault extends EventEmitter {
   }
 
   changePassword(newPassword, hint) {
-    if (!this.unlocked) throw new Error('Unlock private notes first');
-    if (String(newPassword).length < 4) throw new Error('Use at least 4 characters');
+    if (!this.unlocked) throw new Error(tr('vault.unlockFirst'));
+    if (String(newPassword).length < 4) throw new Error(tr('vault.tooShort'));
     const salt = crypto.randomBytes(16).toString('base64');
     this.cfg.salt = salt;
     this.cfg.wrapped = seal(this._kek(newPassword, salt), this.key);
@@ -173,13 +174,13 @@ class Vault extends EventEmitter {
 
   // ---------- content ----------
   encryptText(text) {
-    if (!this.key) throw new Error('Private notes are locked');
+    if (!this.key) throw new Error(tr('vault.locked'));
     this.touch();
     return seal(this.key, Buffer.from(String(text), 'utf8'));
   }
 
   decryptText(box) {
-    if (!this.key) throw new Error('Private notes are locked');
+    if (!this.key) throw new Error(tr('vault.locked'));
     return open(this.key, box).toString('utf8');
   }
 

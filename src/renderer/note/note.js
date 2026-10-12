@@ -9,6 +9,7 @@ import { IS_MAC, MOD_KEY, keyLabel, localizeKeys } from '../shared/keys.js';
 import { HoverPreview } from './chips.js';
 import { urgency, relativeLabel, playChime } from '../shared/reminder.js';
 import palette from '../shared/colors.json' with { type: 'json' };
+import { applyTranslations, refreshI18n, t as tr, tp, lang as uiLang, colorName, fontName, gradientName } from '../shared/i18n.js';
 import { GRADIENT_PRESETS, deriveColors, deriveGradientColors, gradientCss, safeBackground, isHex } from '../shared/backgrounds.js';
 
 const api = window.stickies;
@@ -36,9 +37,10 @@ let pendingReminderFired = false;
 // Toolbar buttons collapse into the "more" popover in this order as the note gets narrower.
 const COLLAPSE_ORDER = ['table', 'strikeThrough', 'underline', 'link', 'insertOrderedList', 'style', 'image', 'color', 'checklist', 'insertUnorderedList', 'italic'];
 
+applyTranslations();
 hydrateIcons();
 localizeKeys();
-$('lock-hello').lastChild.textContent = ` ${unlockMethodLabel()}`;
+$('lock-hello-label').textContent = unlockMethodLabel();
 
 const editor = new Editor($('editor'), {
   api,
@@ -61,7 +63,7 @@ new HoverPreview($('hover-card'), {
 
 init().catch((err) => {
   console.error(err);
-  toast('Something went wrong loading this note');
+  toast(tr('note.loadFailed'));
 });
 
 async function init() {
@@ -150,10 +152,10 @@ function applyState() {
   const pin = $('btn-pin');
   pin.classList.toggle('on', !!note.pinned);
   pin.innerHTML = icon(note.pinned ? 'pinFilled' : 'pin');
-  pin.title = keyLabel(note.pinned ? 'Stop keeping on top (Ctrl+Shift+P)' : 'Keep on top (Ctrl+Shift+P)');
+  pin.title = keyLabel(tr(note.pinned ? 'note.stopKeepOnTopHint' : 'note.keepOnTopHint'));
   const roll = $('btn-roll');
   roll.innerHTML = icon(note.rolled ? 'chevronDown' : 'chevronUp');
-  roll.title = note.rolled ? 'Unroll (double-click title bar)' : 'Roll up (double-click title bar)';
+  roll.title = tr(note.rolled ? 'note.unrollHint' : 'note.rollUpHint');
   $('ind-lock').hidden = !note.locked;
   if (note.locked) closePops();
   $('ind-private').hidden = !note.private;
@@ -161,7 +163,7 @@ function applyState() {
   $('lockscreen').hidden = !(note.private && privateLocked);
   if (note.private && privateLocked) {
     $('lock-hello').hidden = !(vaultState.hello && vaultState.helloAvailable);
-    $('lock-hint').textContent = vaultState.hint ? `Hint: ${vaultState.hint}` : '';
+    $('lock-hint').textContent = vaultState.hint ? tr('note.hint', { hint: vaultState.hint }) : '';
   }
   renderTabs(); // locking hides the close and + buttons
 }
@@ -171,7 +173,7 @@ function updateTitle(text) {
   const title = line.length > 80 ? line.slice(0, 77) + '…' : line;
   const tab = tabs && tabs[activeTab];
   const named = tab && tab.renamed ? tab.title : title;
-  const shown = note && note.private && privateLocked ? 'Private note' : named || 'Sticky note';
+  const shown = note && note.private && privateLocked ? tr('note.privateNote') : named || tr('note.stickyNote');
   document.title = shown;
   $('title-text').textContent = shown;
   return title;
@@ -183,7 +185,7 @@ function updateProgress() {
   const p = privateLocked ? { total: 0, done: 0 } : progress(editor.el);
   pill.hidden = !p.total;
   pill.textContent = `${p.done}/${p.total}`;
-  pill.title = `${p.done} of ${p.total} done`;
+  pill.title = tr('note.progressDone', { done: p.done, total: p.total });
   pill.classList.toggle('complete', p.total > 0 && p.done === p.total);
   return p;
 }
@@ -243,15 +245,15 @@ function buildStaticUi() {
   const sw = $('note-swatches');
   sw.innerHTML = palette.order.map(k => {
     const n = palette.notes[k];
-    return `<button class="swatch" data-color="${k}" title="${n.name}" style="background:${n.light.bg};box-shadow:inset 0 -9px 0 ${n.swatch}"></button>`;
+    return `<button class="swatch" data-color="${k}" title="${escapeHtml(colorName(n.name))}" style="background:${n.light.bg};box-shadow:inset 0 -9px 0 ${n.swatch}"></button>`;
   }).join('');
-  sw.insertAdjacentHTML('beforeend', '<button class="swatch-custom" id="swatch-custom" title="Custom background…" aria-label="Custom background…"></button>');
+  sw.insertAdjacentHTML('beforeend', `<button class="swatch-custom" id="swatch-custom" title="${escapeHtml(tr('note.customBackground'))}" aria-label="${escapeHtml(tr('note.customBackground'))}"></button>`);
 
-  $('font-select').innerHTML = palette.fonts.map(f => `<option value="${f.id}" style="font-family:${f.css.replace(/"/g, "'")}">${f.name}</option>`).join('');
+  $('font-select').innerHTML = palette.fonts.map(f => `<option value="${f.id}" style="font-family:${f.css.replace(/"/g, "'")}">${escapeHtml(fontName(f))}</option>`).join('');
 
-  const chip = (c, kind) => `<button class="color-chip" data-${kind}="${c.value}" title="${c.name}" style="${kind === 'text' ? `color:${c.value};background:var(--pop-bg)` : `background:${c.value};color:#1d1d1d`}">A</button>`;
-  $('text-colors').innerHTML = `<button class="color-chip none" data-text="" title="Default color">A</button>` + palette.text.map(c => chip(c, 'text')).join('');
-  $('hl-colors').innerHTML = `<button class="color-chip none" data-hl="" title="No highlight">⌀</button>` + palette.highlight.map(c => chip(c, 'hl')).join('');
+  const chip = (c, kind) => `<button class="color-chip" data-${kind}="${c.value}" title="${escapeHtml(colorName(c.name))}" style="${kind === 'text' ? `color:${c.value};background:var(--pop-bg)` : `background:${c.value};color:#1d1d1d`}">A</button>`;
+  $('text-colors').innerHTML = `<button class="color-chip none" data-text="" title="${escapeHtml(tr('note.defaultColor'))}">A</button>` + palette.text.map(c => chip(c, 'text')).join('');
+  $('hl-colors').innerHTML = `<button class="color-chip none" data-hl="" title="${escapeHtml(tr('note.noHighlight'))}">⌀</button>` + palette.highlight.map(c => chip(c, 'hl')).join('');
 
   const grid = $('table-grid');
   grid.innerHTML = Array.from({ length: 36 }, (_, i) => `<span data-r="${Math.floor(i / 6) + 1}" data-c="${(i % 6) + 1}"></span>`).join('');
@@ -261,7 +263,7 @@ function buildStaticUi() {
     const r = +s.dataset.r;
     const c = +s.dataset.c;
     for (const cell of grid.children) cell.classList.toggle('on', +cell.dataset.r <= r && +cell.dataset.c <= c);
-    $('table-label').textContent = `Insert ${r} × ${c} table`;
+    $('table-label').textContent = tr('note.insertTableSize', { rows: r, cols: c });
   });
   grid.addEventListener('click', (e) => {
     const s = e.target.closest('span');
@@ -392,15 +394,16 @@ function preparePop(name) {
     $('chk-lock').classList.toggle('on', !!note.locked);
     $('chk-roll').classList.toggle('on', !!note.rolled);
     $('menu-reminder-hint').textContent = note.reminder ? shortTime(note.reminder.snoozeAt || note.reminder.at) : '';
-    $('menu-private-label').textContent = note.private ? 'Make not private' : 'Make private…';
+    $('menu-private-label').textContent = tr(note.private ? 'note.makeNotPrivate' : 'note.makePrivateMenu');
     $('menu-history').hidden = !!note.private;
     $('menu-snip-hint').textContent = prettyKey(settings.hotkeys && settings.hotkeys.snip);
     fillTemplatesMenu();
     fillBacklinks();
     const text = editor.getText();
     const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
-    const d = (t) => new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-    $('menu-stats').innerHTML = `${words.toLocaleString()} word${words === 1 ? '' : 's'} · ${text.length.toLocaleString()} characters<br>Created ${d(note.createdAt)}<br>Edited ${d(note.updatedAt)}`;
+    const d = (t) => new Date(t).toLocaleString(uiLang(), { dateStyle: 'medium', timeStyle: 'short' });
+    $('menu-stats').innerHTML = escapeHtml(`${tp('note.words', words)} · ${tr('note.characters', { count: text.length.toLocaleString(uiLang()) })}`)
+      + '<br>' + escapeHtml(tr('note.created', { date: d(note.createdAt) })) + '<br>' + escapeHtml(tr('note.edited', { date: d(note.updatedAt) }));
     $('menu-new-tab').hidden = !!note.private;
     $('menu-new-tab').disabled = !!(tabs && tabs.length >= MAX_TABS);
   } else if (name === 'link') {
@@ -416,7 +419,7 @@ function preparePop(name) {
     $('reminder-clear').hidden = !r;
   } else if (name === 'table') {
     for (const cell of $('table-grid').children) cell.classList.remove('on');
-    $('table-label').textContent = 'Insert table';
+    $('table-label').textContent = tr('note.insertTable');
   } else if (name === 'bg') {
     prepareBgPop();
   }
@@ -520,12 +523,12 @@ async function menuAction(action) {
     case 'export-txt': exportAs('txt'); break;
     case 'export-json': exportAs('json'); break;
     case 'print': exportAs('print'); break;
-    case 'copy-md': closePops(); await navigator.clipboard.writeText(htmlToMarkdown(editor.el)); toast('Copied as Markdown'); break;
-    case 'copy-text': closePops(); await navigator.clipboard.writeText(editor.getText()); toast('Copied as plain text'); break;
+    case 'copy-md': closePops(); await navigator.clipboard.writeText(htmlToMarkdown(editor.el)); toast(tr('note.copiedMarkdown')); break;
+    case 'copy-text': closePops(); await navigator.clipboard.writeText(editor.getText()); toast(tr('note.copiedText')); break;
     case 'duplicate': closePops(); await flush(); api.duplicate(); break;
     case 'toggle-private': togglePrivate(); break;
     case 'snip': closePops(); await flush(); api.startSnip('this'); break;
-    case 'history': closePops(); await flush(); if (!(await api.openHistory())) toast('Private notes don’t keep version history'); break;
+    case 'history': closePops(); await flush(); if (!(await api.openHistory())) toast(tr('note.noHistoryPrivate')); break;
     case 'save-template': saveAsTemplate(); break;
     case 'list': closePops(); api.showManager(); break;
     case 'delete': closePops(); deleteNote(); break;
@@ -551,13 +554,13 @@ function setColor(color) {
 function togglePin() {
   patchNote({ pinned: !note.pinned });
   applyState();
-  toast(note.pinned ? 'Keeping this note on top' : 'No longer on top');
+  toast(tr(note.pinned ? 'note.keepingOnTop' : 'note.noLongerOnTop'));
 }
 
 function toggleLock() {
   patchNote({ locked: !note.locked });
   applyState();
-  toast(note.locked ? 'Note locked in place — checkboxes still work' : 'Note unlocked');
+  toast(tr(note.locked ? 'note.lockedToast' : 'note.unlockedToast'));
   if (!note.locked) editor.focus();
 }
 
@@ -566,7 +569,7 @@ function setZoom(z) {
   if (zoom === note.zoom) return;
   patchNote({ zoom });
   applyAppearance();
-  toast(`Zoom ${Math.round(zoom * 100)}%`);
+  toast(tr('note.zoom', { percent: Math.round(zoom * 100) }));
 }
 
 async function closeNote() {
@@ -592,9 +595,9 @@ async function exportAs(format) {
   const payload = { html: editor.exportHTML(), text: editor.exportText(), markdown: htmlToMarkdown(editor.el) };
   try {
     const res = await api.exportNote(format, payload);
-    if (res && res.ok && res.filePath) toast(`Saved ${res.filePath.split(/[\\/]/).pop()}`);
+    if (res && res.ok && res.filePath) toast(tr('note.savedFile', { name: res.filePath.split(/[\\/]/).pop() }));
   } catch (err) {
-    toast(`Export failed: ${err.message || err}`);
+    toast(tr('note.exportFailed', { error: err.message || err }));
   }
 }
 
@@ -610,7 +613,7 @@ function openLink(anchorBtn, anchorEl) {
 
 $('link-save').addEventListener('click', () => {
   const url = $('link-url').value;
-  if (!normalizeUrl(url)) { $('link-url').focus(); toast('Enter a web address or email'); return; }
+  if (!normalizeUrl(url)) { $('link-url').focus(); toast(tr('note.enterAddress')); return; }
   const ctx = { ...linkCtx, text: $('link-text').value, url };
   linkCtx = null;
   closePops();
@@ -645,22 +648,27 @@ function shortTime(t) {
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
   const tomorrow = new Date(now.getTime() + 86400000).toDateString() === d.toDateString();
-  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const time = d.toLocaleTimeString(uiLang(), { hour: 'numeric', minute: '2-digit' });
   if (sameDay) return time;
-  if (tomorrow) return `Tomorrow ${time}`;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + time;
+  if (tomorrow) return tr('reminder.tomorrow', { time });
+  return d.toLocaleDateString(uiLang(), { month: 'short', day: 'numeric' }) + ' ' + time;
 }
 
-const REPEAT_LABEL = { daily: 'every day', weekdays: 'every weekday', weekly: 'every week', monthly: 'every month' };
+const REPEATS = ['daily', 'weekdays', 'weekly', 'monthly'];
+const repeatLabel = (repeat) => (REPEATS.includes(repeat) ? tr(`note.repeat.${repeat}`) : '');
 
 function updateReminderUi() {
   const r = note.reminder;
   const ind = $('ind-reminder');
   ind.hidden = !r;
   ind.classList.toggle('due', !!(r && r.pending));
-  if (r) ind.title = `Reminder: ${shortTime(r.snoozeAt || r.at)}${REPEAT_LABEL[r.repeat] ? ', ' + REPEAT_LABEL[r.repeat] : ''}`;
+  if (r) {
+    const when = shortTime(r.snoozeAt || r.at);
+    const rep = repeatLabel(r.repeat);
+    ind.title = tr('note.reminderTitle', { when: rep ? tr('note.withRepeat', { when, repeat: rep }) : when });
+  }
   $('reminder-banner').hidden = !(r && r.pending);
-  if (r && r.pending) $('reminder-banner-text').textContent = `Reminder${note.title ? ': ' + note.title : ''}`;
+  if (r && r.pending) $('reminder-banner-text').textContent = note.title ? tr('note.reminderBanner', { title: note.title }) : tr('note.reminder');
   refreshReminderStrip();
 }
 
@@ -673,7 +681,7 @@ function refreshReminderStrip() {
   if (!r) return;
   const text = relativeLabel(r);
   $('reminder-strip-text').textContent = text;
-  $('reminder-strip-open').title = `Reminder: ${shortTime(r.snoozeAt || r.at)} (click to change)`;
+  $('reminder-strip-open').title = tr('note.reminderStripTitle', { when: shortTime(r.snoozeAt || r.at) });
 }
 
 // Relative times ("in 2h 15m") and the urgency colour drift as time passes.
@@ -685,7 +693,7 @@ function onReminderFired() {
 }
 
 $('reminder-strip-open').addEventListener('click', (e) => openPop('reminder', e.currentTarget, 'below'));
-$('reminder-strip-clear').addEventListener('click', () => { patchNote({ reminder: null }); updateReminderUi(); toast('Reminder removed'); });
+$('reminder-strip-clear').addEventListener('click', () => { patchNote({ reminder: null }); updateReminderUi(); toast(tr('note.reminderRemoved')); });
 
 $('reminder-quick').addEventListener('click', (e) => {
   const b = e.target.closest('.chip');
@@ -704,14 +712,14 @@ $('reminder-quick').addEventListener('click', (e) => {
 
 $('reminder-save').addEventListener('click', () => {
   const at = new Date($('reminder-at').value).getTime();
-  if (!Number.isFinite(at)) { toast('Pick a date and time'); return; }
-  if (at <= Date.now()) { toast('Pick a time in the future'); return; }
+  if (!Number.isFinite(at)) { toast(tr('note.pickDateTime')); return; }
+  if (at <= Date.now()) { toast(tr('note.pickFuture')); return; }
   patchNote({ reminder: { at, repeat: $('reminder-repeat').value, pending: false, snoozeAt: null, dom: new Date(at).getDate(), setAt: Date.now() } });
   updateReminderUi();
   closePops();
-  toast(`I'll remind you ${shortTime(at).startsWith('Tomorrow') ? '' : 'at '}${shortTime(at)}`);
+  toast(tr(new Date(Date.now() + 86400000).toDateString() === new Date(at).toDateString() ? 'note.remindWhen' : 'note.remindAt', { time: shortTime(at) }));
 });
-$('reminder-clear').addEventListener('click', () => { patchNote({ reminder: null }); updateReminderUi(); closePops(); toast('Reminder removed'); });
+$('reminder-clear').addEventListener('click', () => { patchNote({ reminder: null }); updateReminderUi(); closePops(); toast(tr('note.reminderRemoved')); });
 $('reminder-cancel').addEventListener('click', closePops);
 
 $('btn-dismiss').addEventListener('click', () => {
@@ -726,7 +734,7 @@ $('btn-snooze').addEventListener('click', () => {
   const later = Date.now() + 10 * 60000;
   patchNote({ reminder: r.repeat && r.repeat !== 'none' ? { ...r, pending: false, snoozeAt: later, setAt: Date.now() } : { ...r, at: later, pending: false, snoozeAt: null, setAt: Date.now() } });
   updateReminderUi();
-  toast('Snoozed for 10 minutes');
+  toast(tr('note.snoozed'));
 });
 
 // ---------- HTML source mode ----------
@@ -738,7 +746,7 @@ function prettyHtml(html) {
 
 function enterSource() {
   closePops();
-  if (note.locked) { toast('Unlock the note to edit its HTML'); return; }
+  if (note.locked) { toast(tr('note.unlockToEditHtml')); return; }
   $('source').value = prettyHtml(editor.getHTML());
   body.classList.add('source-mode');
   $('source').hidden = false;
@@ -788,7 +796,7 @@ function openFind() {
 function runFind() {
   const q = $('find-input').value;
   const n = editor.findAll(q);
-  $('find-count').textContent = q ? (n ? `${editor.find.index + 1} of ${n}` : 'No results') : '';
+  $('find-count').textContent = q ? (n ? tr('note.findCount', { index: editor.find.index + 1, total: n }) : tr('note.noResults')) : '';
 }
 
 function closeFind(select = true) {
@@ -805,7 +813,7 @@ $('find-input').addEventListener('keydown', (e) => {
     e.preventDefault();
     editor.findStep(e.shiftKey ? -1 : 1);
     const n = editor.find.ranges.length;
-    if (n) $('find-count').textContent = `${editor.find.index + 1} of ${n}`;
+    if (n) $('find-count').textContent = tr('note.findCount', { index: editor.find.index + 1, total: n });
   } else if (e.key === 'Escape') {
     e.preventDefault();
     e.stopPropagation();
@@ -817,7 +825,7 @@ $('find-prev').addEventListener('click', () => { editor.findStep(-1); runFindCou
 $('find-close').addEventListener('click', () => closeFind(false));
 function runFindCount() {
   const n = editor.find.ranges.length;
-  if (n) $('find-count').textContent = `${editor.find.index + 1} of ${n}`;
+  if (n) $('find-count').textContent = tr('note.findCount', { index: editor.find.index + 1, total: n });
 }
 
 // ---------- search matches carried over from the notes list ----------
@@ -1028,7 +1036,9 @@ api.onVault((status) => {
   applyState();
 });
 
-api.onSettings(({ settings: s, theme: t }) => {
+api.onSettings(async ({ settings: s, theme: t }) => {
+  // A new UI language reloads the window (after saving) so every string is rebuilt in it.
+  if (refreshI18n()) { if (note) await flush(); location.reload(); return; }
   if (!note) return;
   settings = s;
   theme = t;
@@ -1068,10 +1078,10 @@ api.onCommand(({ cmd, arg }) => {
       const list = topChecklist(target, editor.el);
       if (arg === 'daily' || arg === 'weekly' || arg === 'never') {
         setReset(list, arg);
-        toast(arg === 'never' ? 'This list won’t untick by itself' : `Ticks clear ${arg === 'daily' ? 'every day' : 'every Monday'}`);
+        toast(tr(arg === 'never' ? 'note.neverUntick' : arg === 'daily' ? 'note.ticksClearDaily' : 'note.ticksClearWeekly'));
       } else if (arg === 'clear') {
         const n = clearTicked(list || editor.el);
-        toast(n ? `Removed ${n} ticked item${n === 1 ? '' : 's'}` : 'Nothing ticked to remove');
+        toast(n ? tp('note.removedTicked', n) : tr('note.nothingTicked'));
       } else if (arg === 'sink') {
         for (const li of [...(list || editor.el).querySelectorAll('ul.checklist > li.checked')]) sinkItem(li);
       }
@@ -1079,7 +1089,7 @@ api.onCommand(({ cmd, arg }) => {
       break;
     }
     case 'copy-image-text':
-      if (target && target.alt) { navigator.clipboard.writeText(target.alt); toast('Copied the text in the picture'); }
+      if (target && target.alt) { navigator.clipboard.writeText(target.alt); toast(tr('note.copiedPictureText')); }
       break;
     case 'format': if (arg === 'clear') editor.command('removeFormat'); break;
     case 'new-tab': newTab(); break;
@@ -1099,26 +1109,26 @@ let titlesCache = null;
 let templatesCache = null;
 
 const SLASH = [
-  { label: 'Title', icon: 'heading', keywords: 'h1 heading big', run: () => editor.command('block', 'h1') },
-  { label: 'Heading', icon: 'heading', keywords: 'h2', run: () => editor.command('block', 'h2') },
-  { label: 'Subheading', icon: 'heading', keywords: 'h3', run: () => editor.command('block', 'h3') },
-  { label: 'Normal text', icon: 'textSize', keywords: 'paragraph plain', run: () => editor.command('block', 'p') },
-  { label: 'Checklist', icon: 'checklist', keywords: 'todo task tick box', run: () => editor.command('checklist') },
-  { label: 'Bulleted list', icon: 'listUl', keywords: 'bullet', run: () => editor.command('insertUnorderedList') },
-  { label: 'Numbered list', icon: 'listOl', keywords: 'ordered number', run: () => editor.command('insertOrderedList') },
-  { label: 'Quote', icon: 'quote', keywords: 'blockquote', run: () => editor.command('block', 'blockquote') },
-  { label: 'Code block', icon: 'codeBlock', keywords: 'pre code', run: () => editor.command('block', 'pre') },
-  { label: 'Divider', icon: 'hr', keywords: 'line rule separator', run: () => editor.command('hr') },
-  { label: 'Table', icon: 'table', keywords: 'grid', run: () => editor.insertTable(3, 3) },
-  { label: 'Image…', icon: 'image', keywords: 'picture photo', run: () => runCmd('image') },
-  { label: 'Screen snip', icon: 'snip', keywords: 'screenshot capture', run: async () => { await flush(); api.startSnip('this'); } },
-  { label: 'Link to note', icon: 'notes', keywords: 'wiki note [[', run: () => editor.insertPlainText('[[') },
-  { label: 'Web link…', icon: 'link', keywords: 'url', run: () => openLink(null) },
-  { label: 'Tag', icon: 'hash', keywords: '# label', run: () => editor.insertPlainText('#') },
-  { label: 'Date', icon: 'calendar', keywords: 'today', run: () => editor.insertPlainText(new Date().toLocaleDateString(undefined, { dateStyle: 'medium' })) },
-  { label: 'Time', icon: 'clock', keywords: 'now', run: () => editor.insertPlainText(new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })) },
-  { label: 'Date and time', icon: 'calendarClock', keywords: 'now', run: () => editor.command('date') },
-  { label: 'Reminder…', icon: 'bell', keywords: 'alarm remind', run: () => openPop('reminder', $('btn-menu'), 'below') }
+  { label: tr('slash.title'), icon: 'heading', keywords: 'h1 heading big', run: () => editor.command('block', 'h1') },
+  { label: tr('slash.heading'), icon: 'heading', keywords: 'h2', run: () => editor.command('block', 'h2') },
+  { label: tr('slash.subheading'), icon: 'heading', keywords: 'h3', run: () => editor.command('block', 'h3') },
+  { label: tr('slash.normal'), icon: 'textSize', keywords: 'paragraph plain', run: () => editor.command('block', 'p') },
+  { label: tr('slash.checklist'), icon: 'checklist', keywords: 'todo task tick box', run: () => editor.command('checklist') },
+  { label: tr('slash.bulleted'), icon: 'listUl', keywords: 'bullet', run: () => editor.command('insertUnorderedList') },
+  { label: tr('slash.numbered'), icon: 'listOl', keywords: 'ordered number', run: () => editor.command('insertOrderedList') },
+  { label: tr('slash.quote'), icon: 'quote', keywords: 'blockquote', run: () => editor.command('block', 'blockquote') },
+  { label: tr('slash.code'), icon: 'codeBlock', keywords: 'pre code', run: () => editor.command('block', 'pre') },
+  { label: tr('slash.divider'), icon: 'hr', keywords: 'line rule separator', run: () => editor.command('hr') },
+  { label: tr('slash.table'), icon: 'table', keywords: 'grid', run: () => editor.insertTable(3, 3) },
+  { label: tr('slash.image'), icon: 'image', keywords: 'picture photo', run: () => runCmd('image') },
+  { label: tr('slash.snip'), icon: 'snip', keywords: 'screenshot capture', run: async () => { await flush(); api.startSnip('this'); } },
+  { label: tr('slash.noteLink'), icon: 'notes', keywords: 'wiki note [[', run: () => editor.insertPlainText('[[') },
+  { label: tr('slash.webLink'), icon: 'link', keywords: 'url', run: () => openLink(null) },
+  { label: tr('slash.tag'), icon: 'hash', keywords: '# label', run: () => editor.insertPlainText('#') },
+  { label: tr('slash.date'), icon: 'calendar', keywords: 'today', run: () => editor.insertPlainText(new Date().toLocaleDateString(uiLang(), { dateStyle: 'medium' })) },
+  { label: tr('slash.time'), icon: 'clock', keywords: 'now', run: () => editor.insertPlainText(new Date().toLocaleTimeString(uiLang(), { hour: 'numeric', minute: '2-digit' })) },
+  { label: tr('slash.dateTime'), icon: 'calendarClock', keywords: 'now', run: () => editor.command('date') },
+  { label: tr('slash.reminder'), icon: 'bell', keywords: 'alarm remind', run: () => openPop('reminder', $('btn-menu'), 'below') }
 ];
 
 function setupSmarts() {
@@ -1143,8 +1153,8 @@ async function tagSource(q) {
     tagsCache = [...known, ...[...here].map(tag => ({ tag, count: 1 }))];
   }
   const query = q.toLowerCase();
-  const items = rank(tagsCache.map(t => ({ label: `#${t.tag}`, sub: `${t.count} note${t.count === 1 ? '' : 's'}`, icon: 'hash', tag: t.tag })), query, it => it.tag);
-  if (query && !tagsCache.some(t => t.tag === query)) items.push({ label: `#${q}`, sub: 'New tag', icon: 'plus', tag: q });
+  const items = rank(tagsCache.map(t => ({ label: `#${t.tag}`, sub: tp('note.tagNotes', t.count), icon: 'hash', tag: t.tag })), query, it => it.tag);
+  if (query && !tagsCache.some(t => t.tag === query)) items.push({ label: `#${q}`, sub: tr('note.newTag'), icon: 'plus', tag: q });
   return items;
 }
 
@@ -1156,8 +1166,8 @@ function pickTag(item, q, range) {
 async function linkSource(q) {
   if (!titlesCache) titlesCache = await api.noteTitles();
   const items = rank(titlesCache.map(n => ({ label: n.title, id: n.id, color: palette.notes[n.color] ? palette.notes[n.color].swatch : null })), q, it => it.label);
-  if (q.trim()) items.push({ label: `Create note “${q.trim()}”`, icon: 'plus', create: q.trim() });
-  return items.length ? items : [{ label: 'Type a note title…', icon: 'notes', disabled: true }];
+  if (q.trim()) items.push({ label: tr('note.createNoteNamed', { title: q.trim() }), icon: 'plus', create: q.trim() });
+  return items.length ? items : [{ label: tr('note.typeNoteTitle'), icon: 'notes', disabled: true }];
 }
 
 async function pickLink(item, q, range) {
@@ -1166,7 +1176,7 @@ async function pickLink(item, q, range) {
   if (item.create) {
     const created = await api.createLinkedNote(item.create);
     editor.insertNoteLink(range, created.id, created.title);
-    toast(`Created “${created.title}”`);
+    toast(tr('note.createdNamed', { title: created.title }));
   } else {
     editor.insertNoteLink(range, item.id, item.label);
   }
@@ -1174,7 +1184,7 @@ async function pickLink(item, q, range) {
 
 async function slashSource(q) {
   if (!templatesCache) templatesCache = await api.listTemplates();
-  const templates = templatesCache.map(t => ({ label: t.name, sub: 'Template', icon: 'template', keywords: 'template', template: t.id }));
+  const templates = templatesCache.map(t => ({ label: t.name, sub: tr('slash.template'), icon: 'template', keywords: 'template', template: t.id }));
   return rank([...SLASH, ...templates], q);
 }
 
@@ -1192,7 +1202,7 @@ async function pickSlash(item, q, range) {
 
 async function openNoteLink(id) {
   const r = await api.openNoteLink(id);
-  if (!r.ok) toast(r.reason === 'trashed' ? 'That note is in the Trash' : 'That note no longer exists');
+  if (!r.ok) toast(tr(r.reason === 'trashed' ? 'note.linkTrashed' : 'note.linkMissing'));
 }
 
 async function fillTemplatesMenu() {
@@ -1200,7 +1210,7 @@ async function fillTemplatesMenu() {
   templatesCache = list;
   $('sub-templates').innerHTML = list.length
     ? list.map(t => `<button class="menu-item" data-template="${t.id}"><span class="sg-dot" style="background:${(palette.notes[t.color] || palette.notes.yellow).swatch}"></span><span>${escapeHtml(t.name)}</span></button>`).join('')
-    : '<div class="menu-foot">No templates yet — use “Save as template…”</div>';
+    : `<div class="menu-foot">${escapeHtml(tr('note.noTemplates'))}</div>`;
 }
 
 async function fillBacklinks() {
@@ -1215,22 +1225,22 @@ function prettyKey(acc) {
 
 // What the lock screen's quick-unlock button is called on this platform.
 function unlockMethodLabel() {
-  return IS_MAC ? 'Use Touch ID' : api.platform === 'win32' ? 'Use Windows Hello' : 'Use quick unlock';
+  return tr(IS_MAC ? 'note.useTouchId' : api.platform === 'win32' ? 'note.useWindowsHello' : 'note.useQuickUnlock');
 }
 
 // ---------- templates ----------
 async function saveAsTemplate() {
   closePops();
   if (privateLocked) return;
-  const name = await promptDialog({ title: 'Save as template', value: note.title || 'My template', ok: 'Save' });
+  const name = await promptDialog({ title: tr('note.saveAsTemplateTitle'), value: note.title || tr('note.myTemplate'), ok: tr('common.save') });
   if (!name) return;
   await flush();
   await api.saveTemplate({ name, html: editor.getHTML(), color: note.color });
   templatesCache = null;
-  toast(`Saved template “${name}” — type / to use it`);
+  toast(tr('note.templateSaved', { name }));
 }
 
-function promptDialog({ title, value = '', ok = 'OK', password = false }) {
+function promptDialog({ title, value = '', ok = tr('common.ok'), password = false }) {
   return new Promise((resolve) => {
     const modal = $('prompt');
     const input = $('prompt-input');
@@ -1265,24 +1275,24 @@ async function togglePrivate() {
   vaultState = await api.vaultStatus();
   if (!note.private) {
     if (!vaultState.configured) {
-      toast('First choose a password for private notes');
+      toast(tr('note.choosePasswordFirst'));
       api.showManager('privacy');
       return;
     }
     if (!vaultState.unlocked) {
-      const pw = await promptDialog({ title: 'Password for private notes', ok: 'Unlock', password: true });
+      const pw = await promptDialog({ title: tr('note.passwordForPrivate'), ok: tr('note.unlock'), password: true });
       if (!pw) return;
-      if (!(await api.vaultUnlock(pw))) { toast('That password isn’t right'); return; }
+      if (!(await api.vaultUnlock(pw))) { toast(tr('note.wrongPassword')); return; }
     }
     await flush();
     const r = await api.setPrivate(true);
-    if (r && r.ok) toast('Private: encrypted, and hidden from search until unlocked');
-    else if (r && r.reason === 'tabs') toast('Close the other tabs first — a private note keeps to one page');
+    if (r && r.ok) toast(tr('note.privateOn'));
+    else if (r && r.reason === 'tabs') toast(tr('note.privateTabs'));
   } else {
-    if (!vaultState.unlocked) { toast('Unlock private notes first'); return; }
+    if (!vaultState.unlocked) { toast(tr('note.unlockPrivateFirst')); return; }
     await flush();
     const r = await api.setPrivate(false);
-    if (r && r.ok) toast('This note is no longer private');
+    if (r && r.ok) toast(tr('note.privateOff'));
   }
 }
 
@@ -1292,7 +1302,7 @@ $('lock-form').addEventListener('submit', async (e) => {
   const ok = await api.vaultUnlock(input.value);
   input.value = '';
   if (!ok) {
-    $('lock-sub').textContent = 'That password isn’t right. Try again.';
+    $('lock-sub').textContent = tr('note.wrongPasswordRetry');
     const ls = $('lockscreen');
     ls.classList.remove('shake');
     void ls.offsetWidth;
@@ -1301,7 +1311,7 @@ $('lock-form').addEventListener('submit', async (e) => {
   }
 });
 $('lock-hello').addEventListener('click', async () => {
-  if (!(await api.vaultUnlockHello())) toast(`${IS_MAC ? 'Touch ID' : 'Windows Hello'} didn’t unlock your notes`);
+  if (!(await api.vaultUnlockHello())) toast(tr(IS_MAC ? 'note.touchIdFailed' : 'note.helloFailed'));
 });
 $('ind-private').addEventListener('click', async () => {
   if (!privateLocked) { await flush(); api.vaultLock(); }
@@ -1382,15 +1392,15 @@ function renderTabs() {
   let html = '';
   tabs.forEach((t, i) => {
     const on = i === activeTab;
-    const name = tabName(t) || 'New tab';
+    const name = tabName(t) || tr('note.newTab');
     html += `<div class="tab${on ? ' active' : ''}" role="tab" aria-selected="${on}" tabindex="${on ? 0 : -1}"`
       + ` draggable="${editable}" data-tab-index="${i}" title="${escapeHtml(name)}">`
-      + `<span class="tab-label">${escapeHtml(tabLabel(t) || 'New tab')}</span>`
-      + (editable ? `<button class="tab-close" data-tab-close="${i}" tabindex="-1" title="Close tab" aria-label="Close tab">${icon('close', { size: 12 })}</button>` : '')
+      + `<span class="tab-label">${escapeHtml(tabLabel(t) || tr('note.newTab'))}</span>`
+      + (editable ? `<button class="tab-close" data-tab-close="${i}" tabindex="-1" title="${escapeHtml(tr('note.closeTab'))}" aria-label="${escapeHtml(tr('note.closeTab'))}">${icon('close', { size: 12 })}</button>` : '')
       + '</div>';
   });
   if (editable && tabs.length < MAX_TABS) {
-    html += `<button class="tab-add" data-tab-add title="New tab (Ctrl+Shift+T)" aria-label="New tab">${icon('plus', { size: 14 })}</button>`;
+    html += `<button class="tab-add" data-tab-add title="${escapeHtml(keyLabel(tr('note.newTabHint')))}" aria-label="${escapeHtml(tr('note.newTab'))}">${icon('plus', { size: 14 })}</button>`;
   }
   nav.innerHTML = html;
 }
@@ -1487,9 +1497,9 @@ function switchTab(i) {
 
 function newTab() {
   if (!note || privateLocked || tabBusy) return;
-  if (note.private) { toast('Private notes keep to one page'); return; }
-  if (note.locked) { toast('Unlock the note to add a tab'); return; }
-  if (tabs && tabs.length >= MAX_TABS) { toast(`A note can have up to ${MAX_TABS} tabs`); return; }
+  if (note.private) { toast(tr('note.privateOnePage')); return; }
+  if (note.locked) { toast(tr('note.unlockToAddTab')); return; }
+  if (tabs && tabs.length >= MAX_TABS) { toast(tr('note.maxTabs', { max: MAX_TABS })); return; }
   leaveEditingModes();
   if (!tabs) {
     // The page so far becomes the first tab, keeping its undo history.
@@ -1512,7 +1522,7 @@ function newTab() {
 
 async function closeTab(i) {
   if (!tabs || privateLocked || tabBusy || !tabs[i] || tabs.length < 2) return;
-  if (note.locked) { toast('Unlock the note to close a tab'); return; }
+  if (note.locked) { toast(tr('note.unlockToCloseTab')); return; }
   leaveEditingModes();
   const wasActive = i === activeTab;
   syncActive();
@@ -1525,7 +1535,7 @@ async function closeTab(i) {
   savePromise = pending.then(() => {});
   const r = await pending;
   tabBusy = false;
-  if (!r) { toast('Couldn’t close that tab'); return; }
+  if (!r) { toast(tr('note.closeTabFailed')); return; }
   undoBooks.delete(tab.id);
   if (survivor && !(Array.isArray(r.tabs) && r.tabs.length > 1)) {
     const book = undoBooks.get(survivor.id);
@@ -1533,7 +1543,7 @@ async function closeTab(i) {
     if (book) undoBooks.set('_', book);
   }
   adoptTabs(r, !wasActive, survivor);
-  toast(blank ? 'Tab closed' : 'Tab moved to the Trash');
+  toast(tr(blank ? 'note.tabClosed' : 'note.tabTrashed'));
 }
 
 // Take the tab list the main process settled on after a close.
@@ -1560,7 +1570,7 @@ function adoptTabs(r, keepEditor, survivor) {
 // ----- rename -----
 function startRename(i) {
   if (!tabs || !tabs[i] || renaming || privateLocked) return;
-  if (note.locked) { toast('Unlock the note to rename a tab'); return; }
+  if (note.locked) { toast(tr('note.unlockToRenameTab')); return; }
   const el = $('tabbar').querySelector(`.tab[data-tab-index="${i}"]`);
   const label = el && el.querySelector('.tab-label');
   if (!label) return;
@@ -1570,7 +1580,7 @@ function startRename(i) {
   input.maxLength = 80;
   input.spellcheck = false;
   input.value = tabName(tabs[i]);
-  input.setAttribute('aria-label', 'Tab name');
+  input.setAttribute('aria-label', tr('note.tabName'));
   el.draggable = false;
   label.replaceWith(input);
   renaming = { input, id: tabs[i].id };
@@ -1999,7 +2009,7 @@ function updateImageBg(changes) {
 }
 
 $('bg-presets').innerHTML = GRADIENT_PRESETS.map((p, i) =>
-  `<button type="button" class="bg-preset" data-preset="${i}" title="${p.name}" aria-label="${p.name} gradient" style="background:${gradientCss(p)}"></button>`).join('');
+  `<button type="button" class="bg-preset" data-preset="${i}" title="${escapeHtml(gradientName(p.name))}" aria-label="${escapeHtml(tr('note.gradientAria', { name: gradientName(p.name) }))}" style="background:${gradientCss(p)}"></button>`).join('');
 
 // The custom swatch is added by buildStaticUi(), which runs after this module has loaded.
 $('note-swatches').addEventListener('click', (e) => {
@@ -2090,7 +2100,7 @@ $('bg-reset').addEventListener('click', () => {
   saveBackground();
   prepareBgPop();
   $('bg-done').focus();
-  toast('Back to the note color');
+  toast(tr('note.backToColor'));
 });
 $('bg-done').addEventListener('click', () => {
   if (bgSaveTimer) saveBackground();

@@ -25,6 +25,8 @@ const exporter = require('./exporter');
 const files = require('./files');
 const { migrateLegacyData, LEGACY_LOGIN_ITEM } = require('./migrate');
 const dataLocation = require('./data-location');
+const i18n = require('./i18n');
+const { t: tr } = i18n; // 't' is a common local name here
 const palette = require('../renderer/shared/colors.json');
 
 const isDev = process.argv.includes('--dev');
@@ -103,11 +105,9 @@ function init() {
     const choice = dialog.showMessageBoxSync({
       type: 'error',
       title: 'OpenStickies',
-      message: 'Your notes couldn’t be brought over from Stickies',
-      detail: `They’re safe where they were, in ${moved.from}\n\n${moved.error.message}\n\n` +
-        'Quit and try again, or start without them. To bring them over later, quit OpenStickies and copy that folder’s contents into ' +
-        `${path.join(app.getPath('userData'), 'data')}.`,
-      buttons: ['Quit', 'Start without them'],
+      message: tr('dialog.migrateFailed'),
+      detail: tr('dialog.migrateFailedDetail', { from: moved.from, error: moved.error.message, dest: path.join(app.getPath('userData'), 'data') }),
+      buttons: [tr('dialog.quit'), tr('dialog.startWithout')],
       defaultId: 0,
       cancelId: 0,
       noLink: true
@@ -123,11 +123,9 @@ function init() {
     const choice = dialog.showMessageBoxSync({
       type: 'warning',
       title: 'OpenStickies',
-      message: 'Your notes folder can’t be found',
-      detail: `OpenStickies is set to keep notes in ${CUSTOM_DATA_DIR}, but that folder isn’t there right now. ` +
-        'If it’s on a removable or network drive, connect it and start OpenStickies again.\n\n' +
-        `You can also start with the default folder (${defaultDataDir}) just this once.`,
-      buttons: ['Quit', 'Use the default folder this time'],
+      message: tr('dialog.folderMissing'),
+      detail: tr('dialog.folderMissingDetail', { dir: CUSTOM_DATA_DIR, defaultDir: defaultDataDir }),
+      buttons: [tr('dialog.quit'), tr('dialog.useDefaultOnce')],
       defaultId: 0,
       cancelId: 0,
       noLink: true
@@ -140,6 +138,7 @@ function init() {
   store = new Store(dataDir);
   store.extraRefs.push(() => history.refs()); // before load(): load() cleans up unused images
   store.load();
+  i18n.setLanguage(store.settings.language);
   if (moved.migrated) carryOverLoginItem();
   vault = new Vault(dataDir);
   nativeTheme.themeSource = store.settings.theme;
@@ -163,6 +162,9 @@ function init() {
 
   registerIpc();
   wireEvents();
+
+  // Switch strings before the tray and app menu rebuild on the same event (they listen after this).
+  store.on('settings', () => { if (i18n.setLanguage(store.settings.language)) setUserTasks(); });
 
   tray = createTray({
     windows, store, vault, workspaces, assetsDir: ASSETS,
@@ -352,8 +354,8 @@ function reportHotkeyFailures(results) {
   try {
     if (!Notification.isSupported()) return;
     const n = new Notification({
-      title: 'Some OpenStickies shortcuts aren’t working',
-      body: `${failed.map(accelLabel).join(', ')} couldn’t be set up, probably because another app uses ${failed.length > 1 ? 'them' : 'it'}. Pick different keys in Settings.`
+      title: tr('hotkeys.failedTitle'),
+      body: i18n.tp('hotkeys.failedBody', failed.length, { keys: failed.map(accelLabel).join(', ') })
     });
     n.on('click', () => windows.openManager('settings'));
     n.show();
@@ -371,14 +373,14 @@ function setupMac() {
     const hk = store.settings.hotkeys;
     const templates = store.templates.length
       ? store.templates.map(t => ({ label: t.name, click: () => newNoteFromTemplate(t.id) }))
-      : [{ label: 'No templates yet', enabled: false }];
+      : [{ label: tr('tray.noTemplates'), enabled: false }];
     Menu.setApplicationMenu(Menu.buildFromTemplate([
       {
         label: app.name,
         submenu: [
           { role: 'about' },
           { type: 'separator' },
-          { label: 'Settings…', accelerator: 'Command+,', click: () => windows.openManager('settings') },
+          { label: tr('appMenu.settings'), accelerator: 'Command+,', click: () => windows.openManager('settings') },
           { type: 'separator' },
           { role: 'services' },
           { type: 'separator' },
@@ -390,19 +392,19 @@ function setupMac() {
         ]
       },
       {
-        label: 'File',
+        label: tr('appMenu.file'),
         submenu: [
-          { label: 'New Note', ...shown('Command+N'), click: () => windows.newNote() },
-          { label: 'New from Template', submenu: templates },
+          { label: tr('appMenu.newNote'), ...shown('Command+N'), click: () => windows.newNote() },
+          { label: tr('appMenu.newFromTemplate'), submenu: templates },
           { type: 'separator' },
-          { label: 'Notes List', click: () => windows.openManager() },
-          { label: 'Tasks', click: () => windows.openManager('tasks') },
+          { label: tr('appMenu.notesList'), click: () => windows.openManager() },
+          { label: tr('appMenu.tasks'), click: () => windows.openManager('tasks') },
           { type: 'separator' },
-          { label: 'Snip Screen to Note', ...shown(hk.snip), click: () => snipper.start() }
+          { label: tr('appMenu.snip'), ...shown(hk.snip), click: () => snipper.start() }
         ]
       },
       {
-        label: 'Edit',
+        label: tr('appMenu.edit'),
         submenu: [
           { role: 'undo' },
           { role: 'redo' },
@@ -415,17 +417,18 @@ function setupMac() {
         ]
       },
       {
-        label: 'View',
+        label: tr('appMenu.view'),
         submenu: [
-          { label: 'Show All Notes', ...shown(hk.showAll), click: () => windows.showAll() },
-          { label: 'Hide All Notes', click: () => windows.hideAll() },
+          { label: tr('appMenu.showAll'), ...shown(hk.showAll), click: () => windows.showAll() },
+          { label: tr('appMenu.hideAll'), click: () => windows.hideAll() },
           ...(isDev ? [{ type: 'separator' }, { role: 'reload' }, { role: 'toggleDevTools' }] : [])
         ]
       },
-      { role: 'windowMenu' },
+      { role: 'windowMenu', label: tr('appMenu.window') },
       {
         role: 'help',
-        submenu: [{ label: 'OpenStickies Website', click: () => openExternal(SITE) }]
+        label: tr('appMenu.help'),
+        submenu: [{ label: tr('appMenu.website'), click: () => openExternal(SITE) }]
       }
     ]));
   };
@@ -455,7 +458,7 @@ function setUserTasks() {
   const quote = (s) => (/\s/.test(s) ? `"${s}"` : s);
   const task = (arg, title, description) => ({ program: process.execPath, arguments: [...base, arg].map(quote).join(' '), iconPath: process.execPath, iconIndex: 0, title, description });
   try {
-    app.setUserTasks([task('--new', 'New note', 'Create a new sticky note'), task('--snip', 'Snip screen to note', 'Capture part of the screen into a note')]);
+    app.setUserTasks([task('--new', tr('jumpList.newNote'), tr('jumpList.newNoteDesc')), task('--snip', tr('jumpList.snip'), tr('jumpList.snipDesc'))]);
   } catch { /* not critical */ }
 }
 
@@ -712,6 +715,8 @@ function cleanPatch(patch) {
 }
 
 function registerIpc() {
+  // Pages ask for their strings synchronously so they never paint in the wrong language.
+  ipcMain.on('i18n:get', (e) => { e.returnValue = i18n.snapshot(); });
   const noteOf = (e) => {
     const id = windows.noteIdFor(e.sender);
     if (!id) throw new Error('Not a note window');
@@ -778,7 +783,7 @@ function registerIpc() {
     if (!['html', 'md', 'txt', 'pdf', 'print', 'json'].includes(format)) throw new Error('Unknown format');
     const p = payload || {};
     const note = store.get(id);
-    const forExport = note.private ? { ...note, title: (plain.get(id) || {}).title || 'Private note' } : note;
+    const forExport = note.private ? { ...note, title: (plain.get(id) || {}).title || tr('note.privateNote') } : note;
     return exporter.exportNote({
       parent: parentOf(e), store, note: forExport, format,
       payload: { html: String(p.html || ''), text: String(p.text || ''), markdown: String(p.markdown || '') }
@@ -789,7 +794,7 @@ function registerIpc() {
   ipcMain.handle('note:titles', (e) => {
     const self = windows.noteIdFor(e.sender);
     return store.active().filter(n => n.id !== self && (!n.private || plain.has(n.id) || vault.unlocked))
-      .map(n => ({ id: n.id, title: n.private ? (privatePlain(n) || {}).title || 'Private note' : n.title || 'Untitled note', color: n.color, updatedAt: n.updatedAt }))
+      .map(n => ({ id: n.id, title: n.private ? (privatePlain(n) || {}).title || tr('note.privateNote') : n.title || tr('note.untitled'), color: n.color, updatedAt: n.updatedAt }))
       .sort((a, b) => b.updatedAt - a.updatedAt);
   });
   ipcMain.handle('note:open-link', (_e, id) => {
@@ -800,7 +805,7 @@ function registerIpc() {
     return { ok: true };
   });
   ipcMain.handle('note:create-linked', (e, title) => {
-    const t = String(title || '').trim().slice(0, 120) || 'New note';
+    const t = String(title || '').trim().slice(0, 120) || tr('note.newNoteTitle');
     const esc = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const n = windows.newNote({ fromId: windows.noteIdFor(e.sender), html: `<h1>${esc}</h1><p><br></p>`, focus: false });
     return { id: n.id, title: t };
@@ -808,7 +813,7 @@ function registerIpc() {
   ipcMain.handle('note:backlinks', (e) => {
     const id = noteOf(e);
     return store.active().filter(n => n.id !== id && ((n.links || []).includes(id) || (n.private && (privatePlain(n) || { html: '' }).html.includes(`note://${id}"`))))
-      .map(n => ({ id: n.id, title: n.private ? (privatePlain(n) || {}).title || 'Private note' : n.title || 'Untitled note', color: n.color }));
+      .map(n => ({ id: n.id, title: n.private ? (privatePlain(n) || {}).title || tr('note.privateNote') : n.title || tr('note.untitled'), color: n.color }));
   });
 
   ipcMain.handle('tags:list', () => {
@@ -849,8 +854,8 @@ function registerIpc() {
 
   ipcMain.handle('img:pick', async (e) => {
     const { canceled, filePaths } = await dialog.showOpenDialog(parentOf(e), {
-      title: 'Insert image',
-      filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif'] }],
+      title: tr('dialog.insertImage'),
+      filters: [{ name: tr('dialog.images'), extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif'] }],
       properties: ['openFile', 'multiSelections']
     });
     if (canceled) return [];
@@ -994,6 +999,7 @@ function registerIpc() {
     ['showInTaskbar', 'launchAtLogin', 'spellcheck', 'confirmDelete', 'snapToEdges', 'opaqueOnHover', 'ocrImages', 'sinkTicked', 'autoWorkspace', 'apiEnabled', 'agentPlanNudge'].forEach(bool);
     if (palette.notes[p.agentColor]) clean.agentColor = p.agentColor;
     if (['system', 'light', 'dark'].includes(p.theme)) clean.theme = p.theme;
+    if (p.language === 'system' || i18n.SUPPORTED.includes(p.language)) clean.language = p.language;
     if (p.defaultColor === 'random' || palette.notes[p.defaultColor]) clean.defaultColor = p.defaultColor;
     if (palette.fonts.some(f => f.id === p.defaultFont)) clean.defaultFont = p.defaultFont;
     if (Number.isFinite(p.fontSize)) clean.fontSize = Math.min(28, Math.max(10, Math.round(p.fontSize)));
@@ -1245,29 +1251,28 @@ function registerIpc() {
 
   ipcMain.handle('data:change-location', async (e) => {
     managerOnly(e);
-    if (process.env.STICKIES_USER_DATA) return { ok: false, error: 'The data folder is set by STICKIES_USER_DATA for this run.' };
+    if (process.env.STICKIES_USER_DATA) return { ok: false, error: tr('data.envLocked') };
     const parent = parentOf(e);
     const { canceled, filePaths } = await dialog.showOpenDialog(parent, {
-      title: 'Choose where to keep your notes',
-      buttonLabel: 'Keep notes here',
+      title: tr('data.chooseFolder'),
+      buttonLabel: tr('data.keepHere'),
       properties: ['openDirectory', 'createDirectory']
     });
     if (canceled || !filePaths || !filePaths[0]) return { ok: false, canceled: true };
     const dest = path.resolve(filePaths[0]);
-    if (dataLocation.samePath(dest, store.dir)) return { ok: false, error: 'Your notes are already in that folder.' };
-    if (dataLocation.isInside(dest, store.dir)) return { ok: false, error: 'Choose a folder outside the current notes folder.' };
+    if (dataLocation.samePath(dest, store.dir)) return { ok: false, error: tr('data.alreadyThere') };
+    if (dataLocation.isInside(dest, store.dir)) return { ok: false, error: tr('data.chooseOutside') };
     // Merging two sets of notes could silently drop one side's changes, so an existing notes
     // folder (say, one synced from another computer) is never written over.
     if (dataLocation.hasNotes(dest)) {
-      return { ok: false, error: 'That folder already has OpenStickies notes in it (notes.json). Choose an empty folder — OpenStickies won’t merge or replace them.' };
+      return { ok: false, error: tr('data.hasNotes') };
     }
     const { response } = await dialog.showMessageBox(parent, {
       type: 'question',
       title: 'OpenStickies',
-      message: 'Move your notes to this folder?',
-      detail: `${dest}\n\nOpenStickies copies your notes, pictures, templates and history there, then restarts. ` +
-        `The current folder is left as it was.\n\nOnly run OpenStickies on one computer at a time against a synced folder.`,
-      buttons: ['Copy and restart', 'Cancel'],
+      message: tr('data.moveConfirm'),
+      detail: tr('data.moveDetail', { dest }),
+      buttons: [tr('data.copyRestart'), tr('common.cancel')],
       defaultId: 0,
       cancelId: 1,
       noLink: true
@@ -1278,14 +1283,14 @@ function registerIpc() {
       return { ok: true };
     } catch (err) {
       console.error('[data] move failed:', err);
-      return { ok: false, error: `Couldn’t copy your notes: ${err.message}` };
+      return { ok: false, error: tr('data.copyFailed', { error: err.message }) };
     }
   });
 
   ipcMain.handle('data:reset-location', async (e) => {
     managerOnly(e);
-    if (process.env.STICKIES_USER_DATA) return { ok: false, error: 'The data folder is set by STICKIES_USER_DATA for this run.' };
-    if (!locationInfo().custom) return { ok: false, error: 'Your notes are already in the default folder.' };
+    if (process.env.STICKIES_USER_DATA) return { ok: false, error: tr('data.envLocked') };
+    if (!locationInfo().custom) return { ok: false, error: tr('data.alreadyDefault') };
     const parent = parentOf(e);
     // The default folder usually still holds the notes as they were when they were moved away.
     // Bringing the current notes back is the safe default; keeping the old copy is the other choice.
@@ -1293,11 +1298,9 @@ function registerIpc() {
     const { response } = await dialog.showMessageBox(parent, {
       type: 'question',
       title: 'OpenStickies',
-      message: 'Go back to the default notes folder?',
-      detail: stale
-        ? `${defaultDataDir}\n\nThat folder still has an older copy of your notes. Bring your current notes back (the older copy is replaced), or go back to the older copy as it is. Either way the notes in ${store.dir} stay where they are. OpenStickies restarts afterwards.`
-        : `${defaultDataDir}\n\nOpenStickies copies your notes back there and restarts. The notes in ${store.dir} stay where they are.`,
-      buttons: stale ? ['Bring current notes back', 'Use the older copy', 'Cancel'] : ['Copy and restart', 'Cancel'],
+      message: tr('data.resetConfirm'),
+      detail: tr(stale ? 'data.resetDetailStale' : 'data.resetDetail', { defaultDir: defaultDataDir, dir: store.dir }),
+      buttons: stale ? [tr('data.bringBack'), tr('data.useOlder'), tr('common.cancel')] : [tr('data.copyRestart'), tr('common.cancel')],
       defaultId: 0,
       cancelId: stale ? 2 : 1,
       noLink: true
@@ -1317,7 +1320,7 @@ function registerIpc() {
       return { ok: true };
     } catch (err) {
       console.error('[data] reset failed:', err);
-      return { ok: false, error: `Couldn’t switch folders: ${err.message}` };
+      return { ok: false, error: tr('data.switchFailed', { error: err.message }) };
     }
   });
 }

@@ -2,6 +2,7 @@
 
 const { Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
+const { t: tr } = require('./i18n');
 
 function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSnip, onTemplate, onLock }) {
   // The macOS menu bar wants a black-and-clear "template" image that it tints for light and dark
@@ -23,34 +24,34 @@ function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSn
     const hk = store.settings.hotkeys;
     const spaces = workspaces.list();
     const template = [
-      { label: 'New note', accelerator: hk.newNote || undefined, click: () => windows.newNote() },
+      { label: tr('tray.newNote'), accelerator: hk.newNote || undefined, click: () => windows.newNote() },
       {
-        label: 'New from template', submenu: store.templates.length
-          ? store.templates.map(t => ({ label: t.name, click: () => onTemplate(t.id) }))
-          : [{ label: 'No templates yet', enabled: false }]
+        label: tr('tray.newFromTemplate'), submenu: store.templates.length
+          ? store.templates.map(tpl => ({ label: tpl.name, click: () => onTemplate(tpl.id) }))
+          : [{ label: tr('tray.noTemplates'), enabled: false }]
       },
-      { label: 'Snip screen to note', accelerator: hk.snip || undefined, click: onSnip },
+      { label: tr('tray.snip'), accelerator: hk.snip || undefined, click: onSnip },
       { type: 'separator' },
-      { label: `Show all notes${open ? ` (${open})` : ''}`, accelerator: hk.showAll || undefined, click: () => windows.showAll() },
-      { label: 'Hide all notes', click: () => windows.hideAll() },
-      { label: 'Notes list…', click: () => windows.openManager() },
-      { label: 'Tasks…', click: () => windows.openManager('tasks') }
+      { label: open ? tr('tray.showAllCount', { count: open }) : tr('tray.showAll'), accelerator: hk.showAll || undefined, click: () => windows.showAll() },
+      { label: tr('tray.hideAll'), click: () => windows.hideAll() },
+      { label: tr('tray.notesList'), click: () => windows.openManager() },
+      { label: tr('tray.tasks'), click: () => windows.openManager('tasks') }
     ];
     if (spaces.length) {
       template.push({
-        label: 'Workspaces', submenu: [
+        label: tr('tray.workspaces'), submenu: [
           ...spaces.map(w => ({ label: w.name, type: 'radio', checked: w.id === workspaces.active(), click: () => workspaces.switchTo(w.id) })),
           { type: 'separator' },
-          { label: 'Manage workspaces…', click: () => windows.openManager('workspaces') }
+          { label: tr('tray.manageWorkspaces'), click: () => windows.openManager('workspaces') }
         ]
       });
     }
-    if (vault.unlocked) template.push({ label: 'Lock private notes', click: onLock });
+    if (vault.unlocked) template.push({ label: tr('tray.lockPrivate'), click: onLock });
     template.push(
       { type: 'separator' },
-      { label: 'Settings…', click: () => windows.openManager('settings') },
+      { label: tr('tray.settings'), click: () => windows.openManager('settings') },
       { type: 'separator' },
-      { label: `Quit OpenStickies`, click: onQuit }
+      { label: tr('tray.quit'), click: onQuit }
     );
     const menu = Menu.buildFromTemplate(template);
     tray.setContextMenu(menu);
@@ -73,8 +74,8 @@ function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSn
         tray.displayBalloon({
           iconType: 'custom',
           icon: nativeImage.createFromPath(path.join(assetsDir, 'icon.png')),
-          title: 'OpenStickies is in your system tray',
-          content: 'Click the ^ arrow at the right end of the taskbar, then drag the yellow OpenStickies icon onto the taskbar to keep it visible. Click it any time to bring your notes back.'
+          title: tr('tray.balloonTitle'),
+          content: tr('tray.balloonBody')
         });
       } catch { /* balloons unsupported */ }
       store.updateSettings({ trayHintShown: true });

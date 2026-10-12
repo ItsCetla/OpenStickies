@@ -3,26 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' sticky-img: data: https: http:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
-  <title>Image</title>
+  <title data-i18n="lightbox.image">Image</title>
   <link rel="stylesheet" href="lightbox.css">
 </head>
 <body>
   <div class="stage" id="stage">
     <img id="img" alt="" draggable="false">
-    <div class="msg" id="msg" hidden>This image couldn't be shown.</div>
+    <div class="msg" id="msg" hidden data-i18n="lightbox.thisImageCouldntBeShown">This image couldn't be shown.</div>
   </div>
-  <div class="bar" id="bar" role="toolbar" aria-label="Image tools">
-    <button id="fit" title="Fit to screen (0)">Fit</button>
-    <button id="actual" title="Actual size (1)">1:1</button>
+  <div class="bar" id="bar" role="toolbar" aria-label="Image tools" data-i18n-aria="lightbox.imageTools">
+    <button id="fit" title="Fit to screen (0)" data-i18n-title="lightbox.fitToScreen" data-i18n="lightbox.fit">Fit</button>
+    <button id="actual" title="Actual size (1)" data-i18n-title="lightbox.actualSize">1:1</button>
     <span class="sep"></span>
-    <button id="zoom-out" class="icon-btn" title="Zoom out (-)" aria-label="Zoom out"><i data-icon="minus" data-size="16"></i></button>
+    <button id="zoom-out" class="icon-btn" title="Zoom out (-)" aria-label="Zoom out" data-i18n-title="lightbox.zoomOut" data-i18n-aria="lightbox.zoomOutLabel"><i data-icon="minus" data-size="16"></i></button>
     <span class="pct" id="pct">100%</span>
-    <button id="zoom-in" class="icon-btn" title="Zoom in (+)" aria-label="Zoom in"><i data-icon="plus" data-size="16"></i></button>
+    <button id="zoom-in" class="icon-btn" title="Zoom in (+)" aria-label="Zoom in" data-i18n-title="lightbox.zoomIn" data-i18n-aria="lightbox.zoomInLabel"><i data-icon="plus" data-size="16"></i></button>
     <span class="sep"></span>
-    <button id="open" title="Open with your default app"><i data-icon="external" data-size="15"></i>Open with default app</button>
-    <button id="save" title="Save a copy"><i data-icon="download" data-size="15"></i>Save as…</button>
+    <button id="open" title="Open with your default app" data-i18n-title="lightbox.openWithYourDefaultApp"><i data-icon="external" data-size="15"></i><span data-i18n="lightbox.openWithDefaultApp">Open with default app</span></button>
+    <button id="save" title="Save a copy" data-i18n-title="lightbox.saveACopy"><i data-icon="download" data-size="15"></i><span data-i18n="lightbox.saveAs">Save as…</span></button>
     <span class="sep"></span>
-    <button id="close" class="icon-btn" title="Close (Esc)" aria-label="Close"><i data-icon="close" data-size="16"></i></button>
+    <button id="close" class="icon-btn" title="Close (Esc)" aria-label="Close" data-i18n-title="lightbox.closeHint" data-i18n-aria="common.close"><i data-icon="close" data-size="16"></i></button>
   </div>
   <script type="module" src="lightbox.js"></script>
 </body>

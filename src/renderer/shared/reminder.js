@@ -1,8 +1,10 @@
 // Reminder helpers shared by note windows and the notes list, so both agree on the
 // countdown wording, the urgency thresholds and the alert sound.
 
+import { t, lang } from './i18n.js';
+
 const HOUR = 3600 * 1000;
-const REPEAT_WORD = { daily: 'daily', weekdays: 'on weekdays', weekly: 'weekly', monthly: 'monthly' };
+const REPEATS = new Set(['daily', 'weekdays', 'weekly', 'monthly']);
 
 export function dueAt(r) {
   return r ? (r.snoozeAt || r.at) : null;
@@ -24,21 +26,21 @@ export function urgency(r, now = Date.now()) {
 
 function duration(ms) {
   const mins = Math.max(1, Math.round(ms / 60000));
-  if (mins < 60) return `${mins}m`;
+  if (mins < 60) return t('time.minutes', { m: mins });
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  if (h < 24) return m ? `${h}h ${m}m` : `${h}h`;
+  if (h < 24) return m ? t('time.hoursMinutes', { h, m }) : t('time.hours', { h });
   const d = Math.floor(h / 24);
   const rh = h % 24;
-  return rh ? `${d}d ${rh}h` : `${d}d`;
+  return rh ? t('time.daysHours', { d, h: rh }) : t('time.days', { d });
 }
 
 function clockLabel(t, now) {
   const d = new Date(t);
-  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  if (d.toDateString() === new Date(now).toDateString()) return `Today ${time}`;
-  if (new Date(now + 86400000).toDateString() === d.toDateString()) return `Tomorrow ${time}`;
-  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' + time;
+  const time = d.toLocaleTimeString(lang(), { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === new Date(now).toDateString()) return t('reminder.today', { time });
+  if (new Date(now + 86400000).toDateString() === d.toDateString()) return t('reminder.tomorrow', { time });
+  return d.toLocaleDateString(lang(), { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' + time;
 }
 
 // "in 2h 15m", "Tomorrow 9:00", "Overdue by 3h", plus "Repeats daily" for repeating ones.
@@ -46,12 +48,11 @@ export function relativeLabel(r, now = Date.now()) {
   if (!r) return '';
   const at = dueAt(r);
   let main;
-  if (at <= now) main = `Overdue by ${duration(now - at)}`;
-  else if (r.pending) main = 'Due now';
-  else if (at - now < 12 * HOUR) main = `in ${duration(at - now)}`;
+  if (at <= now) main = t('reminder.overdueBy', { duration: duration(now - at) });
+  else if (r.pending) main = t('reminder.dueNow');
+  else if (at - now < 12 * HOUR) main = t('reminder.inDuration', { duration: duration(at - now) });
   else main = clockLabel(at, now);
-  const rep = REPEAT_WORD[r.repeat];
-  return rep ? `${main} · Repeats ${rep}` : main;
+  return REPEATS.has(r.repeat) ? t('reminder.withRepeat', { when: main, repeat: t('reminder.' + r.repeat) }) : main;
 }
 
 let ctx = null;

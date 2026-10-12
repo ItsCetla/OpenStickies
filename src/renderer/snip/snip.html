@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>Snip</title>
+  <title data-i18n="snip.snip">Snip</title>
   <link rel="stylesheet" href="../shared/base.css">
   <style>
     html, body { background: #000; overflow: hidden; cursor: crosshair; user-select: none; }
@@ -32,8 +32,8 @@
   <div class="bar" id="bar">
     <span class="hint">Drag to snip</span>
     <div class="seg" id="target"></div>
-    <button class="act" id="full">Whole screen</button>
-    <button class="act" id="cancel">Cancel <span style="opacity:.6">Esc</span></button>
+    <button class="act" id="full" data-i18n="snip.wholeScreen">Whole screen</button>
+    <button class="act" id="cancel"><span data-i18n="common.cancel">Cancel</span> <span style="opacity:.6">Esc</span></button>
   </div>
   <script type="module" src="snip.js"></script>
 </body>

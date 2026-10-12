@@ -3,9 +3,10 @@ import { sanitizeHtml, escapeHtml } from '../shared/sanitize.js';
 import { htmlToMarkdown } from '../shared/html-to-md.js';
 import { cascadeCheck, sinkItem, ownText, dueLabel, isoDate, parentItem } from '../note/smart.js';
 import palette from '../shared/colors.json' with { type: 'json' };
-import { IS_MAC, MODIFIER_HINT, keyLabel, localizeKeys } from '../shared/keys.js';
+import { IS_MAC, modifierHint, keyLabel, localizeKeys } from '../shared/keys.js';
 import { hydrateFileChips } from '../shared/file-icons.js';
 import { urgency, playChime } from '../shared/reminder.js';
+import { applyTranslations, refreshI18n, t as tr, tp, lang as uiLang, colorName, fontName } from '../shared/i18n.js';
 import { deriveColors, deriveGradientColors, gradientCss, safeBackground } from '../shared/backgrounds.js';
 
 const api = window.stickies;
@@ -22,13 +23,15 @@ let menuState = null;
 let toastTimer = null;
 let trashedTabs = [];
 const state = { view: 'all', color: null, query: '', sort: 'updated', taskShow: 'open', taskGroup: 'note', taskQuery: '' };
-const VIEW_TITLES = { all: 'All notes', open: 'On desktop', pinned: 'Kept on top', reminders: 'Reminders', tasks: 'Tasks', trash: 'Trash' };
+const VIEW_TITLES = { all: 'manager.allNotes', open: 'manager.onDesktop', pinned: 'manager.keptOnTop', reminders: 'manager.reminders', tasks: 'manager.tasks', trash: 'manager.trash' };
+// Translated text that goes into markup.
+const tx = (key, params) => escapeHtml(tr(key, params));
 // What the system's fingerprint/face unlock is called here (vault.js decides whether it exists).
-const QUICK_UNLOCK = IS_MAC
-  ? { name: 'Touch ID', ready: 'Use your fingerprint instead of the password', missing: 'Touch ID isn’t available on this Mac' }
+const quickUnlock = () => (IS_MAC
+  ? { name: 'Touch ID', ready: tr('manager.touchIdReady'), missing: tr('manager.touchIdMissing') }
   : api.platform === 'win32'
-    ? { name: 'Windows Hello', ready: 'Use your face, fingerprint or PIN instead of the password', missing: 'Windows Hello isn’t set up on this PC' }
-    : { name: 'fingerprint', ready: 'Use your fingerprint instead of the password', missing: 'Not available on this system yet' };
+    ? { name: 'Windows Hello', ready: tr('manager.helloReady'), missing: tr('manager.helloMissing') }
+    : { name: tr('manager.fingerprint'), ready: tr('manager.fingerprintReady'), missing: tr('manager.fingerprintMissing') });
 
 try {
   const saved = JSON.parse(localStorage.getItem('stickies.list') || '{}');
@@ -37,6 +40,7 @@ try {
 } catch { /* storage unavailable */ }
 
 root.dataset.platform = api.platform || '';
+applyTranslations();
 hydrateIcons();
 localizeKeys();
 localizePlatformText();
@@ -45,12 +49,15 @@ init();
 // Settings text that names the operating system doing the work.
 function localizePlatformText() {
   const ocr = $('ocr-sub');
-  if (ocr && IS_MAC) ocr.textContent = 'macOS reads the words in snips and images so search can find them';
-  else if (ocr && api.platform !== 'win32') ocr.textContent = 'Reads the words in snips and images so search can find them (needs tesseract installed)';
+  if (ocr && IS_MAC) ocr.textContent = tr('manager.ocrSubMac');
+  else if (ocr && api.platform !== 'win32') ocr.textContent = tr('manager.ocrSubLinux');
 }
+
+let initial = null; // first settings payload: buildSettings needs its version and data folder again on a language change
 
 async function init() {
   const s = await api.getSettings();
+  initial = s;
   settings = s.settings;
   theme = s.theme;
   vaultState = s.vault || vaultState;
@@ -68,6 +75,7 @@ async function init() {
     settings = next;
     theme = th;
     root.dataset.theme = theme;
+    if (relocalize()) return;
     syncSettingsUi();
     renderSidebar();
     render();
@@ -76,6 +84,24 @@ async function init() {
   api.onWorkspaces(loadWorkspaces);
   api.onTemplates(loadTemplates);
   api.onVault((v) => { vaultState = v; renderPrivacy(); refresh(); });
+}
+
+// The language setting changed: translate the page again and rebuild everything drawn from code.
+function relocalize() {
+  if (!refreshI18n()) return false;
+  rtf = new Intl.RelativeTimeFormat(uiLang(), { numeric: 'auto' });
+  applyTranslations();
+  localizeKeys();
+  localizePlatformText();
+  buildColorFilter();
+  buildSettings(Object.assign({}, initial, { settings }));
+  renderWorkspaces();
+  renderTemplates();
+  renderPrivacy();
+  if (!$('view-settings').hidden) { $('appbar-title').textContent = tr('manager.settings'); refreshHotkeyStatus(); renderOpenCode(); }
+  renderSidebar();
+  render();
+  return true;
 }
 
 async function refresh() {
@@ -121,39 +147,39 @@ function setView(view) {
 async function renderOpenCode() {
   const st = await api.opencodeStatus();
   const color = settings.agentColor || 'blue';
-  const pill = st.connected ? (st.outdated ? 'Update ready' : 'Connected') : 'Not connected';
+  const pill = tr(st.connected ? (st.outdated ? 'manager.ocUpdateReady' : 'manager.ocConnected') : 'manager.ocNotConnected');
   const sub = st.found
-    ? 'When OpenCode works on a multi-step task, a sticky shows its plan: done steps ticked, the current one marked ▶, the rest still to do. You can also ask it to “put something on a sticky”.'
-    : 'OpenCode wasn’t found on this PC. Install it from opencode.ai, then connect here.';
+    ? tx('manager.ocFoundSub')
+    : tx('manager.ocMissingSub');
   const buttons = st.connected
-    ? `${st.outdated ? '<button class="btn primary" id="oc-connect">Update</button>' : ''}<button class="btn" id="oc-disconnect">Disconnect</button>`
-    : '<button class="btn primary" id="oc-connect">Connect</button>';
+    ? `${st.outdated ? `<button class="btn primary" id="oc-connect">${tx('manager.ocUpdate')}</button>` : ''}<button class="btn" id="oc-disconnect">${tx('manager.ocDisconnect')}</button>`
+    : `<button class="btn primary" id="oc-connect">${tx('manager.ocConnect')}</button>`;
   const foot = st.connected
-    ? 'Restart OpenCode after connecting. Task notes are locked so typing can’t clash with the agent, and they’re tagged #opencode and with the project name.'
-    : 'Connecting adds a small plugin to OpenCode (in your user folder) that talks only to OpenStickies on this PC.';
+    ? tx('manager.ocFootConnected')
+    : tx('manager.ocFoot');
   $('opencode-card').innerHTML = `
     <div class="row">
       <div class="row-label">${icon('checklist', { size: 17 })}<div>
-        <div>Task notes from OpenCode <span class="status-pill${st.connected ? ' ok' : ''}">${pill}</span></div>
+        <div>${tx('manager.ocTaskNotes')} <span class="status-pill${st.connected ? ' ok' : ''}">${pill}</span></div>
         <div class="sub">${sub}</div>
       </div></div>
       ${buttons}
     </div>
     <label class="row">
-      <div class="row-label">${icon('listOl', { size: 17 })}<div><div>Always plan multi-part tasks</div><div class="sub">OpenCode is asked to list the subtasks of any task with more than one part, so every such task gets a sticky</div></div></div>
+      <div class="row-label">${icon('listOl', { size: 17 })}<div><div>${tx('manager.ocPlan')}</div><div class="sub">${tx('manager.ocPlanSub')}</div></div></div>
       <input type="checkbox" class="switch" id="oc-nudge" ${settings.agentPlanNudge !== false ? 'checked' : ''}>
     </label>
     <div class="row column">
-      <div class="row-label">${icon('palette', { size: 17 })}<div><div>Color for task notes</div></div></div>
-      <div class="color-pick" id="oc-color">${palette.order.map(k => `<button data-v="${k}" class="${k === color ? 'on' : ''}" title="${palette.notes[k].name}" style="background:${palette.notes[k].swatch}"></button>`).join('')}</div>
+      <div class="row-label">${icon('palette', { size: 17 })}<div><div>${tx('manager.ocColor')}</div></div></div>
+      <div class="color-pick" id="oc-color">${palette.order.map(k => `<button data-v="${k}" class="${k === color ? 'on' : ''}" title="${escapeHtml(colorName(palette.notes[k].name))}" style="background:${palette.notes[k].swatch}"></button>`).join('')}</div>
     </div>
     <div class="row note-row">${foot}</div>`;
   const connectBtn = $('oc-connect');
-  if (connectBtn) connectBtn.addEventListener('click', async () => { await api.opencodeConnect(); toast('Connected — restart OpenCode to start getting task notes'); renderOpenCode(); });
+  if (connectBtn) connectBtn.addEventListener('click', async () => { await api.opencodeConnect(); toast(tr('manager.ocConnectedToast')); renderOpenCode(); });
   const disc = $('oc-disconnect');
-  if (disc) disc.addEventListener('click', async () => { await api.opencodeDisconnect(); toast('OpenCode disconnected'); renderOpenCode(); });
+  if (disc) disc.addEventListener('click', async () => { await api.opencodeDisconnect(); toast(tr('manager.ocDisconnected')); renderOpenCode(); });
   $('oc-color').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) update({ agentColor: b.dataset.v }).then(renderOpenCode); });
-  $('oc-nudge').addEventListener('change', (e) => update({ agentPlanNudge: e.target.checked }).then(() => toast(e.target.checked ? 'OpenCode will plan multi-part tasks as stickies' : 'OpenCode decides on its own when to make a plan')));
+  $('oc-nudge').addEventListener('change', (e) => update({ agentPlanNudge: e.target.checked }).then(() => toast(tr(e.target.checked ? 'manager.ocPlanOn' : 'manager.ocPlanOff'))));
 }
 
 function showSettings() {
@@ -162,7 +188,7 @@ function showSettings() {
   $('view-settings').hidden = false;
   $('btn-back').hidden = false;
   $('btn-settings').hidden = true;
-  $('appbar-title').textContent = 'Settings';
+  $('appbar-title').textContent = tr('manager.settings');
   for (const b of document.querySelectorAll('[data-view]')) b.classList.remove('on');
   closeDrawer();
   refreshHotkeyStatus();
@@ -189,9 +215,9 @@ $('btn-new').addEventListener('click', () => api.create());
 $('btn-new-menu').addEventListener('click', (e) => {
   const r = e.currentTarget.getBoundingClientRect();
   openMenu({ x: r.right, y: r.bottom + 4, alignRight: true }, `
-    <button class="menu-item" data-new="blank">${icon('plus', { size: 16 })}<span>Blank note</span></button>
-    <button class="menu-item" data-new="snip">${icon('snip', { size: 16 })}<span>Snip the screen</span></button>
-    ${templates.length ? '<div class="menu-sep"></div><div class="pop-title">From a template</div>' : ''}
+    <button class="menu-item" data-new="blank">${icon('plus', { size: 16 })}<span>${tx('manager.blankNote')}</span></button>
+    <button class="menu-item" data-new="snip">${icon('snip', { size: 16 })}<span>${tx('manager.snipScreen')}</span></button>
+    ${templates.length ? `<div class="menu-sep"></div><div class="pop-title">${tx('manager.fromTemplate')}</div>` : ''}
     ${templates.map(t => `<button class="menu-item" data-new-template="${t.id}"><span class="cdot" style="background:${swatch(t.color)};width:12px;height:12px"></span><span>${escapeHtml(t.name)}</span></button>`).join('')}`,
   (el) => {
     if (el.dataset.new === 'blank') api.create();
@@ -210,12 +236,11 @@ $('btn-empty-trash').addEventListener('click', async () => {
   const n = notes.filter(x => x.trashed).length;
   const tabs = trashedTabs.length;
   if (!n && !tabs) return;
-  const parts = [];
-  if (n) parts.push(`${n} note${n === 1 ? '' : 's'}`);
-  if (tabs) parts.push(`${tabs} tab${tabs === 1 ? '' : 's'}`);
-  if (!confirm(`Permanently delete ${parts.join(' and ')} in Trash? This can't be undone.`)) return;
+  const items = n && tabs ? tr('manager.notesAndTabs', { notes: tp('manager.notesCount', n), tabs: tp('manager.tabsCount', tabs) })
+    : n ? tp('manager.notesCount', n) : tp('manager.tabsCount', tabs);
+  if (!confirm(tr('manager.emptyTrashConfirm', { items }))) return;
   await api.emptyTrash();
-  toast('Trash emptied');
+  toast(tr('manager.trashEmptied'));
 });
 
 const swatch = (c) => (palette.notes[c] || palette.notes.yellow).swatch;
@@ -310,7 +335,7 @@ function renderSidebar() {
     <button class="side-item${state.query === s.query && state.view !== 'tasks' ? ' on' : ''}" data-saved="${escapeHtml(s.id)}" title="${escapeHtml(s.query)}">
       ${icon('bookmark', { size: 16 })}<span>${escapeHtml(s.name)}</span>
       <span class="count">${active.filter(n => matches(n, parseQuery(s.query))).length || ''}</span>
-      <span class="tools"><span class="mini" data-saved-del="${escapeHtml(s.id)}" title="Remove">${icon('close', { size: 13 })}</span></span>
+      <span class="tools"><span class="mini" data-saved-del="${escapeHtml(s.id)}" title="${tx('common.remove')}">${icon('close', { size: 13 })}</span></span>
     </button>`).join('');
   $('btn-save-search').hidden = !state.query.trim() || saved.some(s => s.query === state.query.trim());
 
@@ -337,10 +362,10 @@ $('saved-list').addEventListener('click', (e) => {
 });
 
 $('btn-save-search').addEventListener('click', async () => {
-  const name = await promptDialog({ title: 'Name this search', value: state.query.trim(), ok: 'Save' });
+  const name = await promptDialog({ title: tr('manager.nameSearch'), value: state.query.trim(), ok: tr('common.save') });
   if (!name) return;
   await api.updateSettings({ savedSearches: [...(settings.savedSearches || []), { id: 's' + Date.now().toString(36), name, query: state.query.trim() }] });
-  toast(`Saved “${name}”`);
+  toast(tr('manager.savedNamed', { name }));
 });
 
 $('tag-list').addEventListener('click', (e) => {
@@ -354,15 +379,15 @@ $('tag-list').addEventListener('click', (e) => {
 
 function renderWorkspaces() {
   $('ws-list').innerHTML = workspaces.list.map(w => `
-    <button class="side-item${w.id === workspaces.active ? ' on' : ''}" data-ws="${w.id}" title="Switch to ${escapeHtml(w.name)}">
+    <button class="side-item${w.id === workspaces.active ? ' on' : ''}" data-ws="${w.id}" title="${tx('manager.switchTo', { name: w.name })}">
       ${icon('layers', { size: 16 })}<span>${escapeHtml(w.name)}</span>
-      ${w.id === workspaces.active ? '<span class="active-dot" title="Current workspace"></span>' : `<span class="count">${w.count}</span>`}
+      ${w.id === workspaces.active ? `<span class="active-dot" title="${tx('manager.currentWorkspace')}"></span>` : `<span class="count">${w.count}</span>`}
       <span class="tools">
-        <span class="mini" data-ws-update="${w.id}" title="Save the current layout into it">${icon('download', { size: 13 })}</span>
-        <span class="mini" data-ws-rename="${w.id}" title="Rename">${icon('pencil', { size: 13 })}</span>
-        <span class="mini" data-ws-del="${w.id}" title="Delete">${icon('trash', { size: 13 })}</span>
+        <span class="mini" data-ws-update="${w.id}" title="${tx('manager.saveLayoutInto')}">${icon('download', { size: 13 })}</span>
+        <span class="mini" data-ws-rename="${w.id}" title="${tx('manager.rename')}">${icon('pencil', { size: 13 })}</span>
+        <span class="mini" data-ws-del="${w.id}" title="${tx('common.delete')}">${icon('trash', { size: 13 })}</span>
       </span>
-    </button>`).join('') || '<div class="side-empty">Arrange your notes, then save the layout here to switch back to it later.</div>';
+    </button>`).join('') || `<div class="side-empty">${tx('manager.wsEmpty')}</div>`;
 }
 
 $('ws-list').addEventListener('click', async (e) => {
@@ -370,30 +395,30 @@ $('ws-list').addEventListener('click', async (e) => {
   const pick = (attr) => { const el = t.closest(`[${attr}]`); return el && el.getAttribute(attr); };
   const ws = (id) => workspaces.list.find(w => w.id === id);
   let id;
-  if ((id = pick('data-ws-update'))) { e.stopPropagation(); await api.updateWorkspace(id); toast(`Updated “${ws(id).name}” with the current layout`); return; }
+  if ((id = pick('data-ws-update'))) { e.stopPropagation(); await api.updateWorkspace(id); toast(tr('manager.wsUpdated', { name: ws(id).name })); return; }
   if ((id = pick('data-ws-rename'))) {
     e.stopPropagation();
-    const name = await promptDialog({ title: 'Rename workspace', value: ws(id).name, ok: 'Rename' });
+    const name = await promptDialog({ title: tr('manager.renameWorkspace'), value: ws(id).name, ok: tr('manager.rename') });
     if (name) await api.renameWorkspace(id, name);
     return;
   }
   if ((id = pick('data-ws-del'))) {
     e.stopPropagation();
-    if (confirm(`Delete the workspace “${ws(id).name}”? Your notes stay as they are.`)) await api.deleteWorkspace(id);
+    if (confirm(tr('manager.deleteWorkspaceConfirm', { name: ws(id).name }))) await api.deleteWorkspace(id);
     return;
   }
   if ((id = pick('data-ws'))) {
     if (id === workspaces.active) return;
     await api.switchWorkspace(id);
-    toast(`Switched to “${ws(id).name}”`);
+    toast(tr('manager.switchedTo', { name: ws(id).name }));
   }
 });
 
 $('btn-save-ws').addEventListener('click', async () => {
-  const name = await promptDialog({ title: 'Save current layout as', value: workspaces.list.length ? '' : 'Work', ok: 'Save' });
+  const name = await promptDialog({ title: tr('manager.saveLayoutAs'), value: workspaces.list.length ? '' : tr('manager.defaultWorkspaceName'), ok: tr('common.save') });
   if (!name) return;
   await api.saveWorkspace(name);
-  toast(`Saved workspace “${name}”`);
+  toast(tr('manager.wsSaved', { name }));
 });
 
 // ---------- filters ----------
@@ -406,7 +431,7 @@ function persist() {
 function buildColorFilter() {
   $('color-filter').innerHTML = palette.order.map(k => {
     const n = palette.notes[k];
-    return `<button class="cdot${state.color === k ? ' on' : ''}" data-color="${k}" title="${n.name}" style="background:${n.swatch}"></button>`;
+    return `<button class="cdot${state.color === k ? ' on' : ''}" data-color="${k}" title="${escapeHtml(colorName(n.name))}" style="background:${n.swatch}"></button>`;
   }).join('');
 }
 
@@ -419,24 +444,24 @@ $('color-filter').addEventListener('click', (e) => {
 });
 
 // ---------- note cards ----------
-const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+let rtf = new Intl.RelativeTimeFormat(uiLang(), { numeric: 'auto' });
 function ago(t) {
   const s = (t - Date.now()) / 1000;
   const a = Math.abs(s);
-  if (a < 45) return 'just now';
+  if (a < 45) return tr('manager.justNow');
   if (a < 3600) return rtf.format(Math.round(s / 60), 'minute');
   if (a < 86400) return rtf.format(Math.round(s / 3600), 'hour');
   if (a < 7 * 86400) return rtf.format(Math.round(s / 86400), 'day');
   const d = new Date(t);
   const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' });
+  return d.toLocaleDateString(uiLang(), { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' });
 }
 
 function reminderLabel(r) {
   const d = new Date(r.snoozeAt || r.at);
   const today = d.toDateString() === new Date().toDateString();
-  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  return r.pending ? 'Due' : today ? time : `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${time}`;
+  const time = d.toLocaleTimeString(uiLang(), { hour: 'numeric', minute: '2-digit' });
+  return r.pending ? tr('manager.due') : today ? time : `${d.toLocaleDateString(uiLang(), { month: 'short', day: 'numeric' })} ${time}`;
 }
 
 function filtered() {
@@ -513,14 +538,14 @@ setInterval(() => {
 
 function snippet(n, terms) {
   // Show the excerpt where the words were found: the note's text, or else a picture's text.
-  const sources = [[n.text, ''], [n.tabCount > 1 ? n.searchText : '', 'In another tab: '], [n.imageText, 'In a picture: ']];
+  const sources = [[n.text, ''], [n.tabCount > 1 ? n.searchText : '', tr('manager.inAnotherTab')], [n.imageText, tr('manager.inPicture')]];
   const [src, label] = sources.find(([s]) => terms.some(t => String(s || '').toLowerCase().includes(t))) || sources[0];
   const text = String(src || '').replace(/\n{2,}/g, '\n');
   const lower = text.toLowerCase();
   const idx = Math.min(...terms.map(t => { const i = lower.indexOf(t); return i < 0 ? Infinity : i; }));
   const start = idx === Infinity || idx < 60 ? 0 : text.lastIndexOf(' ', idx - 40) + 1;
   const body = (start > 0 ? '…' : '') + text.slice(start, start + 240) + (text.length > start + 240 ? '…' : '');
-  return `<div class="snippet">${label ? `<i>${label}</i>` : ''}${highlight(body, terms)}</div>`;
+  return `<div class="snippet">${label ? `<i>${escapeHtml(label)} </i>` : ''}${highlight(body, terms)}</div>`;
 }
 
 function cardHtml(n, pq) {
@@ -534,30 +559,30 @@ function cardHtml(n, pq) {
   const font = (palette.fonts.find(f => f.id === n.font) || palette.fonts[0]).css.replace(/"/g, "'");
   const style = `--n-bg:${c.bg};--n-bar:${c.bar};--n-text:${c.text};--n-accent:${c.accent};--n-font:${font}${bgImage ? `;--n-bgimg:${bgImage}` : ''}`;
   let content;
-  if (n.privateLocked) content = `<div class="locked-card">${icon('shield', { size: 18 })}<span>Private note — locked</span></div>`;
+  if (n.privateLocked) content = `<div class="locked-card">${icon('shield', { size: 18 })}<span>${tx('manager.privateLocked')}</span></div>`;
   else if (pq.words.length || pq.tags.length) content = snippet(n, searchTerms(pq));
   else {
     const html = sanitizeHtml(n.html, { mode: 'stored' });
     const short = n.text.split('\n').length < 6 && !/<img\b/.test(html);
-    content = `<div class="preview${short ? ' short' : ''}">${html.trim() ? html : '<span class="empty-note">Empty note</span>'}</div>`;
+    content = `<div class="preview${short ? ' short' : ''}">${html.trim() ? html : `<span class="empty-note">${tx('manager.emptyNote')}</span>`}</div>`;
   }
   const badges = [];
-  if (n.private) badges.push(`<span class="badge" title="Private">${icon('shield', { size: 13 })}</span>`);
-  if (n.pinned && !n.trashed) badges.push(`<span class="badge" title="Kept on top">${icon('pinFilled', { size: 13 })}</span>`);
-  if (n.reminder && !n.trashed) badges.push(`<span class="badge" title="Reminder">${urgencyDot(n.reminder)}${icon('bell', { size: 13 })}${escapeHtml(reminderLabel(n.reminder))}</span>`);
-  if (n.tasks.total) badges.push(`<span class="badge" title="Checklist progress">${icon('checklist', { size: 13 })}${n.tasks.done}/${n.tasks.total}</span>`);
-  if (bg && bg.type === 'image') badges.push(`<span class="badge" title="Picture background">${icon('image', { size: 13 })}</span>`);
-  if (n.locked) badges.push(`<span class="badge" title="Locked">${icon('lock', { size: 13 })}</span>`);
-  if (!n.open && !n.trashed) badges.push(`<span class="badge" title="Not on the desktop">${icon('eyeOff', { size: 13 })}</span>`);
-  if (n.tabCount > 1) badges.push(`<span class="badge" title="Tabs">${n.tabCount} tabs</span>`);
+  if (n.private) badges.push(`<span class="badge" title="${tx('manager.private')}">${icon('shield', { size: 13 })}</span>`);
+  if (n.pinned && !n.trashed) badges.push(`<span class="badge" title="${tx('manager.keptOnTop')}">${icon('pinFilled', { size: 13 })}</span>`);
+  if (n.reminder && !n.trashed) badges.push(`<span class="badge" title="${tx('note.reminder')}">${urgencyDot(n.reminder)}${icon('bell', { size: 13 })}${escapeHtml(reminderLabel(n.reminder))}</span>`);
+  if (n.tasks.total) badges.push(`<span class="badge" title="${tx('manager.checklistProgress')}">${icon('checklist', { size: 13 })}${n.tasks.done}/${n.tasks.total}</span>`);
+  if (bg && bg.type === 'image') badges.push(`<span class="badge" title="${tx('manager.pictureBackground')}">${icon('image', { size: 13 })}</span>`);
+  if (n.locked) badges.push(`<span class="badge" title="${tx('manager.locked')}">${icon('lock', { size: 13 })}</span>`);
+  if (!n.open && !n.trashed) badges.push(`<span class="badge" title="${tx('manager.notOnDesktop')}">${icon('eyeOff', { size: 13 })}</span>`);
+  if (n.tabCount > 1) badges.push(`<span class="badge" title="${tx('note.tabs')}">${escapeHtml(tp('manager.tabsCount', n.tabCount))}</span>`);
   for (const t of n.tags.slice(0, 3)) badges.push(`<span class="chip-tag">${pq.tags.length ? highlight('#' + t, pq.tags.map(x => '#' + x)) : '#' + escapeHtml(t)}</span>`);
-  const when = n.trashed ? `Deleted ${ago(n.trashedAt || n.updatedAt)}` : ago(n.updatedAt);
+  const when = n.trashed ? tr('manager.deletedAgo', { when: ago(n.trashedAt || n.updatedAt) }) : ago(n.updatedAt);
   const actions = n.trashed
-    ? `<button class="card-btn" data-act="restore" title="Restore">${icon('restore', { size: 16 })}</button>
-       <button class="card-btn danger" data-act="purge" title="Delete forever">${icon('trash', { size: 16 })}</button>`
-    : `<button class="card-btn" data-act="${n.open ? 'hide' : 'open'}" title="${n.open ? 'Hide from desktop' : 'Show on desktop'}">${icon(n.open ? 'eyeOff' : 'eye', { size: 16 })}</button>
-       <button class="card-btn danger" data-act="trash" title="Delete">${icon('trash', { size: 16 })}</button>
-       <button class="card-btn" data-act="menu" title="More">${icon('more', { size: 16 })}</button>`;
+    ? `<button class="card-btn" data-act="restore" title="${tx('manager.restore')}">${icon('restore', { size: 16 })}</button>
+       <button class="card-btn danger" data-act="purge" title="${tx('manager.deleteForever')}">${icon('trash', { size: 16 })}</button>`
+    : `<button class="card-btn" data-act="${n.open ? 'hide' : 'open'}" title="${tx(n.open ? 'manager.hideFromDesktop' : 'manager.showOnDesktop')}">${icon(n.open ? 'eyeOff' : 'eye', { size: 16 })}</button>
+       <button class="card-btn danger" data-act="trash" title="${tx('common.delete')}">${icon('trash', { size: 16 })}</button>
+       <button class="card-btn" data-act="menu" title="${tx('manager.more')}">${icon('more', { size: 16 })}</button>`;
   return `<div class="note-card${n.open ? '' : ' closed'}${n.trashed ? ' trashed' : ''}${bgImage ? ' has-bgimg' : ''}" tabindex="0" data-id="${n.id}" style="${style}">
     <div class="card-body">${content}</div>
     <div class="card-meta">${badges.join('')}<span class="grow"></span><span>${escapeHtml(when)}</span></div>
@@ -580,21 +605,21 @@ function render() {
   } else $('list').innerHTML = list.map(n => cardHtml(n, pq)).join('');
   hydrateFileChips($('list'));
   if (focusedId) { const el = $('list').querySelector(`[data-id="${focusedId}"]`); if (el) el.focus({ preventScroll: true }); }
-  $('view-title').textContent = VIEW_TITLES[state.view] || 'All notes';
+  $('view-title').textContent = tr(VIEW_TITLES[state.view] || 'manager.allNotes');
 
   const isEmpty = !list.length && !tabList.length;
   $('list').hidden = isEmpty;
   $('empty').hidden = !isEmpty;
   if (isEmpty) {
-    let title = 'No notes yet';
-    let sub = 'Create a note and it will show up here.';
-    let action = 'New note';
-    if (state.query) { title = 'No matches'; sub = `Nothing matches “${state.query}”.`; action = 'Clear search'; }
-    else if (state.view === 'trash') { title = 'Trash is empty'; sub = 'Trash keeps up to 300 notes and 300 closed tabs until you delete them or empty it.'; action = 'Back to all notes'; }
+    let title = tr('manager.noNotesYet');
+    let sub = tr('manager.createANoteAndIt');
+    let action = tr('manager.newNoteButton');
+    if (state.query) { title = tr('manager.noMatches'); sub = tr('manager.nothingMatches', { query: state.query }); action = tr('manager.clearSearch'); }
+    else if (state.view === 'trash') { title = tr('manager.trashIsEmpty'); sub = tr('manager.trashEmptySub'); action = tr('manager.backToAllNotes'); }
     else if (state.view !== 'all' || state.color) {
-      title = 'Nothing here';
-      sub = { open: 'No notes are on the desktop right now.', pinned: 'No notes are kept on top.', reminders: 'No notes have reminders.' }[state.view] || 'No notes in this color.';
-      action = 'Show all notes';
+      title = tr('manager.nothingHere');
+      sub = tr({ open: 'manager.emptyOpen', pinned: 'manager.emptyPinned', reminders: 'manager.emptyReminders' }[state.view] || 'manager.emptyColor');
+      action = tr('manager.showAllNotes');
     }
     $('empty-title').textContent = title;
     $('empty-sub').textContent = sub;
@@ -604,13 +629,11 @@ function render() {
   $('btn-empty-trash').hidden = !(inTrash && (notes.some(n => n.trashed) || trashedTabs.length));
   $('btn-show-all').hidden = inTrash;
   $('btn-hide-all').hidden = inTrash;
-  $('status').textContent = `${list.length} note${list.length === 1 ? '' : 's'}`;
-  if (tabList.length) $('status').textContent += `, ${tabList.length} tab${tabList.length === 1 ? '' : 's'}`;
-  $('status').title = inTrash ? TRASH_NOTE : '';
-  if (inTrash && (list.length || tabList.length)) $('status').textContent += ` · ${TRASH_NOTE}`;
+  $('status').textContent = tp('manager.notesCount', list.length);
+  if (tabList.length) $('status').textContent += `, ${tp('manager.tabsCount', tabList.length)}`;
+  $('status').title = inTrash ? tr('manager.trashNote') : '';
+  if (inTrash && (list.length || tabList.length)) $('status').textContent += ` · ${tr('manager.trashNote')}`;
 }
-
-const TRASH_NOTE = 'Trash keeps up to 300 notes and 300 closed tabs until you delete them or empty it';
 
 // Tabs closed from a note only show in the Trash, and only for plain word searches: the
 // other filters (tags, colors, dates…) describe notes.
@@ -627,20 +650,20 @@ function tabCardHtml(t, pq) {
   const owner = notes.find(n => n.id === t.noteId);
   const c = (palette.notes[owner && owner.color] || palette.notes.yellow)[theme];
   const style = `--n-bg:${c.bg};--n-bar:${c.bar};--n-text:${c.text};--n-accent:${c.accent}`;
-  const label = `Tab ‘${t.title || 'Untitled'}’ from note ‘${t.noteTitle || 'Untitled'}’`;
+  const label = tr('manager.tabFrom', { tab: t.title || tr('manager.untitled'), note: t.noteTitle || tr('manager.untitled') });
   let content;
   if (pq.words.length) content = snippet({ text: t.text, searchText: '', imageText: '' }, pq.words);
   else {
     const html = sanitizeHtml(t.html, { mode: 'stored' });
     const short = String(t.text || '').split('\n').length < 6 && !/<img\b/.test(html);
-    content = `<div class="preview${short ? ' short' : ''}">${html.trim() ? html : '<span class="empty-note">Empty tab</span>'}</div>`;
+    content = `<div class="preview${short ? ' short' : ''}">${html.trim() ? html : `<span class="empty-note">${tx('manager.emptyTab')}</span>`}</div>`;
   }
   return `<div class="note-card trashed tab-card" tabindex="0" data-tab-id="${escapeHtml(t.id)}" style="${style}">
     <div class="card-body"><div class="tab-from" title="${escapeHtml(label)}">${escapeHtml(label)}</div>${content}</div>
-    <div class="card-meta"><span class="grow"></span><span>${escapeHtml(`Deleted ${ago(t.trashedAt)}`)}</span></div>
+    <div class="card-meta"><span class="grow"></span><span>${tx('manager.deletedAgo', { when: ago(t.trashedAt) })}</span></div>
     <div class="card-actions">
-       <button class="card-btn" data-act="restore" title="Restore">${icon('restore', { size: 16 })}</button>
-       <button class="card-btn danger" data-act="purge" title="Delete forever">${icon('trash', { size: 16 })}</button>
+       <button class="card-btn" data-act="restore" title="${tx('manager.restore')}">${icon('restore', { size: 16 })}</button>
+       <button class="card-btn danger" data-act="purge" title="${tx('manager.deleteForever')}">${icon('trash', { size: 16 })}</button>
     </div>
   </div>`;
 }
@@ -650,12 +673,12 @@ async function tabAction(act, id) {
   if (!t) return;
   if (act === 'restore') {
     const r = await api.restoreTab(id);
-    if (!r || !r.ok) { toast('Couldn’t restore that tab'); return; }
-    if (r.created) { toast('Restored as a new note'); return; }
+    if (!r || !r.ok) { toast(tr('manager.tabRestoreFailed')); return; }
+    if (r.created) { toast(tr('manager.restoredAsNote')); return; }
     const owner = notes.find(n => n.id === r.noteId);
-    toast(`Tab restored to ‘${(owner && owner.title) || r.noteTitle || 'Untitled'}’`);
+    toast(tr('manager.tabRestoredTo', { title: (owner && owner.title) || r.noteTitle || tr('manager.untitled') }));
   } else if (act === 'purge') {
-    if (!confirm('Delete this tab forever? This can\'t be undone.')) return;
+    if (!confirm(tr('manager.deleteTabConfirm'))) return;
     await api.purgeTab(id);
   }
 }
@@ -705,10 +728,10 @@ async function cardAction(act, n, anchor) {
   switch (act) {
     case 'open': await api.open(n.id); break;
     case 'hide': await api.closeNote(n.id); break;
-    case 'trash': await api.trashNote(n.id); toast('Moved to Trash'); break;
-    case 'restore': await api.restore(n.id); toast('Restored'); break;
+    case 'trash': await api.trashNote(n.id); toast(tr('manager.movedToTrash')); break;
+    case 'restore': await api.restore(n.id); toast(tr('manager.restored')); break;
     case 'purge':
-      if (!confirm('Delete this note forever? This can\'t be undone.')) return;
+      if (!confirm(tr('manager.deleteNoteConfirm'))) return;
       await api.purge(n.id);
       break;
     case 'menu': {
@@ -718,7 +741,7 @@ async function cardAction(act, n, anchor) {
     }
     case 'duplicate': await api.duplicateNote(n.id); break;
     case 'pin': await api.setPinned(n.id, !n.pinned); break;
-    case 'history': if (!(await api.openHistory(n.id))) toast('Private notes don’t keep version history'); break;
+    case 'history': if (!(await api.openHistory(n.id))) toast(tr('note.noHistoryPrivate')); break;
     case 'private': await togglePrivate(n); break;
     default: break;
   }
@@ -726,17 +749,17 @@ async function cardAction(act, n, anchor) {
 
 async function togglePrivate(n) {
   vaultState = await api.vaultStatus();
-  if (!vaultState.configured) { showSettings(); $('privacy').scrollIntoView(); toast('First choose a password for private notes'); return; }
+  if (!vaultState.configured) { showSettings(); $('privacy').scrollIntoView(); toast(tr('note.choosePasswordFirst')); return; }
   if (!vaultState.unlocked && !(await unlockPrompt())) return;
   const r = await api.setPrivate(!n.private, n.id);
-  if (r && r.ok) toast(n.private ? 'No longer private' : 'Private: encrypted and hidden until unlocked');
+  if (r && r.ok) toast(tr(n.private ? 'manager.noLongerPrivate' : 'manager.privateOn'));
 }
 
 async function unlockPrompt() {
-  const pw = await promptDialog({ title: 'Password for private notes', ok: 'Unlock', password: true });
+  const pw = await promptDialog({ title: tr('note.passwordForPrivate'), ok: tr('note.unlock'), password: true });
   if (!pw) return false;
   if (await api.vaultUnlock(pw)) return true;
-  toast('That password isn’t right');
+  toast(tr('note.wrongPassword'));
   return false;
 }
 
@@ -761,21 +784,21 @@ function openCardMenu(n, pos) {
   let html;
   if (n.trashed) {
     html = `
-      <button class="menu-item" data-mact="restore">${icon('restore', { size: 16 })}<span>Restore</span></button>
+      <button class="menu-item" data-mact="restore">${icon('restore', { size: 16 })}<span>${tx('manager.restore')}</span></button>
       <div class="menu-sep"></div>
-      <button class="menu-item danger" data-mact="purge">${icon('trash', { size: 16 })}<span>Delete forever</span></button>`;
+      <button class="menu-item danger" data-mact="purge">${icon('trash', { size: 16 })}<span>${tx('manager.deleteForever')}</span></button>`;
   } else {
     html = `
-      <div class="swatch-row">${palette.order.map(k => `<button data-mcolor="${k}" class="${k === n.color ? 'on' : ''}" title="${palette.notes[k].name}" style="background:${palette.notes[k].swatch}"></button>`).join('')}</div>
+      <div class="swatch-row">${palette.order.map(k => `<button data-mcolor="${k}" class="${k === n.color ? 'on' : ''}" title="${escapeHtml(colorName(palette.notes[k].name))}" style="background:${palette.notes[k].swatch}"></button>`).join('')}</div>
       <div class="menu-sep"></div>
-      <button class="menu-item" data-mact="open">${icon('external', { size: 16 })}<span>${n.open ? 'Bring to front' : 'Show on desktop'}</span></button>
-      ${n.open ? `<button class="menu-item" data-mact="hide">${icon('eyeOff', { size: 16 })}<span>Hide from desktop</span></button>` : ''}
-      <button class="menu-item" data-mact="pin">${icon(n.pinned ? 'pinFilled' : 'pin', { size: 16 })}<span>${n.pinned ? 'Stop keeping on top' : 'Keep on top'}</span></button>
-      <button class="menu-item" data-mact="duplicate">${icon('copy', { size: 16 })}<span>Duplicate</span></button>
-      ${n.private ? '' : `<button class="menu-item" data-mact="history">${icon('history', { size: 16 })}<span>Version history…</span></button>`}
-      <button class="menu-item" data-mact="private">${icon('shield', { size: 16 })}<span>${n.private ? 'Make not private' : 'Make private…'}</span></button>
+      <button class="menu-item" data-mact="open">${icon('external', { size: 16 })}<span>${tx(n.open ? 'manager.bringToFront' : 'manager.showOnDesktop')}</span></button>
+      ${n.open ? `<button class="menu-item" data-mact="hide">${icon('eyeOff', { size: 16 })}<span>${tx('manager.hideFromDesktop')}</span></button>` : ''}
+      <button class="menu-item" data-mact="pin">${icon(n.pinned ? 'pinFilled' : 'pin', { size: 16 })}<span>${tx(n.pinned ? 'manager.stopKeepOnTop' : 'note.keepOnTop')}</span></button>
+      <button class="menu-item" data-mact="duplicate">${icon('copy', { size: 16 })}<span>${tx('manager.duplicate')}</span></button>
+      ${n.private ? '' : `<button class="menu-item" data-mact="history">${icon('history', { size: 16 })}<span>${tx('note.versionHistory')}</span></button>`}
+      <button class="menu-item" data-mact="private">${icon('shield', { size: 16 })}<span>${tx(n.private ? 'note.makeNotPrivate' : 'note.makePrivateMenu')}</span></button>
       <div class="menu-sep"></div>
-      <button class="menu-item danger" data-mact="trash">${icon('trash', { size: 16 })}<span>Delete</span></button>`;
+      <button class="menu-item danger" data-mact="trash">${icon('trash', { size: 16 })}<span>${tx('common.delete')}</span></button>`;
   }
   const card = $('list').querySelector(`[data-id="${n.id}"]`);
   openMenu(pos, html, async (el) => {
@@ -835,8 +858,8 @@ function dueChip(iso) {
 
 function taskRow(n, t, { showNote = false } = {}) {
   return `<div class="task${t.checked ? ' done' : ''}" style="padding-left:${12 + t.depth * 22}px" data-note="${n.id}" data-index="${t.index}">
-    <button class="box" title="${t.checked ? 'Mark as not done' : 'Mark as done'}">${icon('check', { size: 12 })}</button>
-    <div class="txt" title="Show in note">${sanitizeHtml(t.html, { mode: 'stored' }) || escapeHtml(t.text) || '<i>Empty item</i>'}${showNote ? `<div class="from">${escapeHtml(n.title || 'Untitled note')}</div>` : ''}</div>
+    <button class="box" title="${tx(t.checked ? 'manager.markNotDone' : 'manager.markDone')}">${icon('check', { size: 12 })}</button>
+    <div class="txt" title="${tx('manager.showInNote')}">${sanitizeHtml(t.html, { mode: 'stored' }) || escapeHtml(t.text) || `<i>${tx('manager.emptyItem')}</i>`}${showNote ? `<div class="from">${escapeHtml(n.title || tr('note.untitled'))}</div>` : ''}</div>
     ${dueChip(t.due)}
   </div>`;
 }
@@ -854,7 +877,7 @@ function renderTasks() {
     const today = isoDate(new Date());
     const tomorrow = isoDate(new Date(Date.now() + 864e5));
     const week = isoDate(new Date(Date.now() + 7 * 864e5));
-    const buckets = [['Overdue', 'late'], ['Today', ''], ['Tomorrow', ''], ['Next 7 days', ''], ['Later', ''], ['No date', '']].map(([label, cls]) => ({ label, cls, rows: [] }));
+    const buckets = [['manager.overdue', 'late'], ['date.today', ''], ['date.tomorrow', ''], ['manager.next7Days', ''], ['manager.later', ''], ['manager.noDate', '']].map(([label, cls]) => ({ label, cls, rows: [] }));
     for (const { n, items } of groups) {
       for (const t of items) {
         const d = t.due;
@@ -865,15 +888,15 @@ function renderTasks() {
     for (const b of buckets) {
       if (!b.rows.length) continue;
       b.rows.sort((x, y) => (x.t.due || '9999').localeCompare(y.t.due || '9999'));
-      html += `<div class="task-section ${b.cls}">${b.label}</div><div class="task-group">${b.rows.map(({ n, t }) => taskRow(n, t, { showNote: true })).join('')}</div>`;
+      html += `<div class="task-section ${b.cls}">${tx(b.label)}</div><div class="task-group">${b.rows.map(({ n, t }) => taskRow(n, t, { showNote: true })).join('')}</div>`;
     }
   } else {
     groups.sort((a, b) => b.n.updatedAt - a.n.updatedAt);
     for (const { n, items, all } of groups) {
       const done = all.filter(t => t.checked).length;
       html += `<div class="task-group">
-        <div class="task-head"><span class="dot" style="background:${swatch(n.color)}"></span><span class="t">${escapeHtml(n.title || 'Untitled note')}</span><span class="n">${done}/${all.length}</span>
-          <button class="open-note" data-open="${n.id}" title="Open note">${icon('external', { size: 15 })}</button></div>
+        <div class="task-head"><span class="dot" style="background:${swatch(n.color)}"></span><span class="t">${escapeHtml(n.title || tr('note.untitled'))}</span><span class="n">${done}/${all.length}</span>
+          <button class="open-note" data-open="${n.id}" title="${tx('manager.openNote')}">${icon('external', { size: 15 })}</button></div>
         ${items.map(t => taskRow(n, t)).join('')}
       </div>`;
     }
@@ -881,7 +904,7 @@ function renderTasks() {
   $('tasks').innerHTML = html;
   $('tasks').hidden = !html;
   $('tasks-empty').hidden = !!html;
-  $('tasks-empty-title').textContent = q ? 'No matching tasks' : showDone ? 'No checklist items yet' : 'All done 🎉';
+  $('tasks-empty-title').textContent = tr(q ? 'manager.noMatchingTasks' : showDone ? 'manager.noChecklistItems' : 'manager.allDone');
 }
 
 $('task-search').addEventListener('input', (e) => { state.taskQuery = e.target.value; renderTasks(); });
@@ -961,41 +984,42 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ---------- settings ----------
-const NOTE_SHORTCUTS = [
-  ['New note', 'Ctrl+N'], ['Close note', 'Ctrl+W'], ['Delete note', 'Ctrl+D'], ['All notes', 'Ctrl+H'],
-  ['Bold / italic / underline', 'Ctrl+B / I / U'], ['Strikethrough', 'Ctrl+T'], ['Inline code', 'Ctrl+E'],
-  ['Bulleted list', 'Ctrl+Shift+L'], ['Numbered list', 'Ctrl+Shift+O'], ['Checklist', 'Ctrl+Shift+C'],
-  ['Move a list item up / down', 'Alt+Shift+↑ / ↓'], ['Indent / outdent an item', 'Tab / Shift+Tab'],
-  ['Title / heading / subheading', 'Ctrl+Alt+1 / 2 / 3'], ['Normal text', 'Ctrl+Alt+0'],
-  ['Link', 'Ctrl+K'], ['Clear formatting', 'Ctrl+\\'], ['Insert date & time', 'Ctrl+;'],
-  ['Find in note', 'Ctrl+F'], ['Edit HTML source', 'Ctrl+Shift+H'], ['Paste as plain text', 'Ctrl+Shift+V'],
-  ['Keep on top', 'Ctrl+Shift+P'], ['Roll up / unroll', 'Ctrl+Shift+R or double-click title bar'],
-  ['Zoom in / out / reset', 'Ctrl+= / Ctrl+- / Ctrl+0'], ['Print', 'Ctrl+P'], ['Open a link or #tag', 'Ctrl+Click']
+// Functions, not constants, so a language change rebuilds them.
+const NOTE_SHORTCUTS = () => [
+  [tr('sc.newNote'), 'Ctrl+N'], [tr('sc.closeNote'), 'Ctrl+W'], [tr('sc.deleteNote'), 'Ctrl+D'], [tr('sc.allNotes'), 'Ctrl+H'],
+  [tr('sc.biu'), 'Ctrl+B / I / U'], [tr('sc.strike'), 'Ctrl+T'], [tr('sc.inlineCode'), 'Ctrl+E'],
+  [tr('sc.bulleted'), 'Ctrl+Shift+L'], [tr('sc.numbered'), 'Ctrl+Shift+O'], [tr('sc.checklist'), 'Ctrl+Shift+C'],
+  [tr('sc.moveItem'), 'Alt+Shift+↑ / ↓'], [tr('sc.indent'), 'Tab / Shift+Tab'],
+  [tr('sc.headings'), 'Ctrl+Alt+1 / 2 / 3'], [tr('sc.normal'), 'Ctrl+Alt+0'],
+  [tr('sc.link'), 'Ctrl+K'], [tr('sc.clearFormat'), 'Ctrl+\\'], [tr('sc.dateTime'), 'Ctrl+;'],
+  [tr('sc.find'), 'Ctrl+F'], [tr('sc.editHtml'), 'Ctrl+Shift+H'], [tr('sc.pastePlain'), 'Ctrl+Shift+V'],
+  [tr('sc.keepOnTop'), 'Ctrl+Shift+P'], [tr('sc.roll'), tr('sc.rollKeys')],
+  [tr('sc.zoom'), 'Ctrl+= / Ctrl+- / Ctrl+0'], [tr('sc.print'), 'Ctrl+P'], [tr('sc.openLink'), 'Ctrl+Click']
 ];
-const MD_SHORTCUTS = [
-  ['Command menu (templates, table, snip…)', '/'], ['Tag a note', '#word'], ['Link to another note', '[['],
-  ['Due date on a checklist item', '@fri  @tomorrow  @10/20'],
-  ['Title, heading, subheading', '# ␣  ## ␣  ### ␣'], ['Bulleted list', '- ␣'], ['Numbered list', '1. ␣'],
-  ['Checklist item (ticked)', '[] ␣   [x] ␣'], ['Quote', '> ␣'], ['Code block', '``` Enter'], ['Divider', '--- Enter'],
-  ['Bold', '**text**'], ['Italic', '*text*'], ['Strikethrough', '~~text~~'], ['Inline code', '`code`'], ['Highlight', '==text==']
+const MD_SHORTCUTS = () => [
+  [tr('sc.command'), '/'], [tr('sc.tag'), '#word'], [tr('sc.noteLink'), '[['],
+  [tr('sc.due'), '@fri  @tomorrow  @10/20'],
+  [tr('sc.headingsMd'), '# ␣  ## ␣  ### ␣'], [tr('sc.bulleted'), '- ␣'], [tr('sc.numbered'), '1. ␣'],
+  [tr('sc.checkItem'), '[] ␣   [x] ␣'], [tr('sc.quote'), '> ␣'], [tr('sc.codeBlock'), '``` Enter'], [tr('sc.divider'), '--- Enter'],
+  [tr('sc.bold'), '**text**'], [tr('sc.italic'), '*text*'], [tr('sc.strike'), '~~text~~'], [tr('sc.inlineCode'), '`code`'], [tr('sc.highlight'), '==text==']
 ];
-const SEARCH_TIPS = [
-  ['Notes with a tag', '#work'], ['Unfinished checklists', 'has:unchecked'], ['Notes with pictures', 'has:image'],
-  ['Edited recently', 'edited:today  edited:week  edited:3d'], ['Tasks due soon', 'due:today  due:week  due:overdue'],
-  ['On the desktop / on top', 'is:open  is:pinned'], ['By color', 'color:blue'], ['Exact phrase', '"call back"']
+const SEARCH_TIPS = () => [
+  [tr('sc.tipTag'), '#work'], [tr('sc.tipUnchecked'), 'has:unchecked'], [tr('sc.tipImage'), 'has:image'],
+  [tr('sc.tipEdited'), 'edited:today  edited:week  edited:3d'], [tr('sc.tipDue'), 'due:today  due:week  due:overdue'],
+  [tr('sc.tipOpen'), 'is:open  is:pinned'], [tr('sc.tipColor'), 'color:blue'], [tr('sc.tipPhrase'), '"call back"']
 ];
 
 function buildSettings(s) {
-  $('set-color').innerHTML = palette.order.map(k => `<button data-v="${k}" title="${palette.notes[k].name}" style="background:${palette.notes[k].swatch}"></button>`).join('') +
-    '<button class="random" data-v="random" title="Random color"></button>';
-  $('set-font').innerHTML = palette.fonts.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  $('set-color').innerHTML = palette.order.map(k => `<button data-v="${k}" title="${escapeHtml(colorName(palette.notes[k].name))}" style="background:${palette.notes[k].swatch}"></button>`).join('') +
+    `<button class="random" data-v="random" title="${tx('manager.randomColor')}"></button>`;
+  $('set-font').innerHTML = palette.fonts.map(f => `<option value="${f.id}">${escapeHtml(fontName(f))}</option>`).join('');
   const rows = (list) => list.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k">${b.split(' / ').map(x => `<kbd>${escapeHtml(keyLabel(x))}</kbd>`).join(' ')}</div>`).join('');
-  $('shortcuts').innerHTML = rows(NOTE_SHORTCUTS);
-  $('md-shortcuts').innerHTML = MD_SHORTCUTS.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
-  $('search-tips').innerHTML = SEARCH_TIPS.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
+  $('shortcuts').innerHTML = rows(NOTE_SHORTCUTS());
+  $('md-shortcuts').innerHTML = MD_SHORTCUTS().map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
+  $('search-tips').innerHTML = SEARCH_TIPS().map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
   $('data-dir').textContent = s.dataDir;
   refreshDataLocation();
-  $('about').innerHTML = `OpenStickies ${escapeHtml(s.version)}<br>Your notes are stored only on this computer.`;
+  $('about').innerHTML = `OpenStickies ${escapeHtml(s.version)}<br>${tx('manager.about')}`;
   syncSettingsUi();
 }
 
@@ -1007,11 +1031,8 @@ function syncSettingsUi() {
   for (const b of $('set-snipTarget').children) b.classList.toggle('on', b.dataset.v === (settings.snipTarget || 'new'));
   const tbMode = settings.toolbarMode || 'popup';
   for (const b of $('set-toolbarMode').children) b.classList.toggle('on', b.dataset.v === tbMode);
-  $('tb-mode-sub').textContent = {
-    popup: 'Appears when you select text or point at the bottom of a note — notes never change size',
-    editing: 'Sits under the text while you’re working in a note',
-    always: 'Always visible, so a note’s text area never changes size'
-  }[tbMode];
+  $('tb-mode-sub').textContent = tr({ popup: 'manager.tbPopupSub', editing: 'manager.tbEditingSub', always: 'manager.tbAlwaysSub' }[tbMode] || 'manager.tbPopupSub');
+  $('set-language').value = settings.language || 'system';
   $('set-font').value = settings.defaultFont;
   $('set-reminderSound').value = ['chime', 'soft', 'none'].includes(settings.reminderSound) ? settings.reminderSound : 'chime';
   $('set-size').value = settings.fontSize;
@@ -1027,7 +1048,7 @@ function syncSettingsUi() {
 async function update(patch) {
   const res = await api.updateSettings(patch);
   settings = res.settings;
-  syncSettingsUi();
+  if (!relocalize()) syncSettingsUi();
   return res;
 }
 
@@ -1036,10 +1057,11 @@ $('set-snipTarget').addEventListener('click', (e) => { const b = e.target.closes
 $('set-toolbarMode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) update({ toolbarMode: b.dataset.v }); });
 $('set-color').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) update({ defaultColor: b.dataset.v }); });
 $('set-font').addEventListener('change', (e) => update({ defaultFont: e.target.value }));
+$('set-language').addEventListener('change', (e) => update({ language: e.target.value }));
 $('set-reminderSound').addEventListener('change', (e) => { update({ reminderSound: e.target.value }); playChime(e.target.value); });
 $('set-reminderSound-test').addEventListener('click', () => {
   const kind = $('set-reminderSound').value;
-  if (kind === 'none') toast('Reminders are silent');
+  if (kind === 'none') toast(tr('manager.silent'));
   else playChime(kind);
 });
 $('set-size').addEventListener('input', (e) => { $('set-size-value').textContent = `${e.target.value}px`; });
@@ -1048,19 +1070,19 @@ for (const k of SWITCHES) $(`set-${k}`).addEventListener('change', (e) => update
 
 $('act-backup').addEventListener('click', async () => {
   const r = await api.exportBackup();
-  if (r && r.ok) toast(`Backed up ${r.count} note${r.count === 1 ? '' : 's'}`);
+  if (r && r.ok) toast(tp('manager.backedUp', r.count));
 });
 $('act-restore').addEventListener('click', async () => {
   const r = await api.importBackup();
   if (!r) return;
   if (r.ok) {
-    const extra = r.skippedPrivate ? ` · ${r.skippedPrivate} private note${r.skippedPrivate === 1 ? '' : 's'} used a different password and were skipped` : '';
-    toast((r.added ? `Restored ${r.added} note${r.added === 1 ? '' : 's'}` : 'All of those notes are already here') + extra);
+    const extra = r.skippedPrivate ? ` · ${tp('manager.skippedBackup', r.skippedPrivate)}` : '';
+    toast((r.added ? tp('manager.restoredNotes', r.added) : tr('manager.allAlreadyHere')) + extra);
   } else if (r.error) toast(r.error);
 });
 $('act-import').addEventListener('click', async () => {
   const r = await api.importFiles();
-  if (r && r.added) toast(`Imported ${r.added} file${r.added === 1 ? '' : 's'}`);
+  if (r && r.added) toast(tp('manager.importedFiles', r.added));
 });
 $('act-folder').addEventListener('click', () => api.openDataFolder());
 $('set-gridSize').addEventListener('input', (e) => { $('set-gridSize-value').textContent = `${e.target.value}px`; });
@@ -1083,10 +1105,10 @@ async function exportAll(format) {
   try {
     const r = await api.exportAll(format, format === 'txt' ? [] : notesAsMarkdown());
     if (!r || !r.ok) return;
-    const skipped = r.skippedPrivate ? ` · ${r.skippedPrivate} locked private note${r.skippedPrivate === 1 ? ' was' : 's were'} left out` : '';
-    toast(`Exported ${r.count} note${r.count === 1 ? '' : 's'}${skipped}`);
+    const skipped = r.skippedPrivate ? ` · ${tp('manager.skippedExport', r.skippedPrivate)}` : '';
+    toast(tp('manager.exported', r.count) + skipped);
   } catch (err) {
-    toast(`Export failed: ${err.message || err}`);
+    toast(tr('manager.exportFailed', { error: err.message || err }));
   }
 }
 $('act-export-md').addEventListener('click', () => exportAll('md'));
@@ -1096,14 +1118,14 @@ $('act-export-json').addEventListener('click', () => exportAll('json'));
 // ----- data folder location -----
 async function refreshDataLocation() {
   const loc = await api.dataLocation();
-  $('data-location').textContent = loc.custom ? loc.path : `${loc.path} (default)`;
+  $('data-location').textContent = loc.custom ? loc.path : tr('manager.defaultLocation', { path: loc.path });
   $('act-location-change').disabled = loc.fixed;
   $('act-location-reset').disabled = loc.fixed || !loc.custom;
 }
 async function locationAction(fn) {
   const r = await fn();
   if (r && r.error) toast(r.error);
-  else if (r && r.ok) toast('Restarting OpenStickies…');
+  else if (r && r.ok) toast(tr('manager.restarting'));
 }
 $('act-location-change').addEventListener('click', () => locationAction(api.chooseDataFolder));
 $('act-location-reset').addEventListener('click', () => locationAction(api.resetDataFolder));
@@ -1115,19 +1137,19 @@ function renderPrivacy() {
   if (!v.configured) {
     card.innerHTML = `
       <div class="form-row">
-        <div>Lock individual notes behind a password. Their words and pictures are encrypted on this PC, and they stay out of search, previews and exports until you unlock them.</div>
-        <input type="password" id="pv-pw" placeholder="Choose a password" autocomplete="new-password">
-        <input type="password" id="pv-pw2" placeholder="Type it again" autocomplete="new-password">
-        <input type="text" id="pv-hint" placeholder="Password hint (optional — anyone can see it)">
-        <div class="warn">If you forget this password, private notes can’t be recovered.</div>
-        <div class="inline"><button class="btn primary" id="pv-create">Set up private notes</button></div>
+        <div>${tx('manager.pvIntro')}</div>
+        <input type="password" id="pv-pw" placeholder="${tx('manager.choosePassword')}" autocomplete="new-password">
+        <input type="password" id="pv-pw2" placeholder="${tx('manager.typeAgain')}" autocomplete="new-password">
+        <input type="text" id="pv-hint" placeholder="${tx('manager.hintPlaceholder')}">
+        <div class="warn">${tx('manager.forgetWarn')}</div>
+        <div class="inline"><button class="btn primary" id="pv-create">${tx('manager.setUpPrivate')}</button></div>
       </div>`;
     $('pv-create').addEventListener('click', async () => {
       const pw = $('pv-pw').value;
-      if (pw.length < 4) { toast('Use at least 4 characters'); return; }
-      if (pw !== $('pv-pw2').value) { toast('The passwords don’t match'); return; }
+      if (pw.length < 4) { toast(tr('manager.min4')); return; }
+      if (pw !== $('pv-pw2').value) { toast(tr('manager.noMatch')); return; }
       const r = await api.vaultSetup(pw, $('pv-hint').value);
-      if (r.ok) { vaultState = r.status; renderPrivacy(); toast('Private notes are ready — choose “Make private…” in a note’s menu'); }
+      if (r.ok) { vaultState = r.status; renderPrivacy(); toast(tr('manager.privateReady')); }
       else toast(r.error);
     });
     return;
@@ -1135,28 +1157,28 @@ function renderPrivacy() {
   const minutes = settings.autoLockMinutes ?? 5;
   card.innerHTML = `
     <div class="row">
-      <div class="row-label">${icon('shield', { size: 17 })}<div><div>Private notes are <span class="status-pill${v.unlocked ? ' ok' : ''}">${v.unlocked ? 'Unlocked' : 'Locked'}</span></div><div class="sub">Make a note private from its ⋯ menu</div></div></div>
-      <button class="btn" id="pv-toggle">${v.unlocked ? 'Lock now' : 'Unlock…'}</button>
+      <div class="row-label">${icon('shield', { size: 17 })}<div><div>${tx('manager.privateNotesAre')} <span class="status-pill${v.unlocked ? ' ok' : ''}">${tx(v.unlocked ? 'manager.unlocked' : 'manager.locked')}</span></div><div class="sub">${tx('manager.privateFromMenu')}</div></div></div>
+      <button class="btn" id="pv-toggle">${tx(v.unlocked ? 'manager.lockNow' : 'manager.unlockMenu')}</button>
     </div>
     <div class="row">
-      <div class="row-label">${icon('clock', { size: 17 })}<div><div>Lock automatically</div><div class="sub">Also locks when ${IS_MAC ? 'your Mac' : 'your computer'} locks or sleeps</div></div></div>
-      <select id="pv-auto">${[[0, 'Never'], [1, 'After 1 minute'], [5, 'After 5 minutes'], [15, 'After 15 minutes'], [30, 'After 30 minutes'], [60, 'After 1 hour']].map(([m, l]) => `<option value="${m}"${m === minutes ? ' selected' : ''}>${l}</option>`).join('')}</select>
+      <div class="row-label">${icon('clock', { size: 17 })}<div><div>${tx('manager.lockAuto')}</div><div class="sub">${tx(IS_MAC ? 'manager.autoLockSubMac' : 'manager.autoLockSub')}</div></div></div>
+      <select id="pv-auto">${[[0, tr('manager.never')], [1, tp('manager.afterMinutes', 1)], [5, tp('manager.afterMinutes', 5)], [15, tp('manager.afterMinutes', 15)], [30, tp('manager.afterMinutes', 30)], [60, tr('manager.after1Hour')]].map(([m, l]) => `<option value="${m}"${m === minutes ? ' selected' : ''}>${l}</option>`).join('')}</select>
     </div>
     <label class="row">
-      <div class="row-label">${icon('fingerprint', { size: 17 })}<div><div>Unlock with ${QUICK_UNLOCK.name}</div><div class="sub">${v.helloAvailable ? QUICK_UNLOCK.ready : QUICK_UNLOCK.missing}</div></div></div>
+      <div class="row-label">${icon('fingerprint', { size: 17 })}<div><div>${tx('manager.unlockWith', { name: quickUnlock().name })}</div><div class="sub">${escapeHtml(v.helloAvailable ? quickUnlock().ready : quickUnlock().missing)}</div></div></div>
       <input type="checkbox" class="switch" id="pv-hello" ${v.hello ? 'checked' : ''} ${v.helloAvailable ? '' : 'disabled'}>
     </label>
     ${v.unlocked ? `
     <div class="form-row">
-      <div>Change password</div>
-      <input type="password" id="pv-new" placeholder="New password" autocomplete="new-password">
-      <input type="password" id="pv-new2" placeholder="Type it again" autocomplete="new-password">
-      <input type="text" id="pv-newhint" placeholder="New hint (optional)" value="${escapeHtml(v.hint || '')}">
-      <div class="inline"><button class="btn" id="pv-change">Change password</button></div>
+      <div>${tx('manager.changePassword')}</div>
+      <input type="password" id="pv-new" placeholder="${tx('manager.newPassword')}" autocomplete="new-password">
+      <input type="password" id="pv-new2" placeholder="${tx('manager.typeAgain')}" autocomplete="new-password">
+      <input type="text" id="pv-newhint" placeholder="${tx('manager.newHint')}" value="${escapeHtml(v.hint || '')}">
+      <div class="inline"><button class="btn" id="pv-change">${tx('manager.changePassword')}</button></div>
     </div>` : ''}`;
   $('pv-toggle').addEventListener('click', async () => {
-    if (vaultState.unlocked) { await api.vaultLock(); toast('Private notes locked'); }
-    else if (await unlockPrompt()) toast('Private notes unlocked');
+    if (vaultState.unlocked) { await api.vaultLock(); toast(tr('manager.privateLockedToast')); }
+    else if (await unlockPrompt()) toast(tr('manager.privateUnlockedToast'));
     vaultState = await api.vaultStatus();
     renderPrivacy();
   });
@@ -1171,10 +1193,10 @@ function renderPrivacy() {
   if (v.unlocked) {
     $('pv-change').addEventListener('click', async () => {
       const pw = $('pv-new').value;
-      if (pw.length < 4) { toast('Use at least 4 characters'); return; }
-      if (pw !== $('pv-new2').value) { toast('The passwords don’t match'); return; }
+      if (pw.length < 4) { toast(tr('manager.min4')); return; }
+      if (pw !== $('pv-new2').value) { toast(tr('manager.noMatch')); return; }
       const r = await api.vaultChangePassword(pw, $('pv-newhint').value);
-      toast(r.ok ? 'Password changed' : r.error);
+      toast(r.ok ? tr('manager.passwordChanged') : r.error);
       if (r.ok) { vaultState = r.status; renderPrivacy(); }
     });
   }
@@ -1185,10 +1207,10 @@ function renderTemplates() {
   $('templates-card').innerHTML = templates.map(t => `
     <div class="tpl-row" data-tpl="${t.id}">
       <span class="dot" style="background:${swatch(t.color)}"></span><span class="name">${escapeHtml(t.name)}</span>
-      <button class="mini" data-tpl-act="new">New note</button>
-      <button class="mini" data-tpl-act="rename">Rename</button>
-      <button class="mini danger" data-tpl-act="delete">Delete</button>
-    </div>`).join('') + `<div class="row note-row">In any note: ⋯ → <b>Save as template…</b> to add one, or type <b>/</b> to insert one. Placeholders: {{date}} {{time}} {{weekday}} {{week}} {{tomorrow}} {{cursor}}</div>`;
+      <button class="mini" data-tpl-act="new">${tx('manager.newNoteButton')}</button>
+      <button class="mini" data-tpl-act="rename">${tx('manager.rename')}</button>
+      <button class="mini danger" data-tpl-act="delete">${tx('common.delete')}</button>
+    </div>`).join('') + `<div class="row note-row">${tr('manager.templatesHelp')}</div>`;
 }
 
 $('templates-card').addEventListener('click', async (e) => {
@@ -1198,16 +1220,16 @@ $('templates-card').addEventListener('click', async (e) => {
   const t = templates.find(x => x.id === id);
   if (b.dataset.tplAct === 'new') api.newFromTemplate(id);
   else if (b.dataset.tplAct === 'rename') {
-    const name = await promptDialog({ title: 'Rename template', value: t.name, ok: 'Rename' });
+    const name = await promptDialog({ title: tr('manager.renameTemplate'), value: t.name, ok: tr('manager.rename') });
     if (name) await api.saveTemplate({ id, name });
   } else if (b.dataset.tplAct === 'delete') {
-    if (confirm(`Delete the template “${t.name}”?`)) await api.deleteTemplate(id);
+    if (confirm(tr('manager.deleteTemplateConfirm', { name: t.name }))) await api.deleteTemplate(id);
   }
 });
 
 // ----- global hotkey capture -----
 function prettyAccel(acc) {
-  return acc ? keyLabel(acc).replace(/\+/g, ' + ') : 'Off';
+  return acc ? keyLabel(acc).replace(/\+/g, ' + ') : tr('manager.off');
 }
 
 const KEY_NAMES = { ' ': 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', Enter: 'Enter', Tab: 'Tab', Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown', Insert: 'Insert' };
@@ -1232,7 +1254,7 @@ function accelFromEvent(e) {
 }
 
 for (const input of document.querySelectorAll('.hk')) {
-  input.addEventListener('focus', () => { input.classList.add('capturing'); input.value = 'Press keys…'; });
+  input.addEventListener('focus', () => { input.classList.add('capturing'); input.value = tr('manager.pressKeys'); });
   input.addEventListener('blur', () => { input.classList.remove('capturing'); syncSettingsUi(); });
   input.addEventListener('keydown', async (e) => {
     e.preventDefault();
@@ -1243,14 +1265,14 @@ for (const input of document.querySelectorAll('.hk')) {
     else {
       acc = accelFromEvent(e);
       if (acc === null) return;
-      if (acc === 'needs-mod') { input.value = MODIFIER_HINT; return; }
+      if (acc === 'needs-mod') { input.value = modifierHint(); return; }
     }
     const res = await update({ hotkeys: { [input.dataset.hk]: acc } });
     input.blur();
     showHotkeyStatus(res.hotkeyResults);
     const st = res.hotkeyResults && res.hotkeyResults[input.dataset.hk];
-    if (st === 'taken') toast('That shortcut is used by another app');
-    else if (st === 'invalid') toast('That key combination isn\'t supported');
+    if (st === 'taken') toast(tr('manager.shortcutTaken'));
+    else if (st === 'invalid') toast(tr('manager.shortcutInvalid'));
   });
 }
 
@@ -1263,12 +1285,12 @@ function showHotkeyStatus(results) {
   for (const el of document.querySelectorAll('[data-hk-status]')) {
     const st = results[el.dataset.hkStatus];
     el.className = `hk-status ${st === 'ok' ? 'ok' : st === 'taken' || st === 'invalid' ? 'taken' : ''}`;
-    el.title = st === 'ok' ? 'Active' : st === 'taken' ? 'In use by another app' : st === 'invalid' ? 'Not supported' : 'Off';
+    el.title = tr(st === 'ok' ? 'manager.hkActive' : st === 'taken' ? 'manager.hkTaken' : st === 'invalid' ? 'manager.hkInvalid' : 'manager.off');
   }
 }
 
 // ---------- small dialogs ----------
-function promptDialog({ title, value = '', ok = 'OK', password = false }) {
+function promptDialog({ title, value = '', ok = tr('common.ok'), password = false }) {
   return new Promise((resolve) => {
     const modal = $('prompt');
     const input = $('prompt-input');

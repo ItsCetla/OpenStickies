@@ -2,6 +2,7 @@
 
 const { BrowserWindow, screen, nativeTheme } = require('electron');
 const path = require('path');
+const { t: tr } = require('./i18n');
 const palette = require('../renderer/shared/colors.json');
 const { isBlankNote } = require('./store');
 
@@ -118,7 +119,7 @@ class WindowManager {
       movable: !note.locked,
       resizable: !note.locked,
       alwaysOnTop: note.pinned,
-      title: note.title || 'Sticky note',
+      title: note.title || tr('note.stickyNote'),
       icon: this.icon,
       webPreferences: this.webPreferences()
     });
@@ -313,7 +314,7 @@ class WindowManager {
       minWidth: 560,
       minHeight: 380,
       show: false,
-      title: `History — ${(note && note.title) || 'Sticky note'}`,
+      title: tr('history.titleFor', { title: (note && note.title) || tr('note.stickyNote') }),
       icon: this.icon,
       backgroundColor: dark ? '#1f1f22' : '#f7f6f3',
       titleBarStyle: 'hidden',
@@ -377,7 +378,7 @@ class WindowManager {
       if (note.opacity < 1) this.startHoverWatch();
     }
     if (keys.includes('color') || keys.includes('background')) win.setBackgroundColor(this.colorsFor(note).bg);
-    if (keys.includes('title')) win.setTitle(note.title || 'Sticky note');
+    if (keys.includes('title')) win.setTitle(note.title || tr('note.stickyNote'));
     if (keys.includes('rolled')) this._applyRoll(win, note);
     if (keys.includes('locked')) {
       win.setMovable(!note.locked);
@@ -662,7 +663,7 @@ class WindowManager {
       fullscreenable: false,
       skipTaskbar: true,
       alwaysOnTop: true,
-      title: 'Image',
+      title: tr('export.image'),
       icon: this.icon,
       webPreferences: { ...this.webPreferences(), spellcheck: false }
     });

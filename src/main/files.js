@@ -7,6 +7,7 @@
 const { app, nativeImage, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { t: tr } = require('./i18n');
 
 const isWin = process.platform === 'win32';
 const THUMB_SIZE = 320;
@@ -169,12 +170,12 @@ async function openFile(raw, parent) {
   if (await isRisky(p, stat)) {
     const opts = {
       type: 'warning',
-      buttons: ['Open', 'Cancel'],
+      buttons: [tr('files.open'), tr('common.cancel')],
       defaultId: 1,
       cancelId: 1,
       noLink: true,
-      message: `Open "${baseName(p)}"?`,
-      detail: 'This is a program or script. Only open it if you trust where it came from.'
+      message: tr('files.openConfirm', { name: baseName(p) }),
+      detail: tr('files.riskyDetail')
     };
     const { response } = parent && !parent.isDestroyed() ? await dialog.showMessageBox(parent, opts) : await dialog.showMessageBox(opts);
     if (response !== 0) return { ok: false, reason: 'cancelled' };

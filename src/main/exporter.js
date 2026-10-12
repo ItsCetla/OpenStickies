@@ -3,6 +3,7 @@
 const { dialog, BrowserWindow, app } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { t: tr } = require('./i18n');
 const palette = require('../renderer/shared/colors.json');
 const { mdToHtml, textToHtml, esc } = require('./markdown');
 const { IMAGE_EXT, sniffImageExt, ATTACHMENT_NAME_RE, writeFileAtomic } = require('./store');
@@ -73,13 +74,14 @@ function documentHtml(note, bodyHtml) {
 <body><article class="note"><div class="meta">${esc(when)}</div><div class="body">${bodyHtml}</div></article></body></html>`;
 }
 
-const FILTERS = {
-  html: [{ name: 'Web page', extensions: ['html'] }],
-  md: [{ name: 'Markdown', extensions: ['md'] }],
-  txt: [{ name: 'Text', extensions: ['txt'] }],
+// A function so the names follow the current language.
+const FILTERS = () => ({
+  html: [{ name: tr('export.webPage'), extensions: ['html'] }],
+  md: [{ name: tr('export.markdown'), extensions: ['md'] }],
+  txt: [{ name: tr('export.text'), extensions: ['txt'] }],
   pdf: [{ name: 'PDF', extensions: ['pdf'] }],
   json: [{ name: 'JSON', extensions: ['json'] }]
-};
+});
 
 async function renderOffscreen(html, fn) {
   const tmp = path.join(app.getPath('temp'), `stickies-print-${Date.now()}.html`);
@@ -104,9 +106,9 @@ async function exportNote({ parent, store, note, format, payload }) {
   }
 
   const { canceled, filePath } = await dialog.showSaveDialog(parent, {
-    title: 'Export note',
+    title: tr('export.exportNote'),
     defaultPath: path.join(app.getPath('documents'), `${base}.${format}`),
-    filters: FILTERS[format]
+    filters: FILTERS()[format]
   });
   if (canceled || !filePath) return { ok: false, canceled: true };
 
@@ -184,9 +186,9 @@ function freePath(dir, stem, ext) {
 async function exportAllNotes({ parent, format, items, readImage }) {
   if (!['md', 'txt', 'json'].includes(format)) throw new Error('Unknown format');
   const { canceled, filePaths } = await dialog.showOpenDialog(parent, {
-    title: 'Choose a folder for the exported notes',
+    title: tr('export.chooseFolder'),
     defaultPath: app.getPath('documents'),
-    buttonLabel: 'Export here',
+    buttonLabel: tr('export.exportHere'),
     properties: ['openDirectory', 'createDirectory']
   });
   if (canceled || !filePaths || !filePaths[0]) return { ok: false, canceled: true };
@@ -232,9 +234,9 @@ async function saveImageAs({ parent, store, url }) {
   if (!src || !fs.existsSync(src)) return { ok: false };
   const ext = path.extname(src);
   const { canceled, filePath } = await dialog.showSaveDialog(parent, {
-    title: 'Save image',
+    title: tr('export.saveImage'),
     defaultPath: path.join(app.getPath('pictures'), `sticky-image${ext}`),
-    filters: [{ name: 'Image', extensions: [ext.slice(1)] }]
+    filters: [{ name: tr('export.image'), extensions: [ext.slice(1)] }]
   });
   if (canceled || !filePath) return { ok: false, canceled: true };
   fs.copyFileSync(src, filePath);
@@ -245,9 +247,9 @@ async function saveImageAs({ parent, store, url }) {
 async function exportBackup({ parent, store, vault }) {
   const stamp = new Date().toISOString().slice(0, 10);
   const { canceled, filePath } = await dialog.showSaveDialog(parent, {
-    title: 'Back up all notes',
+    title: tr('export.backup'),
     defaultPath: path.join(app.getPath('documents'), `OpenStickies backup ${stamp}.stickies.json`),
-    filters: [{ name: 'OpenStickies backup', extensions: ['json'] }]
+    filters: [{ name: tr('export.backupFile'), extensions: ['json'] }]
   });
   if (canceled || !filePath) return { ok: false, canceled: true };
   const attachments = {};
@@ -269,14 +271,14 @@ async function exportBackup({ parent, store, vault }) {
 
 async function importBackup({ parent, store, vault }) {
   const { canceled, filePaths } = await dialog.showOpenDialog(parent, {
-    title: 'Restore notes from backup',
-    filters: [{ name: 'OpenStickies backup', extensions: ['json'] }],
+    title: tr('export.restore'),
+    filters: [{ name: tr('export.backupFile'), extensions: ['json'] }],
     properties: ['openFile']
   });
   if (canceled || !filePaths.length) return { ok: false, canceled: true };
   const data = JSON.parse(fs.readFileSync(filePaths[0], 'utf8'));
   const notes = Array.isArray(data.notes) ? data.notes : (Array.isArray(data) ? data : null);
-  if (!notes) throw new Error('That file is not an OpenStickies backup.');
+  if (!notes) throw new Error(tr('export.notBackup'));
   // A backup can come from anywhere, so never trust its file names or contents: only real
   // image bytes are accepted, and each is stored under the hash of what it actually contains.
   const renamed = new Map();
@@ -337,10 +339,10 @@ async function importBackup({ parent, store, vault }) {
 
 async function importFiles({ parent }) {
   const { canceled, filePaths } = await dialog.showOpenDialog(parent, {
-    title: 'Import files as notes',
+    title: tr('export.importFiles'),
     filters: [
-      { name: 'Notes', extensions: ['txt', 'md', 'markdown', 'html', 'htm'] },
-      { name: 'All files', extensions: ['*'] }
+      { name: tr('export.notes'), extensions: ['txt', 'md', 'markdown', 'html', 'htm'] },
+      { name: tr('export.allFiles'), extensions: ['*'] }
     ],
     properties: ['openFile', 'multiSelections']
   });

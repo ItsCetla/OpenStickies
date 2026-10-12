@@ -2,6 +2,8 @@
 // CommandOrControl (Electron maps those per platform); only the text shown changes, so the
 // labels written in the UI as "Ctrl+N" read "⌘N" on a Mac.
 
+import { t } from './i18n.js';
+
 const platform = (window.stickies && window.stickies.platform) || '';
 export const IS_MAC = platform === 'darwin';
 
@@ -36,8 +38,8 @@ export function keyLabel(text) {
   }).replace(/([⌘⌥⇧⌃])Click\b/g, '$1-click');
 }
 
-// Words for a hint like "Add Ctrl, Alt or Shift".
-export const MODIFIER_HINT = IS_MAC ? 'Add ⌘, ⌥, ⌃ or ⇧' : 'Add Ctrl, Alt or Shift';
+// Words for a hint like "Add Ctrl, Alt or Shift" (a function so it follows the language).
+export const modifierHint = () => (IS_MAC ? t('keys.addModifierMac') : t('keys.addModifier'));
 
 // Rewrites shortcut text already in the page: title attributes, menu hints and <kbd> labels.
 export function localizeKeys(root = document) {

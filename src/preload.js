@@ -11,6 +11,8 @@ const listen = (ch) => (cb) => {
 
 contextBridge.exposeInMainWorld('stickies', {
   platform: process.platform,
+  // The only synchronous call: pages need their strings before the first paint.
+  i18n: () => ipcRenderer.sendSync('i18n:get'),
 
   // note window
   init: () => invoke('note:init'),

@@ -1,5 +1,6 @@
 // File shortcut chips: building them, checking the files are still there, and the hover preview card.
 import { escapeHtml } from '../shared/sanitize.js';
+import { t, tp, lang } from '../shared/i18n.js';
 import { fileIconUrl, fileKindLabel, hydrateFileChips } from '../shared/file-icons.js';
 
 const HOVER_DELAY = 500;
@@ -66,7 +67,7 @@ export function formatSize(n) {
 
 export function formatDate(ms) {
   if (!ms) return '';
-  try { return new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); } catch { return ''; }
+  try { return new Date(ms).toLocaleString(lang(), { dateStyle: 'medium', timeStyle: 'short' }); } catch { return ''; }
 }
 
 // A preview card that appears after resting the pointer on a file chip or a shrunken image.
@@ -183,19 +184,19 @@ export class HoverPreview {
       if (token !== this.token || !info) return;
       if (info.exists === false) {
         a.classList.add('missing');
-        meta.textContent = info.invalid ? "This isn't a file path this computer can open" : "Can't find this file. It may have been moved or deleted.";
+        meta.textContent = t(info.invalid ? 'chip.invalidPath' : 'chip.missing');
         meta.classList.add('warn');
       } else {
         a.classList.remove('missing');
         const bits = [fileKindLabel(info.ext || ext, info.kind || kind)];
-        if (info.kind === 'folder' && typeof info.items === 'number') bits.push(info.items === 1 ? '1 item' : `${info.items} items`);
+        if (info.kind === 'folder' && typeof info.items === 'number') bits.push(tp('chip.items', info.items));
         else if (info.kind !== 'folder' && typeof info.size === 'number' && !info.remote) bits.push(formatSize(info.size));
         const when = formatDate(info.mtime);
         meta.textContent = bits.filter(Boolean).join(' · ');
         if (when) {
           const mod = document.createElement('div');
           mod.className = 'hover-meta';
-          mod.textContent = `Modified ${when}`;
+          mod.textContent = t('chip.modified', { when });
           meta.after(mod);
         }
         if (typeof info.thumb === 'string' && /^data:image\/(png|jpeg);base64,/.test(info.thumb)) {

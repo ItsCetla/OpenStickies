@@ -2,6 +2,8 @@
 // CSS Custom Highlight API), and checklist tools — ticked items sink to the bottom,
 // drag to reorder, clear completed, scheduled resets and progress counts.
 
+import { t, lang } from '../shared/i18n.js';
+
 export const TAG_RE = /(^|[\s(,;])#([\p{L}\p{N}_][\p{L}\p{N}_\-/]{0,48})/gu;
 const DUE_RE = /(^|\s)@([\w/+\-]{2,16})/g;
 const SKIP = 'code, pre, a';
@@ -41,11 +43,11 @@ export function dueLabel(iso, now = new Date()) {
   const d = new Date(y, mo - 1, da);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diff = Math.round((d - today) / 864e5);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Tomorrow';
-  if (diff === -1) return 'Yesterday';
-  if (diff > 1 && diff < 7) return d.toLocaleDateString(undefined, { weekday: 'long' });
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
+  if (diff === 0) return t('date.today');
+  if (diff === 1) return t('date.tomorrow');
+  if (diff === -1) return t('date.yesterday');
+  if (diff > 1 && diff < 7) return d.toLocaleDateString(lang(), { weekday: 'long' });
+  return d.toLocaleDateString(lang(), { month: 'short', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 }
 
 // Text belonging to an item itself (not its sub-items or nested lists).

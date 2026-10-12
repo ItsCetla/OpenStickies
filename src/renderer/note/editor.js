@@ -1,6 +1,7 @@
 import { sanitizeHtml, escapeHtml, BLOCK_TAGS } from '../shared/sanitize.js';
 import { decorate, syncDueDates, tagAt, sinkItem, moveItem, nudgeItem, topChecklist, cascadeCheck } from './smart.js';
 import { keyLabel } from '../shared/keys.js';
+import { t as tr, lang as uiLang } from '../shared/i18n.js';
 import { chipHtml, refreshChips, forgetChipInfo } from './chips.js';
 import { fileUrl } from '../shared/html-to-md.js';
 import { tokenize, detectLanguage, normalizeLang, langLabel, TOKEN_KINDS } from './highlight.js';
@@ -140,7 +141,7 @@ export class Editor {
       if (info && info.invalid) { unknown++; continue; }
       html.push(chipHtml(path, info));
     }
-    if (unknown) this.toast(unknown === files.length ? "That can't be added as a file shortcut" : 'Some of those items couldn\'t be added');
+    if (unknown) this.toast(tr(unknown === files.length ? 'editor.cantAddFile' : 'editor.someNotAdded'));
     if (!html.length) return 0;
     this.el.focus({ preventScroll: true });
     if (at) this.selectRange(at);
@@ -155,12 +156,12 @@ export class Editor {
     try {
       const res = await this.api.openFile(path);
       if (res && res.ok === false) {
-        if (res.reason === 'missing') { chip.classList.add('missing'); this.toast("Can't find this file. It may have been moved or deleted."); }
-        else if (res.reason === 'invalid') this.toast("This file path can't be opened on this computer");
-        else if (res.reason === 'failed') this.toast(res.error ? `Couldn't open it: ${res.error}` : "Couldn't open it");
+        if (res.reason === 'missing') { chip.classList.add('missing'); this.toast(tr('chip.missing')); }
+        else if (res.reason === 'invalid') this.toast(tr('editor.pathInvalid'));
+        else if (res.reason === 'failed') this.toast(res.error ? tr('editor.openFailedError', { error: res.error }) : tr('editor.openFailed'));
       } else if (res && res.ok) chip.classList.remove('missing');
     } catch (err) {
-      this.toast(`Couldn't open it: ${err.message || err}`);
+      this.toast(tr('editor.openFailedError', { error: err.message || err }));
     }
   }
 
@@ -471,7 +472,7 @@ export class Editor {
       case 'checklist': return this.toggleChecklist();
       case 'code': return this.toggleInlineCode();
       case 'hr': return this.insertRule();
-      case 'date': return this.exec('insertText', new Date().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }));
+      case 'date': return this.exec('insertText', new Date().toLocaleString(uiLang(), { dateStyle: 'medium', timeStyle: 'short' }));
       case 'block': return this.formatBlock(arg);
       case 'size': return this.setFontSize(arg);
       case 'color': return this.setColor(arg);
@@ -492,7 +493,7 @@ export class Editor {
     // Inside a checklist, Title/Heading/Subheading style the whole item and keep its checkbox.
     const items = this.checklistItems();
     if (items.length) {
-      if (tag === 'blockquote' || tag === 'pre') { this.toast(keyLabel('Quotes and code blocks can’t go inside a checklist — try inline code (Ctrl+E)')); return; }
+      if (tag === 'blockquote' || tag === 'pre') { this.toast(keyLabel(tr('editor.noCodeInChecklist'))); return; }
       const cls = /^h[1-3]$/.test(tag) ? tag : null;
       const toggleOff = cls && items.every(li => li.classList.contains(cls));
       for (const li of items) {
@@ -849,7 +850,7 @@ export class Editor {
         const { url } = await this.api.saveImage(bytes, f.type);
         html.push(`<img src="${url}" alt="">`);
       } catch (err) {
-        this.toast(`Couldn't add image: ${err.message || err}`);
+        this.toast(tr('editor.imageFailed', { error: err.message || err }));
       }
     }
     if (!html.length) return 0;
@@ -1436,7 +1437,7 @@ export class Editor {
       const path = chip.getAttribute('data-path');
       this._chipDrag = { path, chip, at: Date.now() };
       Promise.resolve(this.api.startDrag(path)).then((ok) => {
-        if (ok === false) { chip.classList.add('missing'); this.toast("Can't find this file. It may have been moved or deleted."); }
+        if (ok === false) { chip.classList.add('missing'); this.toast(tr('chip.missing')); }
       }).catch(() => {});
     });
     el.addEventListener('mousedown', () => { this._chipDragged = false; }, true);
@@ -1521,7 +1522,9 @@ export class Editor {
       const a = e.target.closest && e.target.closest('a[href]');
       if (a && !a.title) {
         const internal = a.getAttribute('href').startsWith('note://');
-        a.title = internal ? `${this.locked ? 'Click' : keyLabel('Ctrl+Click')} to open this note` : `${a.getAttribute('href')}\n${this.locked ? 'Click' : keyLabel('Ctrl+Click')} to open`;
+        a.title = keyLabel(internal
+          ? tr(this.locked ? 'editor.openNoteClick' : 'editor.openNoteModClick')
+          : tr(this.locked ? 'editor.openLinkClick' : 'editor.openLinkModClick', { url: a.getAttribute('href') }));
       }
     });
 
@@ -1757,7 +1760,7 @@ export class Editor {
       const texts = asChips ? [] : files.filter(f => !f.type.startsWith('image/') && (/^text\//.test(f.type) || /\.(md|markdown|txt|csv|json|log)$/i.test(f.name)));
       if (images.length) await this.insertImageFiles(images, this.range() && this.range().cloneRange());
       for (const f of texts) {
-        if (f.size > 2 * 1024 * 1024) { this.toast(`${f.name} is too large to paste in`); continue; }
+        if (f.size > 2 * 1024 * 1024) { this.toast(tr('editor.tooLarge', { name: f.name })); continue; }
         this.insertPlainText(await f.text());
       }
       const others = files.filter(f => !images.includes(f) && !texts.includes(f));

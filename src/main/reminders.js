@@ -1,6 +1,7 @@
 'use strict';
 
 const { Notification } = require('electron');
+const { t: tr } = require('./i18n');
 
 // Steps by calendar days (not fixed milliseconds) so 9:00 stays 9:00 across daylight-saving
 // changes. `dom` is the day of month the reminder was created for, so a reminder on the 31st
@@ -63,7 +64,7 @@ class Reminders {
 
   fire(note, reminder) {
     this.store.update(note.id, { reminder });
-    const title = note.title || 'Sticky note';
+    const title = note.title || tr('note.stickyNote');
     this.windows.openNote(note.id, { focus: false });
     const win = this.windows.windowFor(note.id);
     const notify = () => {
@@ -75,7 +76,7 @@ class Reminders {
     else notify();
 
     if (Notification.isSupported()) {
-      const body = (note.text || '').replace(/\s+/g, ' ').trim().slice(0, 180) || 'You asked to be reminded about this note.';
+      const body = (note.text || '').replace(/\s+/g, ' ').trim().slice(0, 180) || tr('reminder.notifyBody');
       const n = new Notification({ title: `⏰ ${title}`, body, icon: this.icon, silent: false });
       this.live.add(n);
       n.on('click', () => { this.live.delete(n); this.windows.openNote(note.id, { focus: true }); });

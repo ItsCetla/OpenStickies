@@ -1,6 +1,8 @@
 // File-type badges for file shortcuts: a document shape with a short label and a color per kind
 // of file. Plain inline SVG so it works under the strict CSP without loading anything.
 
+import { t } from './i18n.js';
+
 const CATEGORIES = {
   doc: { color: '#2b5fb4', noun: 'document' },
   sheet: { color: '#1e7a46', noun: 'spreadsheet' },
@@ -107,9 +109,9 @@ export function fileIconUrl(ext, kind) {
 // "PDF document", "XLSX spreadsheet", "Folder"...
 export function fileKindLabel(ext, kind) {
   const { cat, label } = typeOf(ext, kind);
-  if (cat === 'folder') return 'Folder';
-  if (cat === 'generic') return label ? `${label} file` : 'File';
-  return `${label} ${CATEGORIES[cat].noun}`;
+  if (cat === 'folder') return t('fileKind.folder');
+  if (cat === 'generic') return label ? t('fileKind.generic', { label }) : t('fileKind.file');
+  return t(`fileKind.${cat}`, { label }, `${label} ${CATEGORIES[cat].noun}`);
 }
 
 // Chips store only their name and path; the badge is painted on through a CSS variable so it

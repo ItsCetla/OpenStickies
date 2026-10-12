@@ -13,8 +13,8 @@ body { display: flex; flex-direction: column; background: var(--app-bg); color: 
 .t2 { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .shell { flex: 1; min-height: 0; display: flex; border-top: 1px solid var(--line); }
-.versions { width: 250px; flex: none; overflow-y: auto; padding: 8px; border-right: 1px solid var(--line); }
-.ver { display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left; padding: 7px 10px; border-radius: 8px; }
+.versions { width: 250px; flex: none; overflow-y: auto; padding: 8px; border-inline-end: 1px solid var(--line); }
+.ver { display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: start; padding: 7px 10px; border-radius: 8px; }
 .ver:hover { background: var(--hover); }
 .ver.on { background: var(--press); }
 .ver .w1 { font-weight: 600; display: flex; align-items: center; gap: 6px; }
@@ -32,7 +32,7 @@ body { display: flex; flex-direction: column; background: var(--app-bg); color: 
 .segmented button.on { background: var(--card); color: var(--app-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); }
 .btn:disabled { opacity: 0.45; pointer-events: none; }
 .legend { padding: 6px 16px 0; font-size: 11.5px; color: var(--muted); }
-.legend .ins, .legend .del { margin-right: 6px; }
+.legend .ins, .legend .del { margin-inline-end: 6px; }
 
 .doc {
   flex: 1; min-height: 0; overflow-y: auto; margin: 12px 16px 16px; padding: 14px 18px 20px; border-radius: 6px;
@@ -42,19 +42,19 @@ body { display: flex; flex-direction: column; background: var(--app-bg); color: 
 }
 .doc p { margin: 0; }
 .doc h1, .doc h2, .doc h3 { margin: 0.35em 0 0.15em; line-height: 1.25; }
-.doc ul, .doc ol { margin: 0.1em 0; padding-left: 1.5em; }
-.doc ul.checklist { list-style: none; padding-left: 0.05em; }
-.doc ul.checklist > li { padding-left: 1.7em; }
-.doc ul.checklist > li::before { content: ""; display: inline-block; width: 1em; height: 1em; margin-left: -1.7em; margin-right: 0.7em; vertical-align: -0.15em; border: 1.5px solid currentColor; border-radius: 4px; opacity: 0.5; box-sizing: border-box; }
+.doc ul, .doc ol { margin: 0.1em 0; padding-inline-start: 1.5em; }
+.doc ul.checklist { list-style: none; padding-inline-start: 0.05em; }
+.doc ul.checklist > li { padding-inline-start: 1.7em; }
+.doc ul.checklist > li::before { content: ""; display: inline-block; width: 1em; height: 1em; margin-inline-start: -1.7em; margin-inline-end: 0.7em; vertical-align: -0.15em; border: 1.5px solid currentColor; border-radius: 4px; opacity: 0.5; box-sizing: border-box; }
 .doc ul.checklist > li.checked { text-decoration: line-through; opacity: 0.6; }
 .doc ul.checklist > li.checked::before { background: var(--n-accent, #c9a400); border-color: var(--n-accent, #c9a400); opacity: 1; }
-.doc ul.checklist > :is(ul, ol) { margin-left: 1.7em; }
+.doc ul.checklist > :is(ul, ol) { margin-inline-start: 1.7em; }
 .doc img { max-width: 100%; height: auto; border-radius: 4px; }
 .doc img[data-wrap="left"] { float: left; margin: 0.25em 0.9em 0.35em 0; }
 .doc img[data-wrap="right"] { float: right; margin: 0.25em 0 0.35em 0.9em; }
 .doc img[data-wrap="behind"], .doc img[data-wrap="front"] { position: absolute; max-width: none; }
 .doc img[data-wrap="behind"] { z-index: -1; }
-.doc blockquote { margin: 0.3em 0; padding-left: 0.85em; border-left: 3px solid var(--n-accent, #c9a400); }
+.doc blockquote { margin: 0.3em 0; padding-inline-start: 0.85em; border-inline-start: 3px solid var(--n-accent, #c9a400); }
 .doc code, .doc pre { font-family: var(--mono); font-size: 0.88em; background: rgba(127, 127, 127, 0.14); border-radius: 4px; padding: 0 0.3em; }
 .doc pre { padding: 0.5em 0.7em; }
 .doc a { color: var(--n-accent, #c9a400); }

@@ -32,6 +32,7 @@ const CONTENT_FIELDS = new Set(['html', 'color', 'font', 'background']);
 
 const DEFAULT_SETTINGS = {
   theme: 'system',            // 'system' | 'light' | 'dark'
+  language: 'system',         // 'system' or a supported locale code (see i18n.js)
   defaultColor: 'yellow',     // 'random' or a palette key
   defaultFont: 'default',
   fontSize: 15,

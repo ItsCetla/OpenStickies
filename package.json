@@ -38,7 +38,8 @@
     "dist": "electron-builder --win nsis portable",
     "dist:portable": "electron-builder --win portable",
     "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux"
+    "dist:linux": "electron-builder --linux",
+    "check:locales": "node scripts/check-locales.js"
   },
   "build": {
     "appId": "com.openstickies.desktop",

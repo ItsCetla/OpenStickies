@@ -4,6 +4,7 @@
 // then crop that region at full resolution and put it in a note.
 
 const crypto = require('crypto');
+const { t: tr } = require('./i18n');
 const { BrowserWindow, desktopCapturer, dialog, screen, shell, systemPreferences } = require('electron');
 
 class Snipper {
@@ -92,14 +93,12 @@ class Snipper {
     if (process.platform === 'win32') return;
     const mac = process.platform === 'darwin';
     const wayland = process.env.XDG_SESSION_TYPE === 'wayland' || !!process.env.WAYLAND_DISPLAY;
-    let detail = 'The screen could not be captured. Try again, or check that your desktop allows screen capture.';
-    if (mac) detail = 'OpenStickies needs Screen Recording permission to snip the screen. Turn it on for OpenStickies in System Settings > Privacy & Security > Screen & System Audio Recording, then quit and reopen OpenStickies.';
-    else if (wayland) detail = 'Your desktop asks before an app can see the screen. Choose a screen and click Share in that prompt, then try again. If no prompt appeared, check that xdg-desktop-portal and the portal for your desktop are installed.';
+    const detail = tr(mac ? 'snip.failedMac' : wayland ? 'snip.failedWayland' : 'snip.failedDetail');
     dialog.showMessageBox({
       type: 'warning',
-      message: 'Could not snip the screen',
+      message: tr('snip.failed'),
       detail,
-      buttons: mac ? ['Open System Settings', 'Cancel'] : ['OK'],
+      buttons: mac ? [tr('snip.openSettings'), tr('common.cancel')] : [tr('common.ok')],
       defaultId: 0,
       cancelId: mac ? 1 : 0
     }).then(({ response }) => {
@@ -116,7 +115,7 @@ class Snipper {
     return {
       image: `app://stickies/__snip/${this.session.token}/${o.display.id}.jpg`,
       target: target === 'new' || target === 'last' ? target : 'note',
-      lastTitle: target !== 'new' && target !== 'last' ? (this.store.get(target) || {}).title || 'this note' : (last && !last.trashed ? last.title || 'Sticky note' : null)
+      lastTitle: target !== 'new' && target !== 'last' ? (this.store.get(target) || {}).title || tr('snip.thisNote') : (last && !last.trashed ? last.title || tr('note.stickyNote') : null)
     };
   }
 
