@@ -736,6 +736,8 @@ function registerIpc() {
     if (!id) throw new Error('Not a history window');
     return id;
   };
+  // The id of the tab note.html mirrors, so history snapshots know which page they hold.
+  const activeTabId = (n) => (n.tabs && n.tabs[n.activeTab] ? n.tabs[n.activeTab].id : null);
   const parentOf = (e) => BrowserWindow.fromWebContents(e.sender);
 
   // ----- note window -----
@@ -766,7 +768,7 @@ function registerIpc() {
         windows.applyNoteProps(id, ['title']);
       }
     } else if (note && 'html' in clean && clean.html !== note.html) {
-      history.beforeChange(id, note.html, note.updatedAt);
+      history.beforeChange(id, note.html, note.updatedAt, { tab: activeTabId(note) });
     }
     const keys = Object.keys(clean);
     if (!keys.length) return true;
@@ -948,16 +950,30 @@ function registerIpc() {
   ipcMain.handle('history:list', (e) => {
     const id = historyNote(e);
     const n = store.get(id);
-    return { note: n ? { id: n.id, title: n.title, color: n.color, html: n.html, updatedAt: n.updatedAt } : null, versions: history.list(id), theme: themeName() };
+    const tabs = n && n.tabs ? n.tabs.map(x => ({ id: x.id, title: x.title })) : null;
+    return { note: n ? { id: n.id, title: n.title, color: n.color, html: n.html, updatedAt: n.updatedAt, tabs } : null, versions: history.list(id), theme: themeName() };
   });
   ipcMain.handle('history:get', (e, t) => history.get(historyNote(e), Number(t)));
   ipcMain.handle('history:restore', async (e, t) => {
     const id = historyNote(e);
-    const html = history.get(id, Number(t));
-    const n = store.get(id);
-    if (html === null || !n) return false;
+    const snap = history.snapshot(id, Number(t));
+    let n = store.get(id);
+    if (!snap || !n) return false;
+    const html = snap.html;
     await windows.flushRenderer(windows.windowFor(id));
-    history.beforeChange(id, n.html, n.updatedAt, { force: true }); // the current version stays restorable
+    n = store.get(id);
+    if (!n) return false;
+    // A snapshot belongs to the tab it was taken in: show that tab first, so the restore
+    // replaces its page and not whichever tab happens to be active. A closed tab falls
+    // back to the active one.
+    const idx = n.tabs && snap.tab ? n.tabs.findIndex(x => x.id === snap.tab) : -1;
+    if (idx >= 0 && idx !== n.activeTab) {
+      store.update(id, { activeTab: idx });
+      n = store.get(id);
+      windows.sendToNote(id, 'note:changed', { tabs: n.tabs, activeTab: n.activeTab, html: n.html });
+      windows.applyNoteProps(id, ['title']);
+    }
+    history.beforeChange(id, n.html, n.updatedAt, { force: true, tab: activeTabId(n) }); // the current version stays restorable
     store.update(id, { html });
     windows.sendToNote(id, 'note:changed', { html });
     history.flush();

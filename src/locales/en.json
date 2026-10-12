@@ -135,6 +135,7 @@
   "history.comparedWithTheVersionBefore": "compared with the version before it",
   "history.currentVersion": "Current version",
   "history.gone": "This note no longer exists.",
+  "history.inTab": "Tab: {tab}",
   "history.live": "Live",
   "history.none": "No earlier versions yet. OpenStickies keeps a copy each time you come back to edit this note after a few minutes away.",
   "history.now": "Now",

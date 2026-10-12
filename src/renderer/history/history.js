@@ -7,7 +7,7 @@ import { hydrateFileChips } from '../shared/file-icons.js';
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);
-let data = null;        // { note, versions: [{ t, title, words }] (newest first), theme }
+let data = null;        // { note, versions: [{ t, title, words, tab }] (newest first), theme }
 let selected = 'current';
 let mode = 'preview';
 const htmlCache = new Map();
@@ -40,15 +40,22 @@ function renderList() {
   rows.push(`<div class="day">${escapeHtml(t('history.now'))}</div><button class="ver${selected === 'current' ? ' on' : ''}" data-t="current">
     <span class="w1">${escapeHtml(t('history.currentVersion'))} <span class="tagnow">${escapeHtml(t('history.live'))}</span></span><span class="w2">${escapeHtml(data.note.title || t('note.untitled'))}</span></button>`);
   let lastDay = '';
+  const tabTitles = new Map((data.note.tabs || []).map(x => [x.id, x.title]));
   for (const v of data.versions) {
     const day = fmt(v.t, { weekday: 'long', month: 'long', day: 'numeric' });
     if (day !== lastDay) { rows.push(`<div class="day">${escapeHtml(day)}</div>`); lastDay = day; }
     rows.push(`<button class="ver${selected === v.t ? ' on' : ''}" data-t="${v.t}">
       <span class="w1">${escapeHtml(fmt(v.t, { hour: 'numeric', minute: '2-digit' }))}</span>
-      <span class="w2">${escapeHtml(v.title || t('history.untitled'))} · ${escapeHtml(tp('history.words', v.words))}</span></button>`);
+      <span class="w2">${escapeHtml(v.title || t('history.untitled'))} · ${escapeHtml(tp('history.words', v.words))}${tabLabel(tabTitles, v.tab)}</span></button>`);
   }
   if (!data.versions.length) rows.push(`<div class="none">${escapeHtml(t('history.none'))}</div>`);
   $('versions').innerHTML = rows.join('');
+}
+
+// Which tab a version came from, so restoring one into another tab is no surprise.
+function tabLabel(tabTitles, tab) {
+  if (!tab || !tabTitles.has(tab)) return '';
+  return ` · ${escapeHtml(t('history.inTab', { tab: tabTitles.get(tab) || t('note.untitled') }))}`;
 }
 
 async function htmlOf(key) {

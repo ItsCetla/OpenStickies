@@ -7,8 +7,9 @@
 // week, one per day after that, and at most MAX_PER_NOTE snapshots.
 //
 // Notes with tabs: a snapshot is note.html, which is only the tab that was active at the time
-// (the store mirrors it). Switching tabs sends the tab list without html, so it never snapshots;
-// restoring a version replaces the active tab's page and leaves the other tabs alone.
+// (the store mirrors it), so it also records that tab's id. Switching tabs sends the tab list
+// without html, so it never snapshots. Restoring a version first switches the note back to the
+// tab it came from (if that tab still exists), then replaces that page and leaves the others alone.
 
 const fs = require('fs');
 const path = require('path');
@@ -23,8 +24,8 @@ class History {
   constructor(dataDir) {
     this.dir = path.join(dataDir, 'history');
     fs.mkdirSync(this.dir, { recursive: true });
-    this.cache = new Map();   // id -> snapshots [{ t, html }]
-    this.lastSeen = new Map(); // id -> time of the last change we saw
+    this.cache = new Map();   // id -> snapshots [{ t, html, tab? }]
+    this.lastSeen = new Map(); // id or id:tab -> time of the last change we saw
     this.dirty = new Set();
     this.timer = null;
   }
@@ -47,16 +48,18 @@ class History {
 
   // Call before a note's HTML changes. `prevHtml` is the content about to be replaced and
   // `prevTime` when it was last edited. Snapshots it when a new editing session starts.
-  beforeChange(id, prevHtml, prevTime, { force = false } = {}) {
+  // `tab` is the id of the tab prevHtml belongs to; each tab has its own editing session.
+  beforeChange(id, prevHtml, prevTime, { force = false, tab = null } = {}) {
     const now = Date.now();
-    const last = this.lastSeen.get(id) || 0;
-    this.lastSeen.set(id, now);
+    const key = tab ? `${id}:${tab}` : id;
+    const last = this.lastSeen.get(key) || 0;
+    this.lastSeen.set(key, now);
     if (!force && now - last < SESSION_GAP) return;
     if (!prevHtml || !htmlToText(prevHtml).trim() && !/<img\b/i.test(prevHtml)) return;
     const list = this.load(id);
     const top = list[list.length - 1];
     if (top && top.html === prevHtml) return;
-    list.push({ t: prevTime || now, html: prevHtml });
+    list.push({ t: prevTime || now, html: prevHtml, ...(tab ? { tab } : {}) });
     this._thin(list);
     this._markDirty(id);
   }
@@ -99,7 +102,7 @@ class History {
   list(id) {
     return this.load(id).map(s => {
       const text = htmlToText(s.html);
-      return { t: s.t, title: titleFromText(text), words: text ? text.split(/\s+/).filter(Boolean).length : 0 };
+      return { t: s.t, title: titleFromText(text), words: text ? text.split(/\s+/).filter(Boolean).length : 0, tab: s.tab || null };
     }).reverse();
   }
 
@@ -108,9 +111,14 @@ class History {
     return s ? s.html : null;
   }
 
+  // The whole entry, so a restore knows which tab it came from.
+  snapshot(id, t) {
+    return this.load(id).find(x => x.t === t) || null;
+  }
+
   remove(id) {
     this.cache.delete(id);
-    this.lastSeen.delete(id);
+    for (const k of this.lastSeen.keys()) if (k === id || k.startsWith(id + ':')) this.lastSeen.delete(k);
     this.dirty.delete(id);
     const f = this.file(id);
     if (f) fs.rm(f, { force: true }, () => {});
