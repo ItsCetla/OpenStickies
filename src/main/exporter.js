@@ -153,6 +153,10 @@ function noteJson(note, content) {
     text: content.text || '',
     html: content.html || '',
     markdown: content.markdown || '',
+    // a tabbed note's pages; title/text/html/markdown above hold all of them joined
+    tabs: Array.isArray(content.tabs) && content.tabs.length > 1
+      ? content.tabs.map(t => ({ title: String(t.title || ''), html: String(t.html || ''), text: String(t.text || ''), markdown: String(t.markdown || '') }))
+      : null,
     color: note.color,
     tags: Array.isArray(note.tags) ? note.tags : [],
     createdAt: isoOrNull(note.createdAt),
@@ -181,7 +185,7 @@ function freePath(dir, stem, ext) {
   return p;
 }
 
-// items: [{ note, title, text, html, markdown }] — the caller has already dropped trashed notes and
+// items: [{ note, title, text, html, markdown, tabs? }] — the caller has already dropped trashed notes and
 // private notes it can't decrypt. readImage(name) returns an image's bytes (decrypting if needed) or null.
 async function exportAllNotes({ parent, format, items, readImage }) {
   if (!['md', 'txt', 'json'].includes(format)) throw new Error('Unknown format');

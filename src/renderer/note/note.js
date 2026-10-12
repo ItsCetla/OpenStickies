@@ -1,5 +1,5 @@
 import { icon, hydrateIcons } from '../shared/icons.js';
-import { htmlToMarkdown } from '../shared/html-to-md.js';
+import { htmlToMarkdown, fileUrl } from '../shared/html-to-md.js';
 import { sanitizeHtml } from '../shared/sanitize.js';
 import { Editor, normalizeUrl } from './editor.js';
 import { Suggest, rank } from './suggest.js';
@@ -594,12 +594,34 @@ async function exportAs(format) {
   closePops();
   await flush();
   const payload = { html: editor.exportHTML(), text: editor.exportText(), markdown: htmlToMarkdown(editor.el) };
+  // The editor only holds the open tab, so a tabbed note is exported tab by tab, each under its title.
+  if (tabs && tabs.length > 1) {
+    const parts = tabs.map((t, i) => (i === activeTab ? { title: t.title || tr('note.untitled'), ...payload } : tabExport(t)));
+    payload.html = parts.map(p => `<h2>${escapeHtml(p.title)}</h2>${p.html}`).join('');
+    payload.text = parts.map(p => `${p.title}\n\n${p.text}`).join('\n\n');
+    payload.markdown = parts.map(p => `## ${p.title}\n\n${p.markdown}`).join('\n\n');
+    payload.tabs = parts;
+  }
   try {
     const res = await api.exportNote(format, payload);
     if (res && res.ok && res.filePath) toast(tr('note.savedFile', { name: res.filePath.split(/[\\/]/).pop() }));
   } catch (err) {
     toast(tr('note.exportFailed', { error: err.message || err }));
   }
+}
+
+// A tab that isn't on screen, converted the way the editor exports the open one. DOMParser
+// documents are inert, so nothing in the tab loads while converting.
+function tabExport(t) {
+  const doc = new DOMParser().parseFromString(sanitizeHtml(t.html || '', { mode: 'stored' }), 'text/html');
+  const markdown = htmlToMarkdown(doc.body);
+  for (const a of doc.body.querySelectorAll('a.file-chip')) {
+    const link = doc.createElement('a');
+    link.setAttribute('href', fileUrl(a.getAttribute('data-path')));
+    link.textContent = a.textContent;
+    a.replaceWith(link);
+  }
+  return { title: t.title || tr('note.untitled'), html: doc.body.innerHTML, text: t.text || '', markdown };
 }
 
 // ---------- link popover ----------

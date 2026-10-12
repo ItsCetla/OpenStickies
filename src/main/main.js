@@ -21,6 +21,7 @@ const opencode = require('./opencode');
 const ocr = require('./ocr');
 const scan = require('./html-scan');
 const { htmlToText, titleFromText } = require('./store-text');
+const { esc: escapeHtml } = require('./markdown');
 const exporter = require('./exporter');
 const files = require('./files');
 const { migrateLegacyData, LEGACY_LOGIN_ITEM } = require('./migrate');
@@ -643,6 +644,8 @@ function noteSummary(n) {
     // search looks at every tab, not just the one on screen
     searchText: n.private ? '' : store.searchText(n).slice(0, 20000),
     tabCount: n.tabs ? n.tabs.length : 1,
+    // every tab's HTML, so "export all" can turn each one into Markdown
+    tabs: n.tabs && !n.private ? n.tabs.map(t => ({ title: t.title, html: t.html })) : null,
     hasImage: n.tabs ? n.tabs.some(t => /<img\b/.test(t.html)) : /<img\b/.test(n.html),
     background: n.background || null
   };
@@ -781,6 +784,11 @@ function registerIpc() {
   ipcMain.handle('note:duplicate', (e) => { windows.duplicateNote(noteOf(e)); });
   ipcMain.handle('note:show-manager', (_e, view) => { windows.openManager(typeof view === 'string' ? view : undefined); });
 
+  // A tabbed note's tabs as the renderer sent them: [{ title, html, text, markdown }], or null.
+  const exportTabs = (list) => (Array.isArray(list) && list.length > 1
+    ? list.slice(0, 50).map(t => ({ title: String((t && t.title) || ''), html: String((t && t.html) || ''), text: String((t && t.text) || ''), markdown: String((t && t.markdown) || '') }))
+    : null);
+
   ipcMain.handle('note:export', async (e, format, payload) => {
     const id = noteOf(e);
     if (!['html', 'md', 'txt', 'pdf', 'print', 'json'].includes(format)) throw new Error('Unknown format');
@@ -789,7 +797,7 @@ function registerIpc() {
     const forExport = note.private ? { ...note, title: (plain.get(id) || {}).title || tr('note.privateNote') } : note;
     return exporter.exportNote({
       parent: parentOf(e), store, note: forExport, format,
-      payload: { html: String(p.html || ''), text: String(p.text || ''), markdown: String(p.markdown || '') }
+      payload: { html: String(p.html || ''), text: String(p.text || ''), markdown: String(p.markdown || ''), tabs: exportTabs(p.tabs) }
     });
   });
 
@@ -1205,17 +1213,33 @@ function registerIpc() {
     if (!['md', 'txt', 'json'].includes(format)) throw new Error('Unknown format');
     await Promise.all([...windows.notes.values()].map(w => windows.flushRenderer(w, 600)));
     const markdown = new Map();
+    const tabMarkdown = new Map(); // id -> one Markdown string per tab, for a tabbed note
     if (Array.isArray(mdItems)) {
-      for (const it of mdItems) if (it && typeof it.id === 'string' && typeof it.markdown === 'string') markdown.set(it.id, it.markdown);
+      for (const it of mdItems) {
+        if (!it || typeof it.id !== 'string' || typeof it.markdown !== 'string') continue;
+        markdown.set(it.id, it.markdown);
+        if (Array.isArray(it.tabs)) tabMarkdown.set(it.id, it.tabs.map(m => (typeof m === 'string' ? m : '')));
+      }
     }
     const items = [];
     let skippedPrivate = 0;
     for (const n of store.all()) {
       if (n.trashed) continue;
       // Same rule as the backup: a private note only leaves the app readable while it's unlocked.
-      const content = n.private ? privatePlain(n) : { html: n.html, text: n.text, title: n.title };
+      let content = n.private ? privatePlain(n) : { html: n.html, text: n.text, title: n.title };
       if (!content) { skippedPrivate++; continue; }
-      items.push({ note: n, title: content.title, text: content.text, html: content.html, markdown: markdown.has(n.id) ? markdown.get(n.id) : content.text });
+      // html/text only mirror the open tab, so a tabbed note is written out tab by tab.
+      if (!n.private && n.tabs) {
+        const mdTabs = tabMarkdown.get(n.id);
+        const name = (t) => t.title || tr('note.untitled');
+        content = {
+          title: n.title,
+          text: n.tabs.map(t => `${name(t)}\n\n${t.text}`).join('\n\n'),
+          html: n.tabs.map(t => `<h2>${escapeHtml(name(t))}</h2>${t.html}`).join(''),
+          tabs: n.tabs.map((t, i) => ({ title: name(t), html: t.html, text: t.text, markdown: (mdTabs && mdTabs[i]) || '' }))
+        };
+      }
+      items.push({ note: n, title: content.title, text: content.text, html: content.html, tabs: content.tabs, markdown: markdown.has(n.id) ? markdown.get(n.id) : content.text });
     }
     const readImage = (name) => {
       const file = store.attachmentPath(name);

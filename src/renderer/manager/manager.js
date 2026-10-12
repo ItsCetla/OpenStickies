@@ -1095,6 +1095,12 @@ function notesAsMarkdown() {
   const out = [];
   for (const n of notes) {
     if (n.trashed || n.privateLocked) continue;
+    if (n.tabs) {
+      // n.html is only the open tab: convert every tab and join them under their titles.
+      const tabs = n.tabs.map(t => htmlToMarkdown(new DOMParser().parseFromString(sanitizeHtml(t.html || ''), 'text/html').body));
+      out.push({ id: n.id, markdown: n.tabs.map((t, i) => `## ${t.title || tr('note.untitled')}\n\n${tabs[i]}`).join('\n\n'), tabs });
+      continue;
+    }
     const doc = new DOMParser().parseFromString(sanitizeHtml(n.html || ''), 'text/html');
     out.push({ id: n.id, markdown: htmlToMarkdown(doc.body) });
   }
