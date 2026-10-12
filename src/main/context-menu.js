@@ -1,7 +1,7 @@
 'use strict';
 
 const { Menu, clipboard, shell, nativeImage, ClipboardItem } = require('electron');
-const { OPENABLE_RE } = require('./store');
+const { OPENABLE_RE, MAX_TABS } = require('./store');
 const exporter = require('./exporter');
 
 function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
@@ -147,6 +147,10 @@ function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
       t.push({ label: locked ? 'Unlock note' : 'Lock note', click: cmd('toggle-lock') });
     }
 
+    if (ctx.editor && note && !note.private && !locked) {
+      t.push({ label: 'New tab', accelerator: 'CommandOrControl+Shift+T', enabled: !note.tabs || note.tabs.length < MAX_TABS, click: cmd('new-tab') });
+    }
+
     while (t.length && t[t.length - 1].type === 'separator') t.pop();
     if (t.length) Menu.buildFromTemplate(t).popup({ window: win });
   });
@@ -164,7 +168,8 @@ function buildNoteMenu({ note, windows, noteId }) {
     { type: 'separator' },
     { label: 'Duplicate', click: () => windows.duplicateNote(noteId) },
     { label: 'Close', accelerator: 'CmdOrCtrl+W', click: () => windows.closeNote(noteId) },
-    { label: 'Delete note', accelerator: 'CmdOrCtrl+D', click: emit('delete') }
+    { label: 'Delete note', accelerator: 'CmdOrCtrl+D', click: emit('delete') },
+    { label: 'New tab', accelerator: 'CommandOrControl+Shift+T', visible: !note.private, enabled: !note.locked && (!note.tabs || note.tabs.length < MAX_TABS), click: emit('new-tab') }
   ]);
 }
 

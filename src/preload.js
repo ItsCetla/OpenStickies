@@ -118,5 +118,11 @@ contextBridge.exposeInMainWorld('stickies', {
   exportBackup: () => invoke('data:export-backup'),
   importBackup: () => invoke('data:import-backup'),
   importFiles: () => invoke('data:import-files'),
-  openDataFolder: () => invoke('data:open-folder')
+  openDataFolder: () => invoke('data:open-folder'),
+
+  // tabs
+  closeTab: (tabId) => invoke('note:close-tab', tabId),
+  listTrashedTabs: () => invoke('notes:list-trashed-tabs'),
+  restoreTab: (id) => invoke('notes:restore-tab', id),
+  purgeTab: (id) => invoke('notes:purge-tab', id)
 });

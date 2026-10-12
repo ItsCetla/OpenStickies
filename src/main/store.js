@@ -16,8 +16,14 @@ const NOTE_FIELDS = [
   // private notes: content lives only in `cipher`; `refs` lists their (hash-named) images
   'private', 'cipher', 'refs',
   // notes written by an AI agent (OpenCode): { key, source, project }
-  'agent'
+  'agent',
+  // up to MAX_TABS tabs: [{ id, title, renamed, html, text, scroll }], or null for the usual single page.
+  // html/text/title above always mirror tabs[activeTab] so everything that reads them keeps working.
+  'tabs',
+  'activeTab'
 ];
+
+const MAX_TABS = 3;
 
 // Fields whose change counts as a content edit (bumps updatedAt).
 const CONTENT_FIELDS = new Set(['html', 'color', 'font']);
@@ -80,9 +86,43 @@ function uid() {
   return 'n' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
 }
 
+function tabId() {
+  return 'b' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
+}
+
+// Tolerant reader for the `tabs` field. Anything that isn't at least two usable tabs means
+// "no tabs", which is exactly how notes from before tabs existed behave.
+function normalizeTabs(raw, active) {
+  if (!Array.isArray(raw)) return null;
+  const seen = new Set();
+  const tabs = [];
+  for (const t of raw) {
+    if (!t || typeof t !== 'object' || tabs.length >= MAX_TABS) continue;
+    const html = typeof t.html === 'string' ? t.html : '';
+    const text = typeof t.text === 'string' && (t.text || !html) ? t.text : htmlToText(html);
+    let id = typeof t.id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(t.id) ? t.id : tabId();
+    if (seen.has(id)) id = tabId();
+    seen.add(id);
+    const custom = typeof t.title === 'string' ? t.title.replace(/\s+/g, ' ').trim().slice(0, 80) : '';
+    const renamed = !!t.renamed && !!custom;
+    tabs.push({
+      id,
+      title: renamed ? custom : titleFromText(text),
+      renamed,
+      html,
+      text,
+      scroll: Number.isFinite(t.scroll) && t.scroll > 0 ? Math.round(t.scroll) : 0
+    });
+  }
+  if (tabs.length < 2) return null;
+  const i = Number.isInteger(active) ? Math.min(tabs.length - 1, Math.max(0, active)) : 0;
+  return { tabs, activeTab: i };
+}
+
 function isBlankNote(note) {
   if (!note) return true;
   if (note.private) return false;
+  if (Array.isArray(note.tabs) && note.tabs.length > 1) return note.tabs.every(t => isBlankNote({ text: t.text, html: t.html }));
   if ((note.text || '').trim()) return false;
   return !/<(img|hr|table)\b/i.test(note.html || '');
 }
@@ -125,6 +165,7 @@ class Store extends EventEmitter {
     this.backupsDir = path.join(dir, 'backups');
     this.templatesFile = path.join(dir, 'templates.json');
     this.notes = new Map();
+    this.trashedTabs = []; // tabs closed from a note: [{ id, noteId, noteTitle, title, html, text, trashedAt }]
     this.templates = [];
     this.extraRefs = []; // functions returning Sets of attachment names used elsewhere (history, …)
     this.settings = structuredClone(DEFAULT_SETTINGS);
@@ -141,6 +182,7 @@ class Store extends EventEmitter {
         const n = this._normalize(raw);
         this.notes.set(n.id, n);
       }
+      this.trashedTabs = Array.isArray(notes.data.trashedTabs) ? notes.data.trashedTabs.map(t => this._normalizeTrashedTab(t)).filter(Boolean) : [];
     }
     const settings = this._readJsonWithRecovery(this.settingsFile, (d) => d && typeof d === 'object' && !Array.isArray(d));
     if (settings.data) {
@@ -228,10 +270,15 @@ class Store extends EventEmitter {
     n.private = !!raw.private;
     n.cipher = raw.cipher && typeof raw.cipher.data === 'string' ? raw.cipher : null;
     n.refs = Array.isArray(raw.refs) ? raw.refs.filter(r => ATTACHMENT_NAME_RE.test(r)) : [];
+    // Private notes keep a single page: extra tabs would sit outside the encrypted `cipher`.
+    const tabbed = n.private ? null : normalizeTabs(raw.tabs, raw.activeTab);
+    n.tabs = tabbed ? tabbed.tabs : null;
+    n.activeTab = tabbed ? tabbed.activeTab : 0;
     if (n.private) {
       n.html = ''; n.text = ''; n.title = ''; n.tags = []; n.links = []; n.imageText = ''; n.tasks = { total: 0, done: 0 };
       return n;
     }
+    if (n.tabs) this._mirrorActiveTab(n);
     if (!n.text && n.html) n.text = htmlToText(n.html);
     if (!n.title) n.title = titleFromText(n.text);
     this._derive(n, raw);
@@ -240,6 +287,16 @@ class Store extends EventEmitter {
 
   // Search/filter metadata derived from the HTML.
   _derive(n, given = {}) {
+    if (n.tabs) {
+      // Tags, links, picture text and task counts describe the whole note, so a search for
+      // "#work" or "has:unchecked" finds it whichever tab holds the match.
+      const all = n.tabs.map(t => t.html).join('\n');
+      n.tags = scan.extractTags(all);
+      n.links = scan.extractLinks(all);
+      n.imageText = scan.extractImageText(all);
+      n.tasks = scan.taskCounts(all);
+      return;
+    }
     n.tags = scan.extractTags(n.html);
     n.links = scan.extractLinks(n.html);
     n.imageText = typeof given.imageText === 'string' ? given.imageText : scan.extractImageText(n.html);
@@ -253,6 +310,7 @@ class Store extends EventEmitter {
       if (!n.trashed && !n.open && isBlankNote(n)) this.notes.delete(n.id);
       else if (n.trashed && n.trashedAt && now - n.trashedAt > TRASH_RETENTION_MS) this.notes.delete(n.id);
     }
+    this.trashedTabs = this.trashedTabs.filter(t => now - t.trashedAt <= TRASH_RETENTION_MS);
     if (collectImages) this.gcAttachments();
   }
 
@@ -313,12 +371,19 @@ class Store extends EventEmitter {
       if (before === after) continue;
       note[key] = patch[key];
       changed = true;
-      if (CONTENT_FIELDS.has(key)) contentChanged = true;
+      if (CONTENT_FIELDS.has(key) || key === 'tabs') contentChanged = true;
     }
     if (!changed) return note;
-    if (!note.private) {
+    // How tabs stay in sync (see _syncTabs): a patch carrying `tabs`/`activeTab` is the source
+    // of truth and html/text/title are re-mirrored from the active tab; a plain html/text/title
+    // patch (the note window's autosave, history restore, the local API…) edits the active tab.
+    const tabsPatch = 'tabs' in patch || 'activeTab' in patch;
+    if (note.private) { note.tabs = null; note.activeTab = 0; }
+    else if (tabsPatch) this._syncTabs(note);
+    if (!note.private && !tabsPatch) {
       if ('html' in patch && !('text' in patch)) note.text = htmlToText(note.html);
       if ('html' in patch || 'text' in patch) note.title = patch.title || titleFromText(note.text);
+      if (note.tabs && ('html' in patch || 'text' in patch || 'title' in patch)) this._writeActiveTab(note);
       if ('html' in patch) this._derive(note, patch);
     }
     if (contentChanged || touch) note.updatedAt = Date.now();
@@ -374,7 +439,7 @@ class Store extends EventEmitter {
         try { fs.copyFileSync(this.notesFile, this.notesFile + '.bak'); } catch { /* best effort */ }
         this._lastBak = Date.now();
       }
-      const payload = { version: 2, savedAt: Date.now(), notes: this.all() };
+      const payload = { version: 2, savedAt: Date.now(), notes: this.all(), trashedTabs: this.trashedTabs };
       writeFileAtomic(this.notesFile, JSON.stringify(payload));
       if (this._backupDay !== new Date().toISOString().slice(0, 10)) this._dailyBackup();
     } catch (err) {
@@ -418,7 +483,9 @@ class Store extends EventEmitter {
     for (const n of this.notes.values()) {
       if (n.private) { if (!publicOnly) n.refs.forEach(r => refs.add(r)); continue; }
       add(n.html);
+      if (n.tabs) n.tabs.forEach(t => add(t.html));
     }
+    for (const t of this.trashedTabs) add(t.html);
     for (const t of this.templates) add(t.html);
     for (const fn of this.extraRefs) { try { for (const r of fn()) refs.add(r); } catch { /* ignore */ } }
     return refs;
@@ -465,6 +532,139 @@ class Store extends EventEmitter {
       console.warn('[store] attachment gc failed:', err.message);
     }
   }
+
+  // ---------- tabs ----------
+  // The note-level html/text/title are a copy of the active tab, so code that predates tabs
+  // (history, export, reminders, the local API, the notes list) sees "the page you're looking at".
+  _mirrorActiveTab(note) {
+    const tab = note.tabs && note.tabs[note.activeTab];
+    if (!tab) return;
+    note.html = tab.html;
+    note.text = tab.text;
+    note.title = tab.title;
+  }
+
+  // An edit to html/text/title lands in the active tab. A tab the user renamed keeps its name.
+  _writeActiveTab(note) {
+    const tab = note.tabs && note.tabs[note.activeTab];
+    if (!tab) return;
+    tab.html = note.html;
+    tab.text = note.text;
+    if (tab.renamed) note.title = tab.title;
+    else tab.title = titleFromText(note.text);
+  }
+
+  // After a patch that set `tabs`/`activeTab` directly: validate them and re-mirror the note.
+  _syncTabs(note) {
+    const raw = note.tabs;
+    const tabbed = normalizeTabs(raw, note.activeTab);
+    if (tabbed) {
+      note.tabs = tabbed.tabs;
+      note.activeTab = tabbed.activeTab;
+      this._mirrorActiveTab(note);
+    } else {
+      // Down to one tab: the note goes back to being a plain single-page note.
+      const only = Array.isArray(raw) ? raw.find(t => t && typeof t.html === 'string') : null;
+      note.tabs = null;
+      note.activeTab = 0;
+      if (only) {
+        note.html = only.html;
+        note.text = typeof only.text === 'string' && only.text ? only.text : htmlToText(only.html);
+        note.title = titleFromText(note.text);
+      }
+    }
+    this._derive(note, {});
+  }
+
+  // Everything search should look at, across all tabs (the note-level fields only hold one).
+  searchText(note) {
+    if (!note) return '';
+    if (!note.tabs) return `${note.title || ''}\n${note.text || ''}`;
+    return note.tabs.map(t => `${t.title}\n${t.text}`).join('\n');
+  }
+
+  _normalizeTrashedTab(t) {
+    if (!t || typeof t !== 'object' || typeof t.html !== 'string') return null;
+    const text = typeof t.text === 'string' ? t.text : htmlToText(t.html);
+    return {
+      id: typeof t.id === 'string' && t.id ? t.id : tabId(),
+      noteId: typeof t.noteId === 'string' ? t.noteId : '',
+      noteTitle: typeof t.noteTitle === 'string' ? t.noteTitle.slice(0, 120) : '',
+      title: typeof t.title === 'string' && t.title ? t.title.slice(0, 80) : titleFromText(text),
+      renamed: !!t.renamed,
+      html: t.html,
+      text,
+      trashedAt: Number.isFinite(t.trashedAt) ? t.trashedAt : Date.now()
+    };
+  }
+
+  // Close one tab of a note (by id). A tab with something in it goes to the Trash so it can
+  // be brought back; the last tab can't be closed. Returns the note, or null if nothing changed.
+  trashTab(noteId, id) {
+    const note = this.notes.get(noteId);
+    if (!note || !note.tabs || note.tabs.length < 2) return null;
+    const i = note.tabs.findIndex(t => t.id === id);
+    if (i < 0) return null;
+    const tab = note.tabs[i];
+    if (!isBlankNote({ text: tab.text, html: tab.html })) {
+      const otherTitles = note.tabs.filter((_, j) => j !== i).map(t => t.title).filter(Boolean);
+      this.trashedTabs.push(this._normalizeTrashedTab({
+        ...tab, id: tabId(), noteId, noteTitle: otherTitles[0] || note.title, trashedAt: Date.now()
+      }));
+    }
+    const rest = note.tabs.filter((_, j) => j !== i).map(t => ({ ...t }));
+    let active = note.activeTab;
+    if (i < active) active--;
+    else if (i === active) active = Math.min(i, rest.length - 1);
+    return this.update(noteId, { tabs: rest, activeTab: active }, { touch: true });
+  }
+
+  listTrashedTabs() {
+    return this.trashedTabs.slice().sort((a, b) => b.trashedAt - a.trashedAt);
+  }
+
+  // Put a closed tab back: into its own note while that note is around and has room, otherwise
+  // as a note of its own. Returns { noteId, created } or null.
+  restoreTab(id) {
+    const i = this.trashedTabs.findIndex(t => t.id === id);
+    if (i < 0) return null;
+    const t = this.trashedTabs[i];
+    const note = this.notes.get(t.noteId);
+    const count = note ? (note.tabs ? note.tabs.length : 1) : 0;
+    let result;
+    if (note && !note.trashed && !note.private && count < MAX_TABS) {
+      const tabs = note.tabs
+        ? note.tabs.map(x => ({ ...x }))
+        : [{ id: tabId(), title: note.title, renamed: false, html: note.html, text: note.text, scroll: 0 }];
+      tabs.push({ id: tabId(), title: t.title, renamed: t.renamed, html: t.html, text: t.text, scroll: 0 });
+      this.trashedTabs.splice(i, 1);
+      this.update(note.id, { tabs, activeTab: tabs.length - 1 }, { touch: true });
+      result = { noteId: note.id, created: false };
+    } else {
+      this.trashedTabs.splice(i, 1);
+      const created = this.create({ html: t.html, text: t.text, color: note ? note.color : undefined, open: false });
+      result = { noteId: created.id, created: true };
+    }
+    this.saveSoon();
+    this.emit('changed', { type: 'tab-restore', id: result.noteId });
+    return result;
+  }
+
+  purgeTab(id) {
+    const before = this.trashedTabs.length;
+    this.trashedTabs = this.trashedTabs.filter(t => t.id !== id);
+    if (this.trashedTabs.length === before) return false;
+    this.saveSoon();
+    this.emit('changed', { type: 'tab-purge', id });
+    return true;
+  }
+
+  emptyTrashedTabs() {
+    if (!this.trashedTabs.length) return;
+    this.trashedTabs = [];
+    this.saveSoon();
+    this.emit('changed', { type: 'tab-purge', id: null });
+  }
 }
 
 function sniffImageExt(buf) {
@@ -476,4 +676,4 @@ function sniffImageExt(buf) {
   return null;
 }
 
-module.exports = { Store, htmlToText, titleFromText, isBlankNote, writeFileAtomic, DEFAULT_SETTINGS, DEFAULT_TEMPLATES, IMAGE_EXT, ATTACHMENT_RE, ATTACHMENT_NAME_RE, OPENABLE_RE, sniffImageExt };
+module.exports = { Store, htmlToText, titleFromText, isBlankNote, writeFileAtomic, DEFAULT_SETTINGS, DEFAULT_TEMPLATES, IMAGE_EXT, ATTACHMENT_RE, ATTACHMENT_NAME_RE, OPENABLE_RE, sniffImageExt, MAX_TABS };

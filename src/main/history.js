@@ -5,6 +5,10 @@
 //
 // Thinning keeps it small: everything from the last day, one per hour for the last
 // week, one per day after that, and at most MAX_PER_NOTE snapshots.
+//
+// Notes with tabs: a snapshot is note.html, which is only the tab that was active at the time
+// (the store mirrors it). Switching tabs sends the tab list without html, so it never snapshots;
+// restoring a version replaces the active tab's page and leaves the other tabs alone.
 
 const fs = require('fs');
 const path = require('path');

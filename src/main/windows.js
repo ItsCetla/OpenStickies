@@ -237,7 +237,8 @@ class WindowManager {
     const note = this.store.create({
       html: src.html, text: src.text, color: src.color, font: src.font,
       private: src.private, cipher: src.cipher, refs: src.refs,
-      opacity: src.opacity, zoom: src.zoom, bounds: this.placeNewBounds(src), open: true
+      opacity: src.opacity, zoom: src.zoom, bounds: this.placeNewBounds(src), open: true,
+      tabs: src.tabs, activeTab: src.activeTab
     });
     this.openNote(note.id);
     return note;
