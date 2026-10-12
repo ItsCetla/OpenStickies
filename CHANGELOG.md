@@ -8,6 +8,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+## [4.0.0] - 2026-10-12
+
+OpenStickies now runs on Windows, macOS and Linux, and notes gained tabs, code blocks, file shortcuts, custom backgrounds, a reminder strip and a UI in 12 languages.
+
+### Added
+
+- **macOS and Linux builds.** DMG and ZIP for Apple Silicon and Intel Macs, AppImage and .deb for Linux, built by the release workflow next to the Windows installer. macOS gets a native application menu, Launch at login, text recognition for snips through the Vision framework, and Touch ID to unlock private notes. Shortcuts use ⌘ on a Mac.
+- **Tabs.** A note window holds up to three tabs, each with its own content. Tabs name themselves from their first line, rename on double-click, reorder by drag, and the tab row stays hidden while there is only one tab. Closed tabs go to Trash and can be restored one at a time.
+- **Window controls.** Collapse a note to its title bar, keep it always on top, snap it to a grid while moving (Settings → Behavior), or lock it so it can neither be edited nor moved.
+- **Code blocks** with syntax colors, automatic language detection and a language submenu in the context menu. URLs turn into links as you type.
+- **Nested checklists** indent and outdent with Tab and Shift+Tab, and markdown shortcuts cover headings, bold, italic, strikethrough, highlights and lists.
+- **Files in notes.** Drop files or folders onto a note to get a shortcut chip with a type icon; open it, show it in the file manager, or drag it back out into another app. Hover a chip for a preview of files, images and PDFs; double-click a picture for a lightbox; drag the corner of an inline image to resize it.
+- **Search across tabs.** The notes list searches every tab, and opening a note from a search result scrolls to and highlights the matches.
+- **Reminder strip.** A note with a reminder shows it in its own strip, and the note border shifts from green to orange to red as the deadline nears. Reminders fire a native notification with a sound (choice in Settings → Reminders).
+- **Custom backgrounds.** Pick any color with a color wheel, a gradient, or an image or animated GIF as a note background, and set the note's opacity.
+- **Data folder of your choice.** Settings → Your notes can move the data folder, for example into a synced folder. Notes export as TXT or Markdown, and everything exports at once as JSON.
+- **12 languages.** English, German, Spanish, French, Italian, Portuguese (Brazil), Dutch, Polish, Russian, Japanese, Simplified Chinese and Arabic (right-to-left). Settings → Appearance → Language; the default follows the system language. The welcome note and templates stay in English.
+
+### Changed
+
+- Trash keeps up to 300 notes and 300 closed tabs and never deletes anything on a timer; the oldest entries go when the limit is reached.
+- Locked notes can no longer be moved, including notes that OpenCode agents place.
+- Line endings in the repository are normalized to LF.
+
 ### Fixed
 
 - Reminder notifications no longer play the system sound: Reminder sound set to None is now really silent, and Chime or Soft no longer overlaps the system sound.
@@ -30,6 +54,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - On Linux desktops without a system tray (such as stock GNOME without the AppIndicator extension), starting at login now opens the notes list instead of running with no window and no tray icon. OpenStickies now asks the session bus for a tray host instead of relying on the tray failing to load.
 - Dragging a selected passage that contains a file chip from one note into another now keeps the chip and its file, as copy and paste does, instead of turning it into plain text.
 - Pressing Tab inside a code block that sits in a bulleted or numbered list item now inserts a tab in the code instead of indenting the list item, and Shift+Tab no longer outdents the item.
+
+### Known limitations
+
+- The macOS builds are ad-hoc signed and not notarized: on first launch, right-click the app and choose Open, or run `xattr -d com.apple.quarantine /Applications/OpenStickies.app`.
+- On Linux the tray icon needs an AppIndicator extension on GNOME; without one, starting at login opens the notes list instead. Hover previews of PDFs and other documents are not available on Linux.
+- Background images on private notes are stored unencrypted.
+- Exported HTML and PDF keep code blocks but not their syntax colors.
+- Private notes cannot have tabs.
 
 ## [3.1.0] - 2026-10-12
 
@@ -100,6 +132,7 @@ First public release of OpenStickies: sticky notes for the Windows desktop, wher
 - Notes can be kept on top, rolled up, zoomed and printed.
 - `Stickies.exe --quit` closes a running copy cleanly, saving first.
 
-[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.0.0
 [3.1.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v3.1.0
 [3.0.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/Release
