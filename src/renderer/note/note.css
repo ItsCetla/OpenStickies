@@ -213,16 +213,22 @@ body.rolled .title-text { opacity: 0.85; }
   padding: 0.08em 0.35em;
   border-radius: 4px;
 }
+/* Themed code blocks. The background is mixed from the note's own colors so a block
+   reads as part of the note on every palette, and long lines scroll instead of wrapping
+   so indentation stays meaningful. */
 .editor pre {
   font-family: var(--mono);
   font-size: 0.87em;
   line-height: 1.45;
-  background: var(--soft);
-  border: 1px solid var(--line);
-  padding: 0.6em 0.8em;
+  position: relative;
+  background: color-mix(in srgb, var(--text) 8%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  padding: 1.5em 0.9em 0.7em;
   margin: 0.35em 0;
-  border-radius: 6px;
-  white-space: pre-wrap;
+  border-radius: 8px;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
 }
 .editor pre code { background: none; padding: 0; font-size: 1em; }
 
@@ -874,19 +880,6 @@ body[data-urgency]::after {
   pointer-events: none;
   box-shadow: inset 0 0 0 3px var(--urgency);
   z-index: 35;
-}
-/* Themed code blocks. The background is mixed from the note's own colors so a block
-   reads as part of the note on every palette, and long lines scroll instead of wrapping
-   so indentation stays meaningful. */
-.editor pre {
-  position: relative;
-  background: color-mix(in srgb, var(--text) 8%, var(--bg));
-  border-color: color-mix(in srgb, var(--text) 14%, transparent);
-  border-radius: 8px;
-  padding: 1.5em 0.9em 0.7em;
-  white-space: pre;
-  overflow-x: auto;
-  tab-size: 2;
 }
 /* The chip is a pseudo-element so it never becomes part of the note's text. */
 .editor pre[data-lang-label]::after {
