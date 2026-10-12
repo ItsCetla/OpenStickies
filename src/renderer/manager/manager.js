@@ -15,6 +15,7 @@ let workspaces = { list: [], active: null, auto: true };
 let templates = [];
 let menuState = null;
 let toastTimer = null;
+let trashedTabs = [];
 const state = { view: 'all', color: null, query: '', sort: 'updated', taskShow: 'open', taskGroup: 'note', taskQuery: '' };
 const VIEW_TITLES = { all: 'All notes', open: 'On desktop', pinned: 'Kept on top', reminders: 'Reminders', tasks: 'Tasks', trash: 'Trash' };
 
@@ -57,7 +58,7 @@ async function init() {
 }
 
 async function refresh() {
-  notes = await api.list();
+  [notes, trashedTabs] = await Promise.all([api.list(), api.listTrashedTabs().catch(() => [])]);
   renderSidebar();
   render();
 }
@@ -186,8 +187,12 @@ $('btn-show-all').addEventListener('click', () => api.showAll());
 $('btn-hide-all').addEventListener('click', () => api.hideAll());
 $('btn-empty-trash').addEventListener('click', async () => {
   const n = notes.filter(x => x.trashed).length;
-  if (!n) return;
-  if (!confirm(`Permanently delete ${n} note${n === 1 ? '' : 's'} in Trash? This can't be undone.`)) return;
+  const tabs = trashedTabs.length;
+  if (!n && !tabs) return;
+  const parts = [];
+  if (n) parts.push(`${n} note${n === 1 ? '' : 's'}`);
+  if (tabs) parts.push(`${tabs} tab${tabs === 1 ? '' : 's'}`);
+  if (!confirm(`Permanently delete ${parts.join(' and ')} in Trash? This can't be undone.`)) return;
   await api.emptyTrash();
   toast('Trash emptied');
 });
@@ -248,7 +253,7 @@ function matches(n, pq) {
     if (['unchecked', 'todo', 'tasks', 'open'].includes(k) && !(n.tasks.total > n.tasks.done)) return false;
     if (k === 'checklist' && !n.tasks.total) return false;
     if (k === 'done' && !n.tasks.done) return false;
-    if (['image', 'images', 'picture', 'pictures', 'photo'].includes(k) && !/<img\b/.test(n.html)) return false;
+    if (['image', 'images', 'picture', 'pictures', 'photo'].includes(k) && !(n.hasImage || /<img\b/.test(n.html))) return false;
     if (k === 'reminder' && !n.reminder) return false;
     if (['link', 'links'].includes(k) && !n.links.length) return false;
     if (['tag', 'tags'].includes(k) && !n.tags.length) return false;
@@ -258,7 +263,8 @@ function matches(n, pq) {
   if (pq.created && n.createdAt < since(pq.created)) return false;
   if (pq.due && !matchDue(n, pq.due)) return false;
   if (pq.words.length) {
-    const hay = `${n.title}\n${n.text}\n${n.imageText}\n${n.tags.map(t => '#' + t).join(' ')}`.toLowerCase();
+    // searchText covers every tab of a note, not only the one showing.
+    const hay = `${n.title}\n${n.searchText || n.text}\n${n.imageText}\n${n.tags.map(t => '#' + t).join(' ')}`.toLowerCase();
     if (!pq.words.every(w => hay.includes(w))) return false;
   }
   return true;
@@ -274,7 +280,7 @@ function renderSidebar() {
     pinned: active.filter(n => n.pinned).length,
     reminders: active.filter(n => n.reminder).length,
     tasks: openTasks,
-    trash: notes.length - active.length
+    trash: notes.length - active.length + trashedTabs.length
   };
   for (const [k, v] of Object.entries(counts)) $(`count-${k}`).textContent = v ? String(v) : '';
 
@@ -449,7 +455,7 @@ function highlight(text, terms) {
 
 function snippet(n, terms) {
   // Show the excerpt where the words were found: the note's text, or else a picture's text.
-  const sources = [[n.text, ''], [n.imageText, 'In a picture: ']];
+  const sources = [[n.text, ''], [n.tabCount > 1 ? n.searchText : '', 'In another tab: '], [n.imageText, 'In a picture: ']];
   const [src, label] = sources.find(([s]) => terms.some(t => String(s || '').toLowerCase().includes(t))) || sources[0];
   const text = String(src || '').replace(/\n{2,}/g, '\n');
   const lower = text.toLowerCase();
@@ -478,6 +484,7 @@ function cardHtml(n, pq) {
   if (n.tasks.total) badges.push(`<span class="badge" title="Checklist progress">${icon('checklist', { size: 13 })}${n.tasks.done}/${n.tasks.total}</span>`);
   if (n.locked) badges.push(`<span class="badge" title="Locked">${icon('lock', { size: 13 })}</span>`);
   if (!n.open && !n.trashed) badges.push(`<span class="badge" title="Not on the desktop">${icon('eyeOff', { size: 13 })}</span>`);
+  if (n.tabCount > 1) badges.push(`<span class="badge" title="Tabs">${n.tabCount} tabs</span>`);
   for (const t of n.tags.slice(0, 3)) badges.push(`<span class="chip-tag">#${escapeHtml(t)}</span>`);
   const when = n.trashed ? `Deleted ${ago(n.trashedAt || n.updatedAt)}` : ago(n.updatedAt);
   const actions = n.trashed
@@ -497,11 +504,19 @@ function render() {
   if (state.view === 'tasks') { renderTasks(); return; }
   const { list, pq } = filtered();
   const focusedId = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.id : null;
-  $('list').innerHTML = list.map(n => cardHtml(n, pq)).join('');
+  const tabList = filteredTrashedTabs(pq);
+  if (tabList.length) {
+    // Closed tabs sit among the deleted notes, newest first.
+    const items = [
+      ...list.map(n => ({ at: n.trashedAt || 0, html: cardHtml(n, pq) })),
+      ...tabList.map(t => ({ at: t.trashedAt || 0, html: tabCardHtml(t, pq) }))
+    ].sort((a, b) => b.at - a.at);
+    $('list').innerHTML = items.map(x => x.html).join('');
+  } else $('list').innerHTML = list.map(n => cardHtml(n, pq)).join('');
   if (focusedId) { const el = $('list').querySelector(`[data-id="${focusedId}"]`); if (el) el.focus({ preventScroll: true }); }
   $('view-title').textContent = VIEW_TITLES[state.view] || 'All notes';
 
-  const isEmpty = !list.length;
+  const isEmpty = !list.length && !tabList.length;
   $('list').hidden = isEmpty;
   $('empty').hidden = !isEmpty;
   if (isEmpty) {
@@ -509,7 +524,7 @@ function render() {
     let sub = 'Create a note and it will show up here.';
     let action = 'New note';
     if (state.query) { title = 'No matches'; sub = `Nothing matches “${state.query}”.`; action = 'Clear search'; }
-    else if (state.view === 'trash') { title = 'Trash is empty'; sub = 'Deleted notes stay here for 30 days.'; action = 'Back to all notes'; }
+    else if (state.view === 'trash') { title = 'Trash is empty'; sub = 'Deleted notes and closed tabs stay here for 30 days.'; action = 'Back to all notes'; }
     else if (state.view !== 'all' || state.color) {
       title = 'Nothing here';
       sub = { open: 'No notes are on the desktop right now.', pinned: 'No notes are kept on top.', reminders: 'No notes have reminders.' }[state.view] || 'No notes in this color.';
@@ -520,15 +535,69 @@ function render() {
     $('empty-action').textContent = action;
   }
   const inTrash = state.view === 'trash';
-  $('btn-empty-trash').hidden = !(inTrash && notes.some(n => n.trashed));
+  $('btn-empty-trash').hidden = !(inTrash && (notes.some(n => n.trashed) || trashedTabs.length));
   $('btn-show-all').hidden = inTrash;
   $('btn-hide-all').hidden = inTrash;
   $('status').textContent = `${list.length} note${list.length === 1 ? '' : 's'}`;
+  if (tabList.length) $('status').textContent += `, ${tabList.length} tab${tabList.length === 1 ? '' : 's'}`;
+}
+
+// Tabs closed from a note only show in the Trash, and only for plain word searches: the
+// other filters (tags, colors, dates…) describe notes.
+function filteredTrashedTabs(pq) {
+  if (state.view !== 'trash' || state.color) return [];
+  if (pq.tags.length || pq.has.length || pq.is.length || pq.due || pq.color || pq.edited || pq.created) return [];
+  return trashedTabs.filter(t => {
+    const hay = `${t.title}\n${t.text}\n${t.noteTitle}`.toLowerCase();
+    return pq.words.every(w => hay.includes(w));
+  });
+}
+
+function tabCardHtml(t, pq) {
+  const owner = notes.find(n => n.id === t.noteId);
+  const c = (palette.notes[owner && owner.color] || palette.notes.yellow)[theme];
+  const style = `--n-bg:${c.bg};--n-bar:${c.bar};--n-text:${c.text};--n-accent:${c.accent}`;
+  const label = `Tab ‘${t.title || 'Untitled'}’ from note ‘${t.noteTitle || 'Untitled'}’`;
+  let content;
+  if (pq.words.length) content = snippet({ text: t.text, searchText: '', imageText: '' }, pq.words);
+  else {
+    const html = sanitizeHtml(t.html, { mode: 'stored' });
+    const short = String(t.text || '').split('\n').length < 6 && !/<img\b/.test(html);
+    content = `<div class="preview${short ? ' short' : ''}">${html.trim() ? html : '<span class="empty-note">Empty tab</span>'}</div>`;
+  }
+  return `<div class="note-card trashed tab-card" tabindex="0" data-tab-id="${escapeHtml(t.id)}" style="${style}">
+    <div class="card-body"><div class="tab-from" title="${escapeHtml(label)}">${escapeHtml(label)}</div>${content}</div>
+    <div class="card-meta"><span class="grow"></span><span>${escapeHtml(`Deleted ${ago(t.trashedAt)}`)}</span></div>
+    <div class="card-actions">
+       <button class="card-btn" data-act="restore" title="Restore">${icon('restore', { size: 16 })}</button>
+       <button class="card-btn danger" data-act="purge" title="Delete forever">${icon('trash', { size: 16 })}</button>
+    </div>
+  </div>`;
+}
+
+async function tabAction(act, id) {
+  const t = trashedTabs.find(x => x.id === id);
+  if (!t) return;
+  if (act === 'restore') {
+    const r = await api.restoreTab(id);
+    if (!r || !r.ok) { toast('Couldn’t restore that tab'); return; }
+    if (r.created) { toast('Restored as a new note'); return; }
+    const owner = notes.find(n => n.id === r.noteId);
+    toast(`Tab restored to ‘${(owner && owner.title) || r.noteTitle || 'Untitled'}’`);
+  } else if (act === 'purge') {
+    if (!confirm('Delete this tab forever? This can\'t be undone.')) return;
+    await api.purgeTab(id);
+  }
 }
 
 $('list').addEventListener('click', async (e) => {
   const card = e.target.closest('.note-card');
   if (!card) return;
+  if (card.dataset.tabId) {
+    const tbtn = e.target.closest('[data-act]');
+    if (tbtn) { e.stopPropagation(); await tabAction(tbtn.dataset.act, card.dataset.tabId); }
+    return;
+  }
   const n = notes.find(x => x.id === card.dataset.id);
   const btn = e.target.closest('[data-act]');
   if (btn) { e.stopPropagation(); await cardAction(btn.dataset.act, n, btn); return; }
@@ -539,12 +608,18 @@ $('list').addEventListener('contextmenu', (e) => {
   const card = e.target.closest('.note-card');
   if (!card) return;
   e.preventDefault();
+  if (card.dataset.tabId) return;
   openCardMenu(notes.find(x => x.id === card.dataset.id), { x: e.clientX, y: e.clientY });
 });
 
 $('list').addEventListener('keydown', (e) => {
   const card = e.target.closest('.note-card');
   if (!card) return;
+  if (card.dataset.tabId && (e.key === 'Enter' || e.key === 'Delete')) {
+    e.preventDefault();
+    if (e.key === 'Delete') tabAction('purge', card.dataset.tabId);
+    return;
+  }
   const n = notes.find(x => x.id === card.dataset.id);
   if (e.key === 'Enter') { e.preventDefault(); if (!n.trashed) api.open(n.id); }
   else if (e.key === 'Delete') { e.preventDefault(); cardAction(n.trashed ? 'purge' : 'trash', n); }

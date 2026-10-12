@@ -488,3 +488,4 @@ input.switch:checked::after { transform: translateX(18px); }
 .dialog-title { font-weight: 700; font-size: 14px; }
 .dialog input { width: 100%; }
 .pop-actions { display: flex; align-items: center; gap: 6px; }
+.tab-card .tab-from { font-size: 12px; font-weight: 650; opacity: 0.72; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
