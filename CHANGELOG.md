@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- A reminder with an unsupported repeat value (from a hand-edited notes.json, a restored backup or another version) no longer fires its notification again every 10 seconds; the repeat is reset to none when notes are loaded or restored.
 - On Linux (X11), snapping to screen edges, other notes and the grid now also applies when a note is moved, not only when it is resized.
 - Opening a search result whose match is in another tab of the note now switches to that tab and highlights the match, and the scroll to the match is no longer undone by the saved scroll position.
 - A note no longer freezes for seconds after each edit when a YAML, Markdown or SQL code block holds one very long line; code blocks with a line over 10,000 characters are left uncolored, and unchanged blocks are not re-colored on every edit.

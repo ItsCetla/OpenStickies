@@ -163,6 +163,23 @@ const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 // SVGs can carry scripts when opened in a browser, so only raster images are handed to the OS.
 const OPENABLE_RE = /\.(png|jpg|gif|webp|bmp|avif|ico)$/i;
 
+const REMINDER_REPEATS = ['none', 'daily', 'weekdays', 'weekly', 'monthly'];
+
+// Shared by load, backup restore and IPC patches so a hand-edited or foreign repeat value
+// can never reach Reminders.check (an unknown repeat used to refire every tick).
+function cleanReminder(r) {
+  if (!r || typeof r !== 'object' || !Number.isFinite(r.at)) return null;
+  return {
+    at: r.at,
+    repeat: REMINDER_REPEATS.includes(r.repeat) ? r.repeat : 'none',
+    pending: !!r.pending,
+    snoozeAt: Number.isFinite(r.snoozeAt) ? r.snoozeAt : null,
+    dom: Number.isInteger(r.dom) && r.dom >= 1 && r.dom <= 31 ? r.dom : new Date(r.at).getDate(),
+    // When the countdown started; drives the border urgency colour. Callers fill in a default.
+    setAt: Number.isFinite(r.setAt) ? r.setAt : null
+  };
+}
+
 class Store extends EventEmitter {
   constructor(dir) {
     super();
@@ -262,7 +279,7 @@ class Store extends EventEmitter {
       zoom: Number.isFinite(raw.zoom) ? Math.min(3, Math.max(0.5, raw.zoom)) : 1,
       locked: !!raw.locked,
       open: raw.open !== false,
-      reminder: raw.reminder && Number.isFinite(raw.reminder.at) ? raw.reminder : null,
+      reminder: cleanReminder(raw.reminder),
       trashed: !!raw.trashed,
       trashedAt: raw.trashedAt || null,
       createdAt: raw.createdAt || now,
@@ -731,4 +748,4 @@ function sniffImageExt(buf) {
   return null;
 }
 
-module.exports = { Store, htmlToText, titleFromText, isBlankNote, writeFileAtomic, DEFAULT_SETTINGS, DEFAULT_TEMPLATES, IMAGE_EXT, ATTACHMENT_RE, ATTACHMENT_NAME_RE, OPENABLE_RE, sniffImageExt, MAX_TABS };
+module.exports = { Store, cleanReminder, htmlToText, titleFromText, isBlankNote, writeFileAtomic, DEFAULT_SETTINGS, DEFAULT_TEMPLATES, IMAGE_EXT, ATTACHMENT_RE, ATTACHMENT_NAME_RE, OPENABLE_RE, sniffImageExt, MAX_TABS };

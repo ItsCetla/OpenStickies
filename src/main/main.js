@@ -6,7 +6,7 @@ const {
 const path = require('path');
 const fs = require('fs');
 
-const { Store, OPENABLE_RE, ATTACHMENT_RE, writeFileAtomic, MAX_TABS } = require('./store');
+const { Store, cleanReminder, OPENABLE_RE, ATTACHMENT_RE, writeFileAtomic, MAX_TABS } = require('./store');
 const { WindowManager } = require('./windows');
 const { Reminders } = require('./reminders');
 const { createTray } = require('./tray');
@@ -701,17 +701,9 @@ function cleanPatch(patch) {
   if ('zoom' in out) out.zoom = Math.min(3, Math.max(0.5, Number(out.zoom) || 1));
   for (const b of ['pinned', 'locked']) if (b in out) out[b] = !!out[b];
   if ('reminder' in out && out.reminder !== null) {
-    const r = out.reminder;
-    if (!r || !Number.isFinite(r.at)) delete out.reminder;
-    else out.reminder = {
-      at: r.at,
-      repeat: ['none', 'daily', 'weekdays', 'weekly', 'monthly'].includes(r.repeat) ? r.repeat : 'none',
-      pending: !!r.pending,
-      snoozeAt: Number.isFinite(r.snoozeAt) ? r.snoozeAt : null,
-      dom: Number.isInteger(r.dom) && r.dom >= 1 && r.dom <= 31 ? r.dom : new Date(r.at).getDate(),
-      // When the countdown started; drives the border urgency colour.
-      setAt: Number.isFinite(r.setAt) ? r.setAt : Date.now()
-    };
+    const r = cleanReminder(out.reminder);
+    if (!r) delete out.reminder;
+    else out.reminder = { ...r, setAt: r.setAt === null ? Date.now() : r.setAt };
   }
   if ('tabs' in out) out.tabs = cleanTabs(out.tabs);
   if ('activeTab' in out) out.activeTab = Number.isInteger(out.activeTab) ? Math.min(MAX_TABS - 1, Math.max(0, out.activeTab)) : 0;
