@@ -1622,6 +1622,8 @@ export class Editor {
     if (e.key === 'Tab' && !mod && !e.altKey) {
       e.preventDefault();
       if (this._tabInTable(e.shiftKey)) return;
+      // Inside code a tab is content, even when the code block sits in a list item.
+      if (this.closest('pre')) { if (!e.shiftKey) this.exec('insertText', '\t'); return; }
       if (this.closest('li')) { this.indentList(e.shiftKey); return; }
       if (!e.shiftKey) this.exec('insertText', '\t');
       return;

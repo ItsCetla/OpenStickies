@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Restoring a version from Version history on a note with tabs now puts it back into the tab it came from and switches to that tab, instead of replacing whichever tab was open. The history list shows which tab each version belongs to, and each tab now gets its own snapshot when you start editing it.
 - On Linux desktops without a system tray (such as stock GNOME without the AppIndicator extension), starting at login now opens the notes list instead of running with no window and no tray icon. OpenStickies now asks the session bus for a tray host instead of relying on the tray failing to load.
 - Dragging a selected passage that contains a file chip from one note into another now keeps the chip and its file, as copy and paste does, instead of turning it into plain text.
+- Pressing Tab inside a code block that sits in a bulleted or numbered list item now inserts a tab in the code instead of indenting the list item, and Shift+Tab no longer outdents the item.
 
 ## [3.1.0] - 2026-10-12
 
