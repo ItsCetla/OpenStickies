@@ -70,9 +70,9 @@ const plain = new Map(); // decrypted private notes while unlocked: id -> { html
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.setAppUserModelId('com.stickies.desktop');
+  app.setAppUserModelId('com.openstickies.desktop');
   app.on('second-instance', (_e, argv) => {
-    if (argv.includes('--quit')) { app.quit(); return; } // lets installers/scripts close Stickies gracefully
+    if (argv.includes('--quit')) { app.quit(); return; } // lets installers/scripts close OpenStickies gracefully
     if (!windows) return;
     if (argv.includes('--new')) windows.newNote();
     else if (argv.includes('--snip')) snipper.start();
@@ -609,7 +609,7 @@ function registerIpc() {
     const src = String(url || '');
     try {
       if (src.startsWith('data:image/')) {
-        const m = /^data:(image\/[\w+.-]+);base64,(.*)$/s.exec(src);
+        const m = /^data:(image\/[[\w+.-]+);base64,(.*)$/s.exec(src);
         if (!m) return null;
         return store.saveAttachment(Buffer.from(m[2], 'base64'), m[1]);
       }
@@ -890,7 +890,7 @@ app.on('will-quit', () => {
 });
 
 const WELCOME_HTML = [
-  '<h2>Welcome to Stickies ✨</h2>',
+  '<h2>Welcome to OpenStickies ✨</h2>',
   '<p>Notes can now hold <b>bold</b>, <i>italic</i>, <u>underline</u>, <s>strikethrough</s>, ',
   '<span style="color: #E5484D;">colored text</span>, <span style="background-color: #FFE45C;">highlights</span>, ',
   '<code>code</code> and <a href="https://example.com">links</a>.</p>',
