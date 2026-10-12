@@ -1,6 +1,8 @@
 import { sanitizeHtml, escapeHtml, BLOCK_TAGS } from '../shared/sanitize.js';
 import { decorate, syncDueDates, tagAt, sinkItem, moveItem, nudgeItem, topChecklist, cascadeCheck } from './smart.js';
 import { keyLabel } from '../shared/keys.js';
+import { chipHtml, refreshChips, forgetChipInfo } from './chips.js';
+import { fileUrl } from '../shared/html-to-md.js';
 
 const INTERNAL_MIME = 'application/x-stickies';
 const ZWSP = '​';
@@ -52,6 +54,7 @@ export class Editor {
     this.deselectImage();
     this.updateEmpty();
     this.localizeImages();
+    this.refreshChips();
     this._decorateSoon(0);
     this.ocrImages();
   }
@@ -59,6 +62,13 @@ export class Editor {
   getHTML() {
     const clone = this.el.cloneNode(true);
     clone.querySelectorAll('img.selected, img.loading, img.dragging, li.pop, li.sinking, li.flash, .dragging-item').forEach(n => n.classList.remove('selected', 'loading', 'dragging', 'pop', 'sinking', 'flash', 'dragging-item'));
+    // File chips get their icon, drag handle and "missing" look on display; none of it is saved.
+    clone.querySelectorAll('a.file-chip').forEach(a => {
+      a.classList.remove('missing');
+      a.removeAttribute('draggable');
+      a.style.removeProperty('--chip-icon');
+      if (!a.getAttribute('style')) a.removeAttribute('style');
+    });
     clone.querySelectorAll('[class=""]').forEach(n => n.removeAttribute('class'));
     clone.querySelectorAll('a[title]').forEach(a => a.removeAttribute('title'));
     let html = clone.innerHTML.replace(/​/g, '');
@@ -71,7 +81,7 @@ export class Editor {
   }
 
   isEmpty() {
-    return !this.getText() && !this.el.querySelector('img, hr, table');
+    return !this.getText() && !this.el.querySelector('img, hr, table, a.file-chip');
   }
 
   updateEmpty() {
@@ -92,7 +102,96 @@ export class Editor {
       if (!this.locked && syncDueDates(this.el)) this.onChange();
       decorate(this.el);
       this.ocrImages(); // pictures added by paste, drop or the image button
+      this.refreshChips(); // file chips added by paste, drop or undo
     }, delay);
+  }
+
+  // ---------- file shortcuts ----------
+  refreshChips() {
+    refreshChips(this.el, this.api);
+  }
+
+  // Look again for moved or deleted files, e.g. when the window comes back into focus.
+  recheckChips() {
+    forgetChipInfo();
+    this.refreshChips();
+  }
+
+  // Files and folders dropped from the desktop become chips that point at where they live.
+  async insertFileChips(files) {
+    if (this.locked || !files.length) return 0;
+    const at = this.range() && this.range().cloneRange();
+    const html = [];
+    let unknown = 0;
+    for (const f of files) {
+      const path = this.api.filePath(f);
+      if (!path) { unknown++; continue; }
+      let info = null;
+      try { info = await this.api.fileInfo(path, false); } catch { /* still worth a chip */ }
+      if (info && info.invalid) { unknown++; continue; }
+      html.push(chipHtml(path, info));
+    }
+    if (unknown) this.toast(unknown === files.length ? "That can't be added as a file shortcut" : 'Some of those items couldn\'t be added');
+    if (!html.length) return 0;
+    this.el.focus({ preventScroll: true });
+    if (at) this.selectRange(at);
+    this.insertHTML(html.join(' ') + ZWSP);
+    this.refreshChips();
+    return html.length;
+  }
+
+  async openChip(chip) {
+    const path = chip && chip.getAttribute('data-path');
+    if (!path) return;
+    try {
+      const res = await this.api.openFile(path);
+      if (res && res.ok === false) {
+        if (res.reason === 'missing') { chip.classList.add('missing'); this.toast("Can't find this file. It may have been moved or deleted."); }
+        else if (res.reason === 'invalid') this.toast("This file path can't be opened on this computer");
+        else if (res.reason === 'failed') this.toast(res.error ? `Couldn't open it: ${res.error}` : "Couldn't open it");
+      } else if (res && res.ok) chip.classList.remove('missing');
+    } catch (err) {
+      this.toast(`Couldn't open it: ${err.message || err}`);
+    }
+  }
+
+  removeChip(chip) {
+    if (this.locked || !chip || !this.el.contains(chip)) return;
+    this.el.focus({ preventScroll: true });
+    const r = document.createRange();
+    r.selectNode(chip);
+    this.selectRange(r);
+    document.execCommand('delete');
+    this.changed();
+  }
+
+  // Plain text for export, with each file chip spelled out as "name (path)" so the path isn't lost.
+  exportText() {
+    if (!this.el.querySelector('a.file-chip')) return this.getText();
+    const holder = document.createElement('div');
+    holder.className = this.el.className;
+    holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${this.el.clientWidth || 600}px`;
+    holder.append(...[...this.el.childNodes].map(n => n.cloneNode(true)));
+    holder.querySelectorAll('a.file-chip').forEach(a => a.replaceWith(`${a.textContent} (${a.getAttribute('data-path')})`));
+    document.body.appendChild(holder);
+    const text = holder.innerText || '';
+    holder.remove();
+    return text.replace(/​/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  // HTML for export: file chips become ordinary file:// links that work outside the app.
+  exportHTML() {
+    const html = this.getHTML();
+    if (!html.includes('file-chip')) return html;
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    for (const a of tpl.content.querySelectorAll('a.file-chip')) {
+      const link = document.createElement('a');
+      link.setAttribute('href', fileUrl(a.getAttribute('data-path')));
+      link.textContent = a.textContent;
+      a.replaceWith(link);
+    }
+    return tpl.innerHTML;
   }
 
   // ---------- inserting things ----------
@@ -1259,6 +1358,22 @@ export class Editor {
 
     el.addEventListener('dragstart', () => { this.internalDrag = true; });
     el.addEventListener('dragend', () => { this.internalDrag = false; });
+    // A file chip is dragged as the real file, so it can be dropped into a folder, an email or
+    // another app. That replaces moving the chip around as text: dropping it back into this note
+    // (within a little while) moves the chip there instead of adding a second one.
+    el.addEventListener('dragstart', (e) => {
+      const chip = e.target && e.target.nodeType === 1 && e.target.closest('a.file-chip');
+      if (!chip || !el.contains(chip)) return;
+      e.preventDefault();
+      this.internalDrag = false;
+      this._chipDragged = true;
+      const path = chip.getAttribute('data-path');
+      this._chipDrag = { path, chip, at: Date.now() };
+      Promise.resolve(this.api.startDrag(path)).then((ok) => {
+        if (ok === false) { chip.classList.add('missing'); this.toast("Can't find this file. It may have been moved or deleted."); }
+      }).catch(() => {});
+    });
+    el.addEventListener('mousedown', () => { this._chipDragged = false; }, true);
     this.content.addEventListener('dragover', (e) => {
       if (this.locked) return;
       if (this.internalDrag) return;
@@ -1305,6 +1420,15 @@ export class Editor {
     });
 
     el.addEventListener('click', (e) => {
+      const chip = e.target.closest && e.target.closest('a.file-chip');
+      if (chip && el.contains(chip)) {
+        e.preventDefault();
+        // Ignore the click that ends a drag-out, the second click of a double-click, and Shift+Click (selecting).
+        if (this._chipDragged) { this._chipDragged = false; return; }
+        if (e.detail > 1 || e.shiftKey) return;
+        this.openChip(chip);
+        return;
+      }
       const a = e.target.closest && e.target.closest('a[href]');
       if (a && (e.ctrlKey || e.metaKey || this.locked)) {
         e.preventDefault();
@@ -1323,7 +1447,7 @@ export class Editor {
     el.addEventListener('dblclick', (e) => {
       if (e.target.nodeName === 'IMG') {
         e.preventDefault();
-        this.api.openImage(e.target.getAttribute('src'));
+        this.api.openLightbox(e.target.getAttribute('src'));
       }
     });
 
@@ -1350,6 +1474,8 @@ export class Editor {
       let t = e.target;
       if (t.nodeName !== 'IMG' && el.contains(t)) t = this._behindImageAt(e.clientX, e.clientY, e.altKey) || t;
       const isImg = t.nodeName === 'IMG' && el.contains(t);
+      const chip = t.closest && t.closest('a.file-chip');
+      const onChip = chip && el.contains(chip) ? chip : null;
       this.ctxTarget = t;
       window.__stickiesCtx = {
         editor: el.contains(t),
@@ -1360,7 +1486,11 @@ export class Editor {
         imageText: isImg ? (t.getAttribute('alt') || '') : '',
         inChecklist: !!(t.closest && t.closest('ul.checklist') && el.contains(t)),
         checklistReset: ((topChecklist(t, el) || {}).dataset || {}).reset || 'never',
-        onLink: !!(t.closest && t.closest('a[href]'))
+        onLink: !!(t.closest && t.closest('a[href]')),
+        onFile: !!onChip,
+        filePath: onChip ? onChip.getAttribute('data-path') : null,
+        fileKind: onChip ? (onChip.getAttribute('data-kind') === 'folder' ? 'folder' : 'file') : null,
+        fileName: onChip ? onChip.textContent : null
       };
       if (isImg) this.selectImage(t);
     }, true);
@@ -1544,15 +1674,18 @@ export class Editor {
     else this.focus(true);
 
     if (files.length) {
-      const images = files.filter(f => f.type.startsWith('image/'));
-      const texts = files.filter(f => !f.type.startsWith('image/') && (/^text\//.test(f.type) || /\.(md|markdown|txt|csv|json|log)$/i.test(f.name)));
+      if (await this._dropMovedChip(files)) return;
+      // Holding Alt adds any file as a shortcut, instead of copying a picture in or pasting a text file's words.
+      const asChips = e.altKey;
+      const images = asChips ? [] : files.filter(f => f.type.startsWith('image/'));
+      const texts = asChips ? [] : files.filter(f => !f.type.startsWith('image/') && (/^text\//.test(f.type) || /\.(md|markdown|txt|csv|json|log)$/i.test(f.name)));
       if (images.length) await this.insertImageFiles(images, this.range() && this.range().cloneRange());
       for (const f of texts) {
         if (f.size > 2 * 1024 * 1024) { this.toast(`${f.name} is too large to paste in`); continue; }
         this.insertPlainText(await f.text());
       }
-      const skipped = files.length - images.length - texts.length;
-      if (skipped) this.toast('Only images and text files can be dropped into a note');
+      const others = files.filter(f => !images.includes(f) && !texts.includes(f));
+      if (others.length) await this.insertFileChips(others);
       return;
     }
     if (html) {
@@ -1560,6 +1693,25 @@ export class Editor {
       if (clean.trim()) { this.insertHTML(clean); this.localizeImages(); return; }
     }
     if (text) this.insertPlainText(text);
+  }
+
+  // A chip dragged out of this note and dropped back in moves rather than duplicates.
+  async _dropMovedChip(files) {
+    const drag = this._chipDrag;
+    this._chipDrag = null;
+    if (!drag || files.length !== 1 || Date.now() - drag.at > 60000) return false;
+    if (!drag.chip.isConnected || !this.el.contains(drag.chip)) return false;
+    if (this.api.filePath(files[0]) !== drag.path) return false;
+    const at = this.range() && this.range().cloneRange();
+    // Dropped onto itself: nothing to move.
+    if (at && drag.chip.contains(at.startContainer)) return true;
+    const html = drag.chip.outerHTML;
+    this.removeChip(drag.chip);
+    this.el.focus({ preventScroll: true });
+    if (at && this.el.contains(at.startContainer)) this.selectRange(at);
+    this.insertHTML(html + ZWSP);
+    this.refreshChips();
+    return true;
   }
 }
 

@@ -1,6 +1,7 @@
 import { hydrateIcons } from '../shared/icons.js';
 import { sanitizeHtml, escapeHtml } from '../shared/sanitize.js';
 import palette from '../shared/colors.json' with { type: 'json' };
+import { hydrateFileChips } from '../shared/file-icons.js';
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);
@@ -65,6 +66,7 @@ async function show(key) {
   if (mode === 'preview') {
     doc.classList.remove('diff');
     doc.innerHTML = sanitizeHtml(html, { mode: 'stored' });
+    hydrateFileChips(doc);
     return;
   }
   // Changes: compare with the version before this one.

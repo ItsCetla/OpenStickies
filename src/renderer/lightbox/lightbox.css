@@ -1,0 +1,105 @@
+:root {
+  --backdrop: rgba(10, 10, 12, 0.9);
+  --bar-bg: rgba(32, 32, 36, 0.92);
+  --bar-text: #ececef;
+  --bar-muted: #a3a3ad;
+  --bar-hover: rgba(255, 255, 255, 0.1);
+  --bar-line: rgba(255, 255, 255, 0.12);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  color: var(--bar-text);
+  font: 13px/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  user-select: none;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+  background: var(--backdrop);
+  overflow: hidden;
+  cursor: zoom-out;
+  animation: fade-in 0.14s ease-out;
+}
+
+.stage img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: none;
+  max-height: none;
+  transform-origin: 50% 50%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  cursor: default;
+  visibility: hidden;
+  /* Transparent images need something to sit on. */
+  background: repeating-conic-gradient(#2a2a2e 0% 25%, #222226 0% 50%) 50% / 20px 20px;
+}
+
+.stage img.ready { visibility: visible; }
+.stage img.pannable { cursor: grab; }
+.stage.panning, .stage.panning img { cursor: grabbing; }
+.stage img.pixelated { image-rendering: pixelated; }
+
+.msg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--bar-muted);
+  font-size: 14px;
+}
+
+.bar {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  max-width: calc(100vw - 32px);
+  background: var(--bar-bg);
+  border: 1px solid var(--bar-line);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  animation: fade-in 0.14s ease-out;
+}
+
+.bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.bar button.icon-btn { width: 30px; padding: 0; justify-content: center; }
+.bar button:hover { background: var(--bar-hover); }
+.bar button:focus-visible { outline: 2px solid #6aa8ff; outline-offset: -2px; }
+.bar button.on { background: var(--bar-hover); }
+.bar button[hidden] { display: none; }
+.bar .pct { min-width: 46px; text-align: center; color: var(--bar-muted); font-variant-numeric: tabular-nums; }
+.bar .sep { width: 1px; height: 18px; margin: 0 4px; background: var(--bar-line); }
+.bar .icon { flex: none; }
+
+@media (max-width: 620px) {
+  #open, #save { font-size: 0; gap: 0; width: 30px; padding: 0; justify-content: center; }
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

@@ -762,3 +762,55 @@ body.tb-always .toolbar { display: flex; }
 .tab.active.drop-after { box-shadow: inset 0 2px 0 var(--accent), inset -2px 0 0 var(--accent); }
 body.rolled .tabbar, body.private-locked .tabbar { display: none !important; }
 .menu-pop .menu-item:disabled { opacity: 0.45; pointer-events: none; }
+/* ---------- hover preview for file chips and pictures ---------- */
+.hover-card {
+  position: fixed;
+  z-index: 70;
+  max-width: calc(100vw - 16px);
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--pop-bg);
+  color: var(--pop-text);
+  border: 1px solid var(--pop-border);
+  box-shadow: var(--pop-shadow);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+  animation: pop-in 0.12s ease-out;
+}
+.hover-card.image { padding: 4px; }
+.hover-card .hover-image {
+  display: block;
+  max-width: calc(100vw - 26px);
+  max-height: calc(100vh - 26px);
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+}
+.hover-card.file { width: min(240px, calc(100vw - 16px)); }
+.hover-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72px;
+  margin-bottom: 7px;
+  border-radius: 6px;
+  background: var(--pop-hover);
+}
+.hover-thumb.has-pic { height: auto; background: transparent; }
+.hover-icon { width: 36px; height: 45px; }
+.hover-pic { display: block; max-width: 100%; max-height: 180px; border-radius: 6px; }
+.hover-name { font-weight: 600; overflow-wrap: anywhere; }
+.hover-meta { margin-top: 2px; color: var(--pop-muted); }
+.hover-meta.warn { color: var(--danger); }
+.hover-path {
+  margin-top: 4px;
+  color: var(--pop-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

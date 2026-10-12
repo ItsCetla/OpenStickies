@@ -3,6 +3,7 @@ import { sanitizeHtml, escapeHtml } from '../shared/sanitize.js';
 import { cascadeCheck, sinkItem, ownText, dueLabel, isoDate, parentItem } from '../note/smart.js';
 import palette from '../shared/colors.json' with { type: 'json' };
 import { IS_MAC, MODIFIER_HINT, keyLabel, localizeKeys } from '../shared/keys.js';
+import { hydrateFileChips } from '../shared/file-icons.js';
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);
@@ -530,6 +531,7 @@ function render() {
     ].sort((a, b) => b.at - a.at);
     $('list').innerHTML = items.map(x => x.html).join('');
   } else $('list').innerHTML = list.map(n => cardHtml(n, pq)).join('');
+  hydrateFileChips($('list'));
   if (focusedId) { const el = $('list').querySelector(`[data-id="${focusedId}"]`); if (el) el.focus({ preventScroll: true }); }
   $('view-title').textContent = VIEW_TITLES[state.view] || 'All notes';
 

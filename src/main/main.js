@@ -22,6 +22,7 @@ const ocr = require('./ocr');
 const scan = require('./html-scan');
 const { htmlToText, titleFromText } = require('./store-text');
 const exporter = require('./exporter');
+const files = require('./files');
 const { migrateLegacyData, LEGACY_LOGIN_ITEM } = require('./migrate');
 const palette = require('../renderer/shared/colors.json');
 
@@ -1127,6 +1128,25 @@ function registerIpc() {
     return { ok: true, created: r.created, noteId: r.noteId, noteTitle: t.noteTitle };
   });
   ipcMain.handle('notes:purge-tab', (e, tabId) => { managerOnly(e); return store.purgeTab(String(tabId || '')); });
+
+  // ----- file shortcuts -----
+  ipcMain.handle('file:info', (e, p, withThumb) => { noteOf(e); return files.fileInfo(p, { thumb: !!withThumb }); });
+  ipcMain.handle('file:open', (e, p) => { noteOf(e); return files.openFile(p, parentOf(e)); });
+  ipcMain.handle('file:show', (e, p) => { noteOf(e); return files.showFile(p); });
+  ipcMain.handle('file:start-drag', (e, p) => { noteOf(e); return files.startDrag(e.sender, p, ASSETS); });
+
+  // ----- image lightbox -----
+  ipcMain.handle('img:lightbox', (e, url) => {
+    noteOf(e);
+    const s = String(url || '');
+    if (!store.attachmentFromUrl(s) && !/^https?:\/\//i.test(s)) return false;
+    windows.openLightbox(s, parentOf(e));
+    return true;
+  });
+  ipcMain.handle('lightbox:close', (e) => {
+    if (!windows.isLightbox(e.sender)) throw new Error('Not allowed');
+    windows.closeLightbox();
+  });
 }
 
 // ---------- lifecycle ----------

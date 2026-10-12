@@ -125,5 +125,15 @@ contextBridge.exposeInMainWorld('stickies', {
   closeTab: (tabId) => invoke('note:close-tab', tabId),
   listTrashedTabs: () => invoke('notes:list-trashed-tabs'),
   restoreTab: (id) => invoke('notes:restore-tab', id),
-  purgeTab: (id) => invoke('notes:purge-tab', id)
+  purgeTab: (id) => invoke('notes:purge-tab', id),
+
+  // file shortcuts
+  fileInfo: (path, withThumb) => invoke('file:info', path, !!withThumb),
+  openFile: (path) => invoke('file:open', path),
+  showFile: (path) => invoke('file:show', path),
+  startDrag: (path) => invoke('file:start-drag', path),
+
+  // image lightbox
+  openLightbox: (url) => invoke('img:lightbox', url),
+  closeLightbox: () => invoke('lightbox:close')
 });

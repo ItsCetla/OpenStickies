@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' sticky-img: data: https: http:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>Image</title>
+  <link rel="stylesheet" href="lightbox.css">
+</head>
+<body>
+  <div class="stage" id="stage">
+    <img id="img" alt="" draggable="false">
+    <div class="msg" id="msg" hidden>This image couldn't be shown.</div>
+  </div>
+  <div class="bar" id="bar" role="toolbar" aria-label="Image tools">
+    <button id="fit" title="Fit to screen (0)">Fit</button>
+    <button id="actual" title="Actual size (1)">1:1</button>
+    <span class="sep"></span>
+    <button id="zoom-out" class="icon-btn" title="Zoom out (-)" aria-label="Zoom out"><i data-icon="minus" data-size="16"></i></button>
+    <span class="pct" id="pct">100%</span>
+    <button id="zoom-in" class="icon-btn" title="Zoom in (+)" aria-label="Zoom in"><i data-icon="plus" data-size="16"></i></button>
+    <span class="sep"></span>
+    <button id="open" title="Open with your default app"><i data-icon="external" data-size="15"></i>Open with default app</button>
+    <button id="save" title="Save a copy"><i data-icon="download" data-size="15"></i>Save as…</button>
+    <span class="sep"></span>
+    <button id="close" class="icon-btn" title="Close (Esc)" aria-label="Close"><i data-icon="close" data-size="16"></i></button>
+  </div>
+  <script type="module" src="lightbox.js"></script>
+</body>
+</html>
