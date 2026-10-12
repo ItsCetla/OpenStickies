@@ -136,5 +136,11 @@ contextBridge.exposeInMainWorld('stickies', {
   // image lightbox
   openLightbox: (url) => invoke('img:lightbox', url),
   closeLightbox: () => invoke('lightbox:close'),
-  onHighlight: listen('note:highlight')
+  onHighlight: listen('note:highlight'),
+
+  // export + data folder
+  exportAll: (format, items) => invoke('data:export-all', format, items),
+  dataLocation: () => invoke('data:location'),
+  chooseDataFolder: () => invoke('data:change-location'),
+  resetDataFolder: () => invoke('data:reset-location')
 });

@@ -121,7 +121,8 @@
     </div>
     <div class="menu-sep"></div>
     <button class="menu-item" data-action="toggle-pin"><i data-icon="pin" data-size="16"></i><span>Keep on top</span><span class="check" id="chk-pin"></span></button>
-    <button class="menu-item" data-action="toggle-lock"><i data-icon="lock" data-size="16"></i><span>Lock editing</span><span class="check" id="chk-lock"></span></button>
+    <button class="menu-item" data-action="toggle-lock"><i data-icon="lock" data-size="16"></i><span>Lock note (no edits, no moving)</span><span class="check" id="chk-lock"></span></button>
+    <button class="menu-item" data-action="toggle-roll"><i data-icon="chevronUp" data-size="16"></i><span>Roll up</span><span class="hint">Ctrl+Shift+R</span><span class="check" id="chk-roll"></span></button>
     <button class="menu-item" data-action="reminder"><i data-icon="bell" data-size="16"></i><span>Reminder…</span><span class="hint" id="menu-reminder-hint"></span></button>
     <button class="menu-item" data-action="toggle-private"><i data-icon="shield" data-size="16"></i><span id="menu-private-label">Make private</span></button>
     <div class="menu-sep"></div>
@@ -140,6 +141,7 @@
       <button class="menu-item" data-action="print"><span>Print…</span></button>
       <button class="menu-item" data-action="copy-md"><span>Copy as Markdown</span></button>
       <button class="menu-item" data-action="copy-text"><span>Copy as plain text</span></button>
+      <button class="menu-item" data-action="export-json"><span>Save as JSON…</span></button>
     </div>
     <button class="menu-item" data-action="save-template"><i data-icon="template" data-size="16"></i><span>Save as template…</span></button>
     <button class="menu-item" data-action="duplicate"><i data-icon="copy" data-size="16"></i><span>Duplicate note</span></button>

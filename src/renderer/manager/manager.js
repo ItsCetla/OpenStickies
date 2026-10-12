@@ -1,5 +1,6 @@
 import { icon, hydrateIcons } from '../shared/icons.js';
 import { sanitizeHtml, escapeHtml } from '../shared/sanitize.js';
+import { htmlToMarkdown } from '../shared/html-to-md.js';
 import { cascadeCheck, sinkItem, ownText, dueLabel, isoDate, parentItem } from '../note/smart.js';
 import palette from '../shared/colors.json' with { type: 'json' };
 import { IS_MAC, MODIFIER_HINT, keyLabel, localizeKeys } from '../shared/keys.js';
@@ -985,11 +986,12 @@ function buildSettings(s) {
   $('md-shortcuts').innerHTML = MD_SHORTCUTS.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
   $('search-tips').innerHTML = SEARCH_TIPS.map(([a, b]) => `<div>${escapeHtml(a)}</div><div class="k"><kbd>${escapeHtml(b)}</kbd></div>`).join('');
   $('data-dir').textContent = s.dataDir;
+  refreshDataLocation();
   $('about').innerHTML = `OpenStickies ${escapeHtml(s.version)}<br>Your notes are stored only on this computer.`;
   syncSettingsUi();
 }
 
-const SWITCHES = ['launchAtLogin', 'showInTaskbar', 'spellcheck', 'confirmDelete', 'snapToEdges', 'opaqueOnHover', 'sinkTicked', 'ocrImages', 'autoWorkspace'];
+const SWITCHES = ['launchAtLogin', 'showInTaskbar', 'spellcheck', 'confirmDelete', 'snapToEdges', 'opaqueOnHover', 'sinkTicked', 'ocrImages', 'autoWorkspace', 'snapToGrid'];
 
 function syncSettingsUi() {
   for (const b of $('set-theme').children) b.classList.toggle('on', b.dataset.v === settings.theme);
@@ -1006,6 +1008,8 @@ function syncSettingsUi() {
   $('set-reminderSound').value = ['chime', 'soft', 'none'].includes(settings.reminderSound) ? settings.reminderSound : 'chime';
   $('set-size').value = settings.fontSize;
   $('set-size-value').textContent = `${settings.fontSize}px`;
+  $('set-gridSize').value = settings.gridSize || 24;
+  $('set-gridSize-value').textContent = `${settings.gridSize || 24}px`;
   for (const k of SWITCHES) $(`set-${k}`).checked = settings[k] !== false && !!settings[k];
   for (const input of document.querySelectorAll('.hk')) {
     if (!input.classList.contains('capturing')) input.value = prettyAccel(settings.hotkeys[input.dataset.hk]);
@@ -1051,6 +1055,50 @@ $('act-import').addEventListener('click', async () => {
   if (r && r.added) toast(`Imported ${r.added} file${r.added === 1 ? '' : 's'}`);
 });
 $('act-folder').addEventListener('click', () => api.openDataFolder());
+$('set-gridSize').addEventListener('input', (e) => { $('set-gridSize-value').textContent = `${e.target.value}px`; });
+$('set-gridSize').addEventListener('change', (e) => update({ gridSize: Number(e.target.value) }));
+
+// ----- bulk export -----
+// Markdown needs a DOM to convert from, so it's made here; DOMParser documents are inert, so
+// nothing in a note (images included) loads while converting.
+function notesAsMarkdown() {
+  const out = [];
+  for (const n of notes) {
+    if (n.trashed || n.privateLocked) continue;
+    const doc = new DOMParser().parseFromString(sanitizeHtml(n.html || ''), 'text/html');
+    out.push({ id: n.id, markdown: htmlToMarkdown(doc.body) });
+  }
+  return out;
+}
+
+async function exportAll(format) {
+  try {
+    const r = await api.exportAll(format, format === 'txt' ? [] : notesAsMarkdown());
+    if (!r || !r.ok) return;
+    const skipped = r.skippedPrivate ? ` · ${r.skippedPrivate} locked private note${r.skippedPrivate === 1 ? ' was' : 's were'} left out` : '';
+    toast(`Exported ${r.count} note${r.count === 1 ? '' : 's'}${skipped}`);
+  } catch (err) {
+    toast(`Export failed: ${err.message || err}`);
+  }
+}
+$('act-export-md').addEventListener('click', () => exportAll('md'));
+$('act-export-txt').addEventListener('click', () => exportAll('txt'));
+$('act-export-json').addEventListener('click', () => exportAll('json'));
+
+// ----- data folder location -----
+async function refreshDataLocation() {
+  const loc = await api.dataLocation();
+  $('data-location').textContent = loc.custom ? loc.path : `${loc.path} (default)`;
+  $('act-location-change').disabled = loc.fixed;
+  $('act-location-reset').disabled = loc.fixed || !loc.custom;
+}
+async function locationAction(fn) {
+  const r = await fn();
+  if (r && r.error) toast(r.error);
+  else if (r && r.ok) toast('Restarting OpenStickies…');
+}
+$('act-location-change').addEventListener('click', () => locationAction(api.chooseDataFolder));
+$('act-location-reset').addEventListener('click', () => locationAction(api.resetDataFolder));
 
 // ----- private notes -----
 function renderPrivacy() {

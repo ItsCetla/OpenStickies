@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const palette = require('../renderer/shared/colors.json');
 const { mdToHtml, textToHtml, esc } = require('./markdown');
-const { IMAGE_EXT, sniffImageExt, ATTACHMENT_NAME_RE } = require('./store');
+const { IMAGE_EXT, sniffImageExt, ATTACHMENT_NAME_RE, writeFileAtomic } = require('./store');
 
 const MIME_BY_EXT = Object.fromEntries(Object.entries(IMAGE_EXT).map(([m, e]) => [e, m]));
 const IMG_URL_RE = /sticky-img:\/\/img\/([A-Za-z0-9._-]+)/g;
@@ -77,7 +77,8 @@ const FILTERS = {
   html: [{ name: 'Web page', extensions: ['html'] }],
   md: [{ name: 'Markdown', extensions: ['md'] }],
   txt: [{ name: 'Text', extensions: ['txt'] }],
-  pdf: [{ name: 'PDF', extensions: ['pdf'] }]
+  pdf: [{ name: 'PDF', extensions: ['pdf'] }],
+  json: [{ name: 'JSON', extensions: ['json'] }]
 };
 
 async function renderOffscreen(html, fn) {
@@ -127,12 +128,103 @@ async function exportNote({ parent, store, note, format, payload }) {
       md = md.replace(IMG_URL_RE, (_, name) => `${encodeURI(folderName)}/${name}`);
     }
     fs.writeFileSync(filePath, md);
+  } else if (format === 'json') {
+    const doc = { exportedAt: new Date().toISOString(), app: 'OpenStickies', version: app.getVersion(), notes: [noteJson(note, payload)] };
+    writeFileAtomic(filePath, JSON.stringify(doc, null, 2));
   } else if (format === 'pdf') {
     const html = documentHtml(note, inlineImages(payload.html, store));
     const pdf = await renderOffscreen(html, (win) => win.webContents.printToPDF({ printBackground: true, pageSize: 'Letter' }));
     fs.writeFileSync(filePath, pdf);
   }
   return { ok: true, filePath };
+}
+
+// ---------- bulk export ----------
+const isoOrNull = (t) => (Number.isFinite(t) ? new Date(t).toISOString() : (typeof t === 'string' && t ? t : null));
+
+// The shape shared by the per-note and bulk JSON exports: plain, documented fields only, so other
+// tools can read it without knowing OpenStickies' internal storage format.
+function noteJson(note, content) {
+  return {
+    id: note.id,
+    title: content.title || note.title || '',
+    text: content.text || '',
+    html: content.html || '',
+    markdown: content.markdown || '',
+    color: note.color,
+    tags: Array.isArray(note.tags) ? note.tags : [],
+    createdAt: isoOrNull(note.createdAt),
+    updatedAt: isoOrNull(note.updatedAt),
+    pinned: !!note.pinned,
+    reminder: note.reminder || null
+  };
+}
+
+// Windows refuses these names whatever the extension; trailing dots and spaces get stripped by it too.
+const RESERVED_NAME_RE = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
+
+function uniqueName(base, ext, used) {
+  let stem = base.replace(/[. ]+$/, '') || 'Sticky note';
+  if (RESERVED_NAME_RE.test(stem)) stem = `_${stem}`;
+  let name = `${stem}${ext}`;
+  for (let i = 2; used.has(name.toLowerCase()); i++) name = `${stem} (${i})${ext}`;
+  used.add(name.toLowerCase());
+  return name;
+}
+
+// A fresh folder (or file) next to anything already in the chosen folder, never on top of it.
+function freePath(dir, stem, ext) {
+  let p = path.join(dir, `${stem}${ext}`);
+  for (let i = 2; fs.existsSync(p); i++) p = path.join(dir, `${stem} (${i})${ext}`);
+  return p;
+}
+
+// items: [{ note, title, text, html, markdown }] — the caller has already dropped trashed notes and
+// private notes it can't decrypt. readImage(name) returns an image's bytes (decrypting if needed) or null.
+async function exportAllNotes({ parent, format, items, readImage }) {
+  if (!['md', 'txt', 'json'].includes(format)) throw new Error('Unknown format');
+  const { canceled, filePaths } = await dialog.showOpenDialog(parent, {
+    title: 'Choose a folder for the exported notes',
+    defaultPath: app.getPath('documents'),
+    buttonLabel: 'Export here',
+    properties: ['openDirectory', 'createDirectory']
+  });
+  if (canceled || !filePaths || !filePaths[0]) return { ok: false, canceled: true };
+  const dir = filePaths[0];
+  const stamp = new Date().toISOString().slice(0, 10);
+  const stem = `OpenStickies notes ${stamp}`;
+
+  if (format === 'json') {
+    const filePath = freePath(dir, stem, '.json');
+    const doc = { exportedAt: new Date().toISOString(), app: 'OpenStickies', version: app.getVersion(), notes: items.map(it => noteJson(it.note, it)) };
+    writeFileAtomic(filePath, JSON.stringify(doc, null, 2));
+    return { ok: true, count: items.length, path: filePath };
+  }
+
+  const folder = freePath(dir, stem, '');
+  fs.mkdirSync(folder, { recursive: true });
+  const used = new Set(['assets']);
+  const copied = new Set();
+  for (const it of items) {
+    const name = uniqueName(safeFileName(it.title || it.note.title), `.${format}`, used);
+    if (format === 'txt') {
+      writeFileAtomic(path.join(folder, name), String(it.text || '').replace(/\r?\n/g, '\r\n'));
+      continue;
+    }
+    let md = String(it.markdown || '');
+    const names = [...new Set([...md.matchAll(IMG_URL_RE)].map(m => m[1]))].filter(n => ATTACHMENT_NAME_RE.test(n));
+    for (const img of names) {
+      if (copied.has(img)) continue;
+      const bytes = readImage(img);
+      if (!bytes) continue;
+      fs.mkdirSync(path.join(folder, 'assets'), { recursive: true });
+      writeFileAtomic(path.join(folder, 'assets', img), bytes);
+      copied.add(img);
+    }
+    md = md.replace(IMG_URL_RE, (m, img) => (copied.has(img) ? `assets/${img}` : m));
+    writeFileAtomic(path.join(folder, name), md);
+  }
+  return { ok: true, count: items.length, path: folder };
 }
 
 async function saveImageAs({ parent, store, url }) {
@@ -279,4 +371,4 @@ function imageFileToAttachment(store, file) {
   return store.saveAttachment(buf, mime);
 }
 
-module.exports = { exportNote, saveImageAs, exportBackup, importBackup, importFiles, imageFileToAttachment, documentHtml, safeFileName };
+module.exports = { exportNote, saveImageAs, exportBackup, importBackup, importFiles, imageFileToAttachment, documentHtml, safeFileName, exportAllNotes };

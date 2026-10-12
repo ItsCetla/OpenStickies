@@ -66,7 +66,9 @@ const DEFAULT_SETTINGS = {
   managerBounds: null,
   welcomed: false,
   trayHintShown: false,
-  reminderSound: 'chime'        // 'chime' | 'soft' | 'none'
+  reminderSound: 'chime',       // 'chime' | 'soft' | 'none'
+  snapToGrid: false,
+  gridSize: 24
 };
 
 const DEFAULT_TEMPLATES = [

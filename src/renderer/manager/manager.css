@@ -513,3 +513,6 @@ mark { box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .urgency-dot[data-urgency="red"] { background: var(--urgency-red); }
 
 .sound-pick { display: flex; align-items: center; gap: 6px; }
+/* data folder location */
+.path-sub { overflow-wrap: anywhere; }
+.inline-btns { display: flex; gap: 8px; flex: none; }

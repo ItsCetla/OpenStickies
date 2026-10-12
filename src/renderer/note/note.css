@@ -367,6 +367,8 @@ body.source-mode .content { display: none; }
 }
 body.focused .toolbar { display: flex; }
 body.locked .toolbar, body.rolled .toolbar { display: none !important; }
+/* A locked note can't be dragged, so the title bar stops acting as a drag handle. */
+body.locked .titlebar { -webkit-app-region: no-drag; }
 body.source-mode .toolbar { display: flex; }
 body.source-mode .tools { display: none; }
 

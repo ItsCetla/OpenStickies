@@ -380,6 +380,7 @@ function preparePop(name) {
     $('font-select').value = note.font || 'default';
     $('chk-pin').classList.toggle('on', !!note.pinned);
     $('chk-lock').classList.toggle('on', !!note.locked);
+    $('chk-roll').classList.toggle('on', !!note.rolled);
     $('menu-reminder-hint').textContent = note.reminder ? shortTime(note.reminder.snoozeAt || note.reminder.at) : '';
     $('menu-private-label').textContent = note.private ? 'Make not private' : 'Make private…';
     $('menu-history').hidden = !!note.private;
@@ -498,12 +499,14 @@ async function menuAction(action) {
   switch (action) {
     case 'toggle-pin': togglePin(); closePops(); break;
     case 'toggle-lock': toggleLock(); closePops(); break;
+    case 'toggle-roll': closePops(); api.toggleRoll(); break;
     case 'reminder': closePops(); openPop('reminder', $('btn-menu'), 'below'); break;
     case 'source': enterSource(); break;
     case 'export-pdf': exportAs('pdf'); break;
     case 'export-html': exportAs('html'); break;
     case 'export-md': exportAs('md'); break;
     case 'export-txt': exportAs('txt'); break;
+    case 'export-json': exportAs('json'); break;
     case 'print': exportAs('print'); break;
     case 'copy-md': closePops(); await navigator.clipboard.writeText(htmlToMarkdown(editor.el)); toast('Copied as Markdown'); break;
     case 'copy-text': closePops(); await navigator.clipboard.writeText(editor.getText()); toast('Copied as plain text'); break;
@@ -536,7 +539,7 @@ function togglePin() {
 function toggleLock() {
   patchNote({ locked: !note.locked });
   applyState();
-  toast(note.locked ? 'Note locked — checkboxes still work' : 'Note unlocked');
+  toast(note.locked ? 'Note locked in place — checkboxes still work' : 'Note unlocked');
   if (!note.locked) editor.focus();
 }
 

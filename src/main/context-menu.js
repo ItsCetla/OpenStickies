@@ -156,7 +156,15 @@ function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
 
     if (ctx.editor) {
       t.push({ type: 'separator' });
-      t.push({ label: locked ? 'Unlock note' : 'Lock note', click: cmd('toggle-lock') });
+      t.push({ label: locked ? 'Unlock note' : 'Lock note (no edits, no moving)', click: cmd('toggle-lock') });
+    }
+
+    // Window-level toggles, so right-clicking anywhere (including a locked title bar, which no
+    // longer gets the native system menu) reaches pin and roll-up.
+    if (note) {
+      t.push({ type: 'separator' });
+      t.push({ label: 'Always on top', type: 'checkbox', checked: !!note.pinned, click: cmd('toggle-pin') });
+      t.push({ label: 'Roll up', type: 'checkbox', checked: !!note.rolled, click: () => windows.toggleRoll(noteId()) });
     }
 
     if (ctx.editor && note && !note.private && !locked) {
@@ -176,7 +184,7 @@ function buildNoteMenu({ note, windows, noteId }) {
     { type: 'separator' },
     { label: 'Always on top', type: 'checkbox', checked: !!note.pinned, click: emit('toggle-pin') },
     { label: 'Roll up', type: 'checkbox', checked: !!note.rolled, click: () => windows.toggleRoll(noteId) },
-    { label: 'Lock editing', type: 'checkbox', checked: !!note.locked, click: emit('toggle-lock') },
+    { label: 'Lock note (no edits, no moving)', type: 'checkbox', checked: !!note.locked, click: emit('toggle-lock') },
     { type: 'separator' },
     { label: 'Duplicate', click: () => windows.duplicateNote(noteId) },
     { label: 'Close', accelerator: 'CmdOrCtrl+W', click: () => windows.closeNote(noteId) },

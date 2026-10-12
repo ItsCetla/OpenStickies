@@ -108,6 +108,10 @@ class WindowManager {
       skipTaskbar: !this.store.settings.showInTaskbar,
       maximizable: false,
       fullscreenable: false,
+      // A locked note stays where it is: no dragging, no resizing. Workspaces still move it
+      // programmatically through setBounds, which these flags don't block.
+      movable: !note.locked,
+      resizable: !note.locked,
       alwaysOnTop: note.pinned,
       title: note.title || 'Sticky note',
       icon: this.icon,
@@ -132,9 +136,21 @@ class WindowManager {
     win.on('resize', saveBounds);
     win.on('move', saveBounds);
     win.on('moved', () => {
-      if (this.store.settings.snapToEdges) this.snap(win, note.id);
+      const snapped = this.store.settings.snapToEdges ? this.snap(win, note.id) : null;
+      if (this.store.settings.snapToGrid) this.snapPositionToGrid(win, snapped);
       saveBounds();
     });
+    // 'resized' fires once at the end of a user resize on macOS and Windows. Linux has no such
+    // event, so there we wait for the resize events to go quiet instead.
+    if (process.platform === 'linux') {
+      let gridTimer = null;
+      win.on('resize', () => {
+        clearTimeout(gridTimer);
+        gridTimer = setTimeout(() => { if (this.store.settings.snapToGrid) this.snapSizeToGrid(win, note.id); }, 300);
+      });
+    } else {
+      win.on('resized', () => { if (this.store.settings.snapToGrid) this.snapSizeToGrid(win, note.id); });
+    }
 
     if (process.platform === 'win32') {
       // Double-clicking the title bar rolls the note up, like classic Stickies.
@@ -357,6 +373,10 @@ class WindowManager {
     if (keys.includes('color')) win.setBackgroundColor(this.colorsFor(note).bg);
     if (keys.includes('title')) win.setTitle(note.title || 'Sticky note');
     if (keys.includes('rolled')) this._applyRoll(win, note);
+    if (keys.includes('locked')) {
+      win.setMovable(!note.locked);
+      win.setResizable(!note.locked);
+    }
   }
 
   // Translucent notes turn solid while the cursor is over them. Polling the cursor is more
@@ -470,7 +490,7 @@ class WindowManager {
   }
 
   snap(win, noteId) {
-    if (win.isDestroyed()) return;
+    if (win.isDestroyed()) return null;
     const b = win.getBounds();
     const wa = screen.getDisplayMatching(b).workArea;
     let { x, y } = b;
@@ -495,6 +515,37 @@ class WindowManager {
       if (d < best) { best = d; y = side === 't' ? e : e - b.height; }
     }
     if (x !== b.x || y !== b.y) win.setPosition(Math.round(x), Math.round(y));
+    // Report which axes caught an edge so grid snapping leaves those alone (edges win).
+    return { x: x !== b.x, y: y !== b.y };
+  }
+
+  gridSize() {
+    const g = Number(this.store.settings.gridSize);
+    return Number.isFinite(g) ? Math.min(64, Math.max(8, Math.round(g))) : 24;
+  }
+
+  // The grid is anchored to the display's work area so grid lines line up with the screen edges.
+  snapPositionToGrid(win, skip) {
+    if (win.isDestroyed()) return;
+    const g = this.gridSize();
+    const b = win.getBounds();
+    const wa = screen.getDisplayMatching(b).workArea;
+    const x = skip && skip.x ? b.x : wa.x + Math.round((b.x - wa.x) / g) * g;
+    const y = skip && skip.y ? b.y : wa.y + Math.round((b.y - wa.y) / g) * g;
+    if (x !== b.x || y !== b.y) win.setPosition(x, y);
+  }
+
+  snapSizeToGrid(win, noteId) {
+    if (win.isDestroyed() || win.isMinimized()) return;
+    const note = this.store.get(noteId);
+    if (!note || note.locked) return;
+    const g = this.gridSize();
+    const b = win.getBounds();
+    // Round up to a whole cell at the minimum so the note never ends up smaller than allowed.
+    const width = Math.max(Math.ceil(MIN_W / g) * g, Math.round(b.width / g) * g);
+    // A rolled note's height is fixed to the header, so only its width follows the grid.
+    const height = note.rolled ? b.height : Math.max(Math.ceil(MIN_H / g) * g, Math.round(b.height / g) * g);
+    if (width !== b.width || height !== b.height) win.setBounds({ x: b.x, y: b.y, width, height });
   }
 
   // ---------- messaging ----------
