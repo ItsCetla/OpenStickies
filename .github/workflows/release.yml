@@ -107,7 +107,7 @@ jobs:
           | [`OpenStickies-Setup-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Setup-{VERSION}.exe) | **Installer.** Adds Start menu and desktop shortcuts. |
           | [`OpenStickies-Portable-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Portable-{VERSION}.exe) | **Portable.** A single file that runs without installing anything. |
 
-          Both run on Windows 10 and 11 (64-bit) and keep your notes in the same place, `%APPDATA%\Stickies\data`, so you can switch between them.
+          Both run on Windows 10 and 11 (64-bit) and keep your notes in the same place, `%APPDATA%\OpenStickies\data`, so you can switch between them.
 
           > **Windows protected your PC?** The builds aren't code-signed, so SmartScreen may warn you the first time. Click **More info → Run anyway**.
 

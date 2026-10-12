@@ -8,7 +8,7 @@ function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSn
   const hiDpi = path.join(assetsDir, 'tray@2x.png');
   try { img.addRepresentation({ scaleFactor: 2, buffer: require('fs').readFileSync(hiDpi) }); } catch { /* optional */ }
   const tray = new Tray(img);
-  tray.setToolTip('Stickies');
+  tray.setToolTip('OpenStickies');
 
   const rebuild = () => {
     const active = store.active();
@@ -43,7 +43,7 @@ function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSn
       { type: 'separator' },
       { label: 'Settings…', click: () => windows.openManager('settings') },
       { type: 'separator' },
-      { label: `Quit Stickies`, click: onQuit }
+      { label: `Quit OpenStickies`, click: onQuit }
     );
     const menu = Menu.buildFromTemplate(template);
     tray.setContextMenu(menu);
@@ -66,8 +66,8 @@ function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSn
         tray.displayBalloon({
           iconType: 'custom',
           icon: nativeImage.createFromPath(path.join(assetsDir, 'icon.png')),
-          title: 'Stickies is in your system tray',
-          content: 'Click the ^ arrow at the right end of the taskbar, then drag the yellow Stickies icon onto the taskbar to keep it visible. Click it any time to bring your notes back.'
+          title: 'OpenStickies is in your system tray',
+          content: 'Click the ^ arrow at the right end of the taskbar, then drag the yellow OpenStickies icon onto the taskbar to keep it visible. Click it any time to bring your notes back.'
         });
       } catch { /* balloons unsupported */ }
       store.updateSettings({ trayHintShown: true });

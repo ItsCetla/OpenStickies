@@ -29,7 +29,7 @@ npm start
 
 ### Keep your real notes out of it
 
-Point `STICKIES_USER_DATA` at a scratch folder and OpenStickies keeps all its data there (in a `data` subfolder) instead of in `%APPDATA%\Stickies`. It also skips writing `%USERPROFILE%\.stickies\api.json`, so a test copy can't take over your everyday copy's OpenCode connection.
+Point `STICKIES_USER_DATA` at a scratch folder and OpenStickies keeps all its data there (in a `data` subfolder) instead of in `%APPDATA%\OpenStickies`. It also skips the one-time copy of notes from the old `%APPDATA%\Stickies` folder (see `src/main/migrate.js`). It also skips writing `%USERPROFILE%\.stickies\api.json`, so a test copy can't take over your everyday copy's OpenCode connection.
 
 ```powershell
 # PowerShell
@@ -113,3 +113,6 @@ For maintainers. Releases are built by the [Release workflow](.github/workflows/
 6. Open the draft on the [Releases page](https://github.com/ItsCetla/OpenStickies/releases), download and try the builds, edit the notes if needed, then click **Publish release**.
 
 To rebuild an existing tag (for example after a failed run), open **Actions → Release → Run workflow** and enter the tag. The builds aren't code-signed.
+
+> [!IMPORTANT]
+> Keep `build.nsis.guid` in `package.json` as it is. It's the installer identity electron-builder derived from the app's old id (`com.stickies.desktop`), and it's how the installer finds an existing Stickies or OpenStickies install to upgrade. Changing it makes new installers install a second copy next to the old one.

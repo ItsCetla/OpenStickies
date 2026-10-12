@@ -154,8 +154,8 @@ async function exportBackup({ parent, store, vault }) {
   const stamp = new Date().toISOString().slice(0, 10);
   const { canceled, filePath } = await dialog.showSaveDialog(parent, {
     title: 'Back up all notes',
-    defaultPath: path.join(app.getPath('documents'), `Stickies backup ${stamp}.stickies.json`),
-    filters: [{ name: 'Stickies backup', extensions: ['json'] }]
+    defaultPath: path.join(app.getPath('documents'), `OpenStickies backup ${stamp}.stickies.json`),
+    filters: [{ name: 'OpenStickies backup', extensions: ['json'] }]
   });
   if (canceled || !filePath) return { ok: false, canceled: true };
   const attachments = {};
@@ -178,13 +178,13 @@ async function exportBackup({ parent, store, vault }) {
 async function importBackup({ parent, store, vault }) {
   const { canceled, filePaths } = await dialog.showOpenDialog(parent, {
     title: 'Restore notes from backup',
-    filters: [{ name: 'Stickies backup', extensions: ['json'] }],
+    filters: [{ name: 'OpenStickies backup', extensions: ['json'] }],
     properties: ['openFile']
   });
   if (canceled || !filePaths.length) return { ok: false, canceled: true };
   const data = JSON.parse(fs.readFileSync(filePaths[0], 'utf8'));
   const notes = Array.isArray(data.notes) ? data.notes : (Array.isArray(data) ? data : null);
-  if (!notes) throw new Error('That file is not a Stickies backup.');
+  if (!notes) throw new Error('That file is not an OpenStickies backup.');
   // A backup can come from anywhere, so never trust its file names or contents: only real
   // image bytes are accepted, and each is stored under the hash of what it actually contains.
   const renamed = new Map();

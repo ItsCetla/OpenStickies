@@ -1,6 +1,6 @@
 {
-  "name": "stickies",
-  "productName": "Stickies",
+  "name": "openstickies",
+  "productName": "OpenStickies",
   "version": "3.0.0",
   "description": "Desktop sticky notes with rich HTML formatting, images, checklists, reminders and more.",
   "keywords": [
@@ -26,7 +26,7 @@
     "url": "git+https://github.com/ItsCetla/OpenStickies.git"
   },
   "main": "src/main/main.js",
-  "author": "Stickies",
+  "author": "OpenStickies",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -40,7 +40,7 @@
   },
   "build": {
     "appId": "com.openstickies.desktop",
-    "productName": "Stickies",
+    "productName": "OpenStickies",
     "directories": {
       "output": "dist"
     },
@@ -59,6 +59,7 @@
     },
     "nsis": {
       "oneClick": false,
+      "guid": "6b9a4f2d-30d2-5e19-b66e-ec9ae51074c9",
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
