@@ -1,0 +1,143 @@
+name: Release
+
+# Push a tag like v3.0.0 (matching "version" in package.json) to build the Windows installer
+# and portable app and attach them to a draft GitHub release. Review the draft, then publish it.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build, e.g. v3.0.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and draft release
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          # A manual run builds the tag it was given, not the branch it was started from.
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check the tag matches package.json
+        run: |
+          $version = (Get-Content -Raw -LiteralPath package.json | ConvertFrom-Json).version
+          if ($env:TAG -cne "v$version") {
+            Write-Output "::error title=Tag doesn't match package.json::Tag $env:TAG doesn't match package.json version $version. Set the version in package.json to match the tag, or tag the commit v$version instead."
+            exit 1
+          }
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "VERSION=$version"
+
+      # The postinstall script downloads Electron.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build installer and portable app
+        run: npx electron-builder --win nsis portable --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Write SHA256SUMS.txt
+        run: |
+          $lines = foreach ($name in "OpenStickies-Setup-$env:VERSION.exe", "OpenStickies-Portable-$env:VERSION.exe") {
+            $file = Join-Path dist $name
+            if (-not (Test-Path -LiteralPath $file)) { throw "Build output not found: $file" }
+            $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $name"
+          }
+          # LF line endings and no BOM, so `sha256sum -c SHA256SUMS.txt` works as well as Get-FileHash.
+          Set-Content -LiteralPath dist/SHA256SUMS.txt -Value (($lines -join "`n") + "`n") -NoNewline -Encoding utf8NoBOM
+          Get-Content -LiteralPath dist/SHA256SUMS.txt
+
+      - name: Write release notes
+        id: notes
+        run: |
+          # This version's section of CHANGELOG.md: everything after "## [x.y.z]" up to the next
+          # "## " heading or the link definitions at the bottom of the file.
+          $section = [System.Collections.Generic.List[string]]::new()
+          if (Test-Path -LiteralPath CHANGELOG.md) {
+            $heading = '^## \[' + [regex]::Escape($env:VERSION) + '\]'
+            $found = $false
+            foreach ($line in Get-Content -LiteralPath CHANGELOG.md -Encoding utf8) {
+              if ($found) {
+                if ($line -match '^## ' -or $line -match '^\[[^\]]+\]:\s') { break }
+                $section.Add($line)
+              } elseif ($line -match $heading) {
+                $found = $true
+              }
+            }
+          }
+          $body = ($section -join "`n").Trim()
+          if (-not $body) {
+            Write-Output "::warning title=No changelog entry::CHANGELOG.md has no section for $env:VERSION, so the draft has a generic description. Edit it before publishing."
+            $body = "OpenStickies $env:VERSION for Windows 10 and 11."
+          }
+
+          $footer = @'
+          ---
+
+          ### Download
+
+          | File | What it is |
+          |---|---|
+          | [`OpenStickies-Setup-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Setup-{VERSION}.exe) | **Installer.** Adds Start menu and desktop shortcuts. |
+          | [`OpenStickies-Portable-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Portable-{VERSION}.exe) | **Portable.** A single file that runs without installing anything. |
+
+          Both run on Windows 10 and 11 (64-bit) and keep your notes in the same place, `%APPDATA%\Stickies\data`, so you can switch between them.
+
+          > **Windows protected your PC?** The builds aren't code-signed, so SmartScreen may warn you the first time. Click **More info → Run anyway**.
+
+          To check a download, compare its SHA-256 hash with [`SHA256SUMS.txt`]({DOWNLOAD}/SHA256SUMS.txt). In PowerShell: `Get-FileHash .\OpenStickies-Setup-{VERSION}.exe`
+          '@
+          $download = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/releases/download/$env:TAG"
+          $footer = $footer.Replace('{VERSION}', $env:VERSION).Replace('{DOWNLOAD}', $download)
+
+          $file = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          Set-Content -LiteralPath $file -Value ($body + "`n`n" + $footer.Trim() + "`n") -NoNewline -Encoding utf8NoBOM
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "file=$file"
+          Get-Content -LiteralPath $file
+
+      - name: Create or update the draft release
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: OpenStickies ${{ env.VERSION }}
+          body_path: ${{ steps.notes.outputs.file }}
+          draft: true
+          prerelease: ${{ contains(env.TAG, '-') }}
+          fail_on_unmatched_files: true
+          files: |
+            dist/OpenStickies-Setup-${{ env.VERSION }}.exe
+            dist/OpenStickies-Portable-${{ env.VERSION }}.exe
+            dist/SHA256SUMS.txt
+
+      - name: Summary
+        env:
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        run: |
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "Draft release for **$env:TAG** is ready to review and publish: $env:RELEASE_URL"

@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest an idea or an improvement for OpenStickies.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Please check the [open issues](https://github.com/ItsCetla/OpenStickies/issues) first in case someone has suggested it already. If they have, a thumbs-up reaction on that issue helps.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the situation or problem, not just the solution. "When I ... I want to ... but ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like OpenStickies to do?
+      description: How you imagine it working. Sketches and screenshots are welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds or alternatives
+      description: Anything you do today instead, or how other apps handle it.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Writing and formatting
+        - Checklists
+        - Pictures and snips
+        - Organizing (tags, links, search, workspaces, templates)
+        - Safety and privacy (history, private notes, backups)
+        - OpenCode integration or local API
+        - Windows integration (tray, shortcuts, windows)
+        - Something else
+    validations:
+      required: false

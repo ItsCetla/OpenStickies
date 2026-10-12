@@ -1,0 +1,22 @@
+# Categories for GitHub's "Generate release notes" button. Label a pull request
+# skip-changelog to leave it out.
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+  categories:
+    - title: Features
+      labels:
+        - enhancement
+        - feature
+    - title: Fixes
+      labels:
+        - bug
+        - fix
+    - title: Docs
+      labels:
+        - documentation
+        - docs
+    - title: Other
+      labels:
+        - '*'
