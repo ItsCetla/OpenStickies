@@ -23,6 +23,14 @@
     <button class="tb-btn tb-close" id="btn-close" title="Close note (Ctrl+W)"><i data-icon="close"></i></button>
   </header>
 
+  <div class="reminder-strip" id="reminder-strip" hidden>
+    <button class="strip-main" id="reminder-strip-open" title="Change reminder">
+      <i data-icon="bell" data-size="13"></i>
+      <span class="strip-text" id="reminder-strip-text"></span>
+    </button>
+    <button class="strip-clear" id="reminder-strip-clear" title="Remove reminder"><i data-icon="close" data-size="13"></i></button>
+  </div>
+
   <div class="banner" id="reminder-banner" hidden>
     <i data-icon="bell" data-size="16"></i>
     <span class="banner-text" id="reminder-banner-text">Reminder</span>
@@ -245,7 +253,7 @@
   <div class="modal" id="confirm" hidden>
     <div class="dialog">
       <div class="dialog-title" id="confirm-title">Delete this note?</div>
-      <div class="dialog-body" id="confirm-body">It will move to Trash in the notes list, where you can restore it for 30 days.</div>
+      <div class="dialog-body" id="confirm-body">It will move to Trash in the notes list, which keeps up to 300 notes until you delete them or empty it.</div>
       <label class="dialog-check" id="confirm-check-wrap"><input type="checkbox" id="confirm-check"> Don't ask again</label>
       <div class="pop-actions">
         <span class="grow"></span>

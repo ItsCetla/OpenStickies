@@ -59,7 +59,8 @@ const DEFAULT_SETTINGS = {
   autoLockMinutes: 5,           // lock private notes after this much inactivity (0 = never)
   managerBounds: null,
   welcomed: false,
-  trayHintShown: false
+  trayHintShown: false,
+  reminderSound: 'chime'        // 'chime' | 'soft' | 'none'
 };
 
 const DEFAULT_TEMPLATES = [
@@ -73,7 +74,8 @@ const DEFAULT_TEMPLATES = [
 
 const IMAGE_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/bmp': 'bmp', 'image/svg+xml': 'svg', 'image/avif': 'avif', 'image/x-icon': 'ico' };
 const ATTACHMENT_RE = /sticky-img:\/\/img\/([A-Za-z0-9._-]+)/g;
-const TRASH_RETENTION_MS = 30 * 24 * 3600 * 1000;
+// Trash is a size cap rather than an age limit, so nothing vanishes just because time passed.
+const TRASH_LIMIT = 300;
 const BACKUPS_TO_KEEP = 14;
 
 function uid() {
@@ -218,6 +220,8 @@ class Store extends EventEmitter {
       createdAt: raw.createdAt || now,
       updatedAt: raw.updatedAt || now
     };
+    // Older files have no setAt; the note's creation time is the best guess for when the countdown began.
+    if (n.reminder && !Number.isFinite(n.reminder.setAt)) n.reminder = { ...n.reminder, setAt: Math.min(n.createdAt, n.reminder.at) };
     n.agent = raw.agent && typeof raw.agent.key === 'string' ? {
       key: raw.agent.key,
       source: String(raw.agent.source || ''),
@@ -247,12 +251,11 @@ class Store extends EventEmitter {
   }
 
   _housekeeping({ collectImages }) {
-    const now = Date.now();
     for (const n of [...this.notes.values()]) {
       // Closed notes that were never written in are just clutter.
       if (!n.trashed && !n.open && isBlankNote(n)) this.notes.delete(n.id);
-      else if (n.trashed && n.trashedAt && now - n.trashedAt > TRASH_RETENTION_MS) this.notes.delete(n.id);
     }
+    for (const id of this._trashOverflow()) this.notes.delete(id);
     if (collectImages) this.gcAttachments();
   }
 
@@ -329,7 +332,16 @@ class Store extends EventEmitter {
 
   trash(id) {
     const n = this.update(id, { trashed: true, trashedAt: Date.now(), open: false });
+    if (n) for (const old of this._trashOverflow()) this.purge(old);
     return n;
+  }
+
+  // Ids of the oldest trashed notes beyond TRASH_LIMIT.
+  _trashOverflow() {
+    const trashed = [...this.notes.values()].filter(n => n.trashed);
+    if (trashed.length <= TRASH_LIMIT) return [];
+    trashed.sort((a, b) => (b.trashedAt || 0) - (a.trashedAt || 0));
+    return trashed.slice(TRASH_LIMIT).map(n => n.id);
   }
 
   restore(id) {

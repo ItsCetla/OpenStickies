@@ -61,7 +61,7 @@ class WindowManager {
     return w && !w.isDestroyed() ? w : null;
   }
 
-  openNote(noteId, { focus = true, inactive = false } = {}) {
+  openNote(noteId, { focus = true, inactive = false, highlight = null } = {}) {
     const note = this.store.get(noteId);
     if (!note) return null;
     this.allHidden = false; // otherwise a note opened after "Hide all" would never appear
@@ -71,10 +71,19 @@ class WindowManager {
     if (win) {
       if (focus) this.bringToFront(win);
       else if (!win.isVisible()) win.showInactive();
-      return win;
+    } else {
+      win = this._createNoteWindow(note, { focus: focus && !inactive });
     }
-    win = this._createNoteWindow(note, { focus: focus && !inactive });
+    if (highlight && win) this._sendHighlight(win, highlight);
     return win;
+  }
+
+  // Messages sent while the page is still loading are lost, so wait for it.
+  _sendHighlight(win, terms) {
+    const wc = win.webContents;
+    const send = () => { if (!win.isDestroyed()) wc.send('note:highlight', terms); };
+    if (wc.isLoading()) wc.once('did-finish-load', send);
+    else send();
   }
 
   _createNoteWindow(note, { focus }) {

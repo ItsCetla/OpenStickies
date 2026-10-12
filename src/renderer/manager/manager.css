@@ -488,3 +488,25 @@ input.switch:checked::after { transform: translateX(18px); }
 .dialog-title { font-weight: 700; font-size: 14px; }
 .dialog input { width: 100%; }
 .pop-actions { display: flex; align-items: center; gap: 6px; }
+
+/* ---------- search matches ---------- */
+mark { box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+:root[data-theme="dark"] mark { background: rgba(255, 200, 40, 0.42); color: inherit; }
+.chip-tag mark { padding: 0; }
+
+/* ---------- reminder urgency ---------- */
+:root {
+  --urgency-green: #2f9e44;
+  --urgency-orange: #e8590c;
+  --urgency-red: #e03131;
+}
+:root[data-theme="dark"] {
+  --urgency-green: #51cf66;
+  --urgency-orange: #ff922b;
+  --urgency-red: #ff6b6b;
+}
+.urgency-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; margin-right: 1px; background: var(--urgency-green); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.urgency-dot[data-urgency="orange"] { background: var(--urgency-orange); }
+.urgency-dot[data-urgency="red"] { background: var(--urgency-red); }
+
+.sound-pick { display: flex; align-items: center; gap: 6px; }

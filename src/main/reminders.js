@@ -54,7 +54,8 @@ class Reminders {
         this.fire(note, { ...r, snoozeAt: null, pending: true });
       } else if (!r.snoozeAt && r.at <= now) {
         // A repeating reminder keeps firing even if an earlier one was never dismissed.
-        if (r.repeat && r.repeat !== 'none') this.fire(note, { ...r, at: nextOccurrence(r.at, r.repeat, now, r.dom), pending: true });
+        // setAt restarts so the border colour counts down to the next occurrence, not the first.
+        if (r.repeat && r.repeat !== 'none') this.fire(note, { ...r, at: nextOccurrence(r.at, r.repeat, now, r.dom), setAt: now, pending: true });
         else if (!r.pending) this.fire(note, { ...r, pending: true });
       }
     }

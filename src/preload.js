@@ -43,7 +43,7 @@ contextBridge.exposeInMainWorld('stickies', {
 
   // notes list
   list: () => invoke('notes:list'),
-  open: (id) => invoke('notes:open', id),
+  open: (id, opts) => invoke('notes:open', id, opts),
   closeNote: (id) => invoke('notes:close', id),
   trashNote: (id) => invoke('notes:trash', id),
   restore: (id) => invoke('notes:restore', id),
@@ -118,5 +118,6 @@ contextBridge.exposeInMainWorld('stickies', {
   exportBackup: () => invoke('data:export-backup'),
   importBackup: () => invoke('data:import-backup'),
   importFiles: () => invoke('data:import-files'),
-  openDataFolder: () => invoke('data:open-folder')
+  openDataFolder: () => invoke('data:open-folder'),
+  onHighlight: listen('note:highlight')
 });
