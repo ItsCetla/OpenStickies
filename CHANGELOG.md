@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+## [3.1.0] - 2026-10-12
+
 ### Changed
 
 - Stickies is now called **OpenStickies**: the app, its window titles, tray menu, shortcuts, installer (`OpenStickies-Setup-<version>.exe`), portable app (`OpenStickies-Portable-<version>.exe`) and program file (`OpenStickies.exe`).
@@ -75,5 +77,6 @@ First public release of OpenStickies: sticky notes for the Windows desktop, wher
 - Notes can be kept on top, rolled up, zoomed and printed.
 - `Stickies.exe --quit` closes a running copy cleanly, saving first.
 
-[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v3.0.0...HEAD
-[3.0.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v3.0.0
+[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v3.1.0
+[3.0.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/Release
