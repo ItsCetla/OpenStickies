@@ -1,4 +1,4 @@
-# Contributing to Stickies
+# Contributing to OpenStickies
 
 Thanks for helping out! Bug reports, ideas and pull requests are all welcome.
 
@@ -8,7 +8,7 @@ Thanks for helping out! Bug reports, ideas and pull requests are all welcome.
 
 ## Development setup
 
-You need [Node.js](https://nodejs.org/) 20 or newer. Stickies is a Windows app, so develop on Windows 10 or 11 if you can: text recognition and Windows Hello only work there.
+You need [Node.js](https://nodejs.org/) 20 or newer. OpenStickies is a Windows app, so develop on Windows 10 or 11 if you can: text recognition and Windows Hello only work there.
 
 ```bash
 git clone https://github.com/ItsCetla/OpenStickies.git
@@ -21,7 +21,7 @@ npm start
 
 | Command | What it does |
 |---|---|
-| `npm start` | Runs Stickies from source |
+| `npm start` | Runs OpenStickies from source |
 | `npm run dev` | Runs with DevTools turned on: press Ctrl+Shift+I in a note. Errors from the main process print in the terminal. |
 | `npm run dist` | Builds the installer and the portable app into `dist/` (run it on Windows) |
 | `npm run icons` | Redraws the app icons in `assets/` |
@@ -29,7 +29,7 @@ npm start
 
 ### Keep your real notes out of it
 
-Point `STICKIES_USER_DATA` at a scratch folder and Stickies keeps all its data there (in a `data` subfolder) instead of in `%APPDATA%\Stickies`. It also skips writing `%USERPROFILE%\.stickies\api.json`, so a test copy can't take over your everyday copy's OpenCode connection.
+Point `STICKIES_USER_DATA` at a scratch folder and OpenStickies keeps all its data there (in a `data` subfolder) instead of in `%APPDATA%\Stickies`. It also skips writing `%USERPROFILE%\.stickies\api.json`, so a test copy can't take over your everyday copy's OpenCode connection.
 
 ```powershell
 # PowerShell
@@ -57,7 +57,7 @@ Match the code around you. In particular:
 - **Main process and preload:** CommonJS (`require` / `module.exports`) with `'use strict';` at the top of each file.
 - **Renderer:** plain JavaScript as native ES modules (`<script type="module">`). No framework, no bundler, no build step.
 - 2-space indentation, semicolons, single quotes.
-- Stickies has no runtime npm dependencies. Please talk it over in an issue before adding one.
+- OpenStickies has no runtime npm dependencies. Please talk it over in an issue before adding one.
 - Comments explain *why* something is done, not what the next line does.
 - Write data files with `writeFileAtomic` from `src/main/store.js`, so a crash can't leave a half-written file.
 
@@ -73,7 +73,7 @@ There's no automated test suite yet, so try your change by hand in the running a
 
 ## Screenshots
 
-The screenshots on the README and the website are generated, not taken by hand. `npm run screenshots` starts Stickies with sample notes in a throwaway data folder, captures its windows, and writes the images to `docs/screenshots/`. It runs on Windows, or on Linux under Xvfb, and needs nothing beyond `npm install`. See [scripts/screenshots/README.md](scripts/screenshots/README.md) for how scenes work.
+The screenshots on the README and the website are generated, not taken by hand. `npm run screenshots` starts OpenStickies with sample notes in a throwaway data folder, captures its windows, and writes the images to `docs/screenshots/`. It runs on Windows, or on Linux under Xvfb, and needs nothing beyond `npm install`. See [scripts/screenshots/README.md](scripts/screenshots/README.md) for how scenes work.
 
 Rerun it when your change alters something visible, and include the updated images in your pull request.
 
@@ -109,7 +109,7 @@ For maintainers. Releases are built by the [Release workflow](.github/workflows/
    git tag v3.1.0 && git push origin v3.1.0
    ```
 
-5. The workflow checks that the tag matches the version in `package.json`, builds `Stickies-Setup-3.1.0.exe` and `Stickies-Portable-3.1.0.exe`, writes `SHA256SUMS.txt`, and creates a **draft** release using that version's CHANGELOG section as the release notes.
+5. The workflow checks that the tag matches the version in `package.json`, builds `OpenStickies-Setup-3.1.0.exe` and `OpenStickies-Portable-3.1.0.exe`, writes `SHA256SUMS.txt`, and creates a **draft** release using that version's CHANGELOG section as the release notes.
 6. Open the draft on the [Releases page](https://github.com/ItsCetla/OpenStickies/releases), download and try the builds, edit the notes if needed, then click **Publish release**.
 
 To rebuild an existing tag (for example after a failed run), open **Actions → Release → Run workflow** and enter the tag. The builds aren't code-signed.

@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in Stickies doesn't work the way it should.
+description: Something in OpenStickies doesn't work the way it should.
 labels: [bug]
 body:
   - type: markdown
@@ -7,15 +7,15 @@ body:
       value: |
         Thanks for taking the time to report a bug. Please check the [open issues](https://github.com/ItsCetla/OpenStickies/issues) first in case it's already known.
 
-        **Keep your notes private.** Don't paste the text of personal or private notes, your `notes.json`, or anything from `api.json` (it holds the token for Stickies' local API). A small made-up note that shows the problem works best.
+        **Keep your notes private.** Don't paste the text of personal or private notes, your `notes.json`, or anything from `api.json` (it holds the token for OpenStickies' local API). A small made-up note that shows the problem works best.
 
         Found a security problem? Please report it privately instead. See the [security policy](https://github.com/ItsCetla/OpenStickies/security/policy).
 
   - type: input
     id: version
     attributes:
-      label: Stickies version
-      description: Shown at the bottom of Settings, e.g. "Stickies 3.0.0".
+      label: OpenStickies version
+      description: Shown at the bottom of Settings, e.g. "OpenStickies 3.0.0".
       placeholder: "3.0.0"
     validations:
       required: true
@@ -33,10 +33,10 @@ body:
   - type: dropdown
     id: install
     attributes:
-      label: How did you install Stickies?
+      label: How did you install OpenStickies?
       options:
-        - Installer (Stickies-Setup)
-        - Portable (Stickies-Portable)
+        - Installer (OpenStickies-Setup)
+        - Portable (OpenStickies-Portable)
         - From source (npm start)
     validations:
       required: true
@@ -79,7 +79,7 @@ body:
     attributes:
       label: Error output
       description: |
-        Stickies doesn't write a log file. If you can run it from source, `npm run dev` prints errors in the terminal and lets you press Ctrl+Shift+I in a note to open DevTools, whose Console tab shows that note's errors. Your notes folder opens from Settings → Open data folder; please don't attach files from it.
+        OpenStickies doesn't write a log file. If you can run it from source, `npm run dev` prints errors in the terminal and lets you press Ctrl+Shift+I in a note to open DevTools, whose Console tab shows that note's errors. Your notes folder opens from Settings → Open data folder; please don't attach files from it.
       render: text
 
   - type: textarea

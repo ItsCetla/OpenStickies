@@ -1,8 +1,8 @@
 # Changelog
 
-All notable changes to Stickies are written down here.
+All notable changes to OpenStickies are written down here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Stickies uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and OpenStickies uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [3.0.0] - 2026-10-12
 
-First public release of Stickies: sticky notes for the Windows desktop, where every note is its own small floating window.
+First public release of OpenStickies: sticky notes for the Windows desktop, where every note is its own small floating window.
 
 ### Writing
 

@@ -63,7 +63,7 @@ jobs:
 
       - name: Write SHA256SUMS.txt
         run: |
-          $lines = foreach ($name in "Stickies-Setup-$env:VERSION.exe", "Stickies-Portable-$env:VERSION.exe") {
+          $lines = foreach ($name in "OpenStickies-Setup-$env:VERSION.exe", "OpenStickies-Portable-$env:VERSION.exe") {
             $file = Join-Path dist $name
             if (-not (Test-Path -LiteralPath $file)) { throw "Build output not found: $file" }
             $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -94,7 +94,7 @@ jobs:
           $body = ($section -join "`n").Trim()
           if (-not $body) {
             Write-Output "::warning title=No changelog entry::CHANGELOG.md has no section for $env:VERSION, so the draft has a generic description. Edit it before publishing."
-            $body = "Stickies $env:VERSION for Windows 10 and 11."
+            $body = "OpenStickies $env:VERSION for Windows 10 and 11."
           }
 
           $footer = @'
@@ -104,14 +104,14 @@ jobs:
 
           | File | What it is |
           |---|---|
-          | [`Stickies-Setup-{VERSION}.exe`]({DOWNLOAD}/Stickies-Setup-{VERSION}.exe) | **Installer.** Adds Start menu and desktop shortcuts. |
-          | [`Stickies-Portable-{VERSION}.exe`]({DOWNLOAD}/Stickies-Portable-{VERSION}.exe) | **Portable.** A single file that runs without installing anything. |
+          | [`OpenStickies-Setup-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Setup-{VERSION}.exe) | **Installer.** Adds Start menu and desktop shortcuts. |
+          | [`OpenStickies-Portable-{VERSION}.exe`]({DOWNLOAD}/OpenStickies-Portable-{VERSION}.exe) | **Portable.** A single file that runs without installing anything. |
 
           Both run on Windows 10 and 11 (64-bit) and keep your notes in the same place, `%APPDATA%\Stickies\data`, so you can switch between them.
 
           > **Windows protected your PC?** The builds aren't code-signed, so SmartScreen may warn you the first time. Click **More info → Run anyway**.
 
-          To check a download, compare its SHA-256 hash with [`SHA256SUMS.txt`]({DOWNLOAD}/SHA256SUMS.txt). In PowerShell: `Get-FileHash .\Stickies-Setup-{VERSION}.exe`
+          To check a download, compare its SHA-256 hash with [`SHA256SUMS.txt`]({DOWNLOAD}/SHA256SUMS.txt). In PowerShell: `Get-FileHash .\OpenStickies-Setup-{VERSION}.exe`
           '@
           $download = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/releases/download/$env:TAG"
           $footer = $footer.Replace('{VERSION}', $env:VERSION).Replace('{DOWNLOAD}', $download)
@@ -126,14 +126,14 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
-          name: Stickies ${{ env.VERSION }}
+          name: OpenStickies ${{ env.VERSION }}
           body_path: ${{ steps.notes.outputs.file }}
           draft: true
           prerelease: ${{ contains(env.TAG, '-') }}
           fail_on_unmatched_files: true
           files: |
-            dist/Stickies-Setup-${{ env.VERSION }}.exe
-            dist/Stickies-Portable-${{ env.VERSION }}.exe
+            dist/OpenStickies-Setup-${{ env.VERSION }}.exe
+            dist/OpenStickies-Portable-${{ env.VERSION }}.exe
             dist/SHA256SUMS.txt
 
       - name: Summary

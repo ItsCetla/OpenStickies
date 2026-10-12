@@ -1,6 +1,6 @@
 # Screenshots
 
-`npm run screenshots` regenerates every image in [`docs/screenshots/`](../../docs/screenshots) from the real app, so the README and the website never drift from what Stickies actually looks like.
+`npm run screenshots` regenerates every image in [`docs/screenshots/`](../../docs/screenshots) from the real app, so the README and the website never drift from what OpenStickies actually looks like.
 
 ```bash
 npm run screenshots                         # everything (about a minute)

@@ -609,7 +609,7 @@ function registerIpc() {
     const src = String(url || '');
     try {
       if (src.startsWith('data:image/')) {
-        const m = /^data:(image\/[[\w+.-]+);base64,(.*)$/s.exec(src);
+        const m = /^data:(image\/[\w+.-]+);base64,(.*)$/s.exec(src);
         if (!m) return null;
         return store.saveAttachment(Buffer.from(m[2], 'base64'), m[1]);
       }

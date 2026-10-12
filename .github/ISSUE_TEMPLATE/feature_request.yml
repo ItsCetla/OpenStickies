@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea or an improvement for Stickies.
+description: Suggest an idea or an improvement for OpenStickies.
 labels: [enhancement]
 body:
   - type: markdown
@@ -18,7 +18,7 @@ body:
   - type: textarea
     id: idea
     attributes:
-      label: What would you like Stickies to do?
+      label: What would you like OpenStickies to do?
       description: How you imagine it working. Sketches and screenshots are welcome.
     validations:
       required: true

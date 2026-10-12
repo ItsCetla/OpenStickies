@@ -1,6 +1,6 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Stickies website
+  - name: OpenStickies website
     url: https://itscetla.github.io/OpenStickies/
     about: Features, screenshots and downloads.
   - name: Report a security vulnerability
