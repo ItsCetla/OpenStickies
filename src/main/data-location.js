@@ -89,6 +89,13 @@ function copyDataFolder(from, to) {
   fs.mkdirSync(to, { recursive: true });
   let count = 0;
   for (const d of DATA_DIRS) count += copyDir(path.join(from, d), path.join(to, d));
+  return count + copyDataFiles(from, to);
+}
+
+// Just the top-level data files, notes.json last. Also run on the way out of a move, to carry
+// over anything saved after the main copy.
+function copyDataFiles(from, to) {
+  let count = 0;
   for (const f of [...DATA_FILES.filter(n => n !== 'notes.json'), 'notes.json']) {
     const src = path.join(from, f);
     if (fs.existsSync(src)) { copyFile(src, path.join(to, f)); count++; }
@@ -96,4 +103,4 @@ function copyDataFolder(from, to) {
   return count;
 }
 
-module.exports = { readDataLocation, writeDataLocation, copyDataFolder, hasNotes, samePath, isInside, pointerFile };
+module.exports = { readDataLocation, writeDataLocation, copyDataFolder, copyDataFiles, hasNotes, samePath, isInside, pointerFile };

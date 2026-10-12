@@ -223,14 +223,40 @@ class WindowManager {
 
   _queueBoundsSave(noteId, win) {
     clearTimeout(this._boundsTimers.get(noteId));
-    this._boundsTimers.set(noteId, setTimeout(() => {
-      if (win.isDestroyed() || win.isMinimized()) return;
+    this._boundsTimers.set(noteId, setTimeout(() => this._saveBounds(noteId, win), 250));
+  }
+
+  _saveBounds(noteId, win) {
+    if (win.isDestroyed() || win.isMinimized()) return;
+    const note = this.store.get(noteId);
+    if (!note) return;
+    const cur = win.getBounds();
+    const height = note.rolled ? (note.bounds ? note.bounds.height : DEFAULT_H) : cur.height;
+    this.store.update(noteId, { bounds: { x: cur.x, y: cur.y, width: cur.width, height } });
+  }
+
+  // Saves every pending move or resize right away, so nothing is left waiting on a timer.
+  saveAllBounds() {
+    for (const [noteId, timer] of this._boundsTimers) {
+      clearTimeout(timer);
+      const win = this.notes.get(noteId);
+      if (win) this._saveBounds(noteId, win);
+    }
+    this._boundsTimers.clear();
+  }
+
+  // Stops (or restores) typing, drags and resizes in every note window. Used while the data
+  // folder is copied, so no edit lands in the old folder after the copy.
+  setInputFrozen(frozen) {
+    for (const [noteId, win] of this.notes) {
+      if (win.isDestroyed()) continue;
       const note = this.store.get(noteId);
-      if (!note) return;
-      const cur = win.getBounds();
-      const height = note.rolled ? (note.bounds ? note.bounds.height : DEFAULT_H) : cur.height;
-      this.store.update(noteId, { bounds: { x: cur.x, y: cur.y, width: cur.width, height } });
-    }, 250));
+      const fixed = frozen || !!(note && note.locked);
+      win.setIgnoreMouseEvents(frozen);
+      win.setMovable(!fixed);
+      win.setResizable(!fixed);
+    }
+    if (frozen && this.manager && !this.manager.isDestroyed()) this.manager.focus();
   }
 
   async flushRenderer(win, timeout = 800) {

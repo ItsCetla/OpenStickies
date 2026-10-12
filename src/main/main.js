@@ -77,6 +77,7 @@ let workspaces;
 let snipper;
 let apiServer;
 let quitReady = false;
+let pendingDataMove = null; // new data folder a quit is moving to, synced once more on the way out
 const plain = new Map(); // decrypted private notes while unlocked: id -> { html, text, title }
 
 if (!app.requestSingleInstanceLock()) {
@@ -1272,12 +1273,26 @@ function registerIpc() {
   });
   // Copy everything into `dest`, point the next start at it and restart. The old folder is left as
   // it was, so nothing is lost if the copy turns out to be incomplete.
+  // Input is frozen first: the copy is synchronous and can take a while, and anything typed or
+  // dragged meanwhile would otherwise be flushed into the old folder only.
   const switchDataFolder = async (dest) => {
-    await Promise.all([...windows.notes.values()].map(w => windows.flushRenderer(w, 700)));
-    store.flush();
-    history.flush();
-    dataLocation.copyDataFolder(store.dir, dest);
-    dataLocation.writeDataLocation(DEFAULT_USER_DATA, dataLocation.samePath(dest, defaultDataDir) ? null : dest);
+    windows.quitting = true;
+    windows.saveAllBounds();
+    windows.setInputFrozen(true);
+    if (apiServer) apiServer.stop();
+    try {
+      await Promise.all([...windows.notes.values()].map(w => windows.flushRenderer(w, 700)));
+      store.flush();
+      history.flush();
+      dataLocation.copyDataFolder(store.dir, dest);
+      dataLocation.writeDataLocation(DEFAULT_USER_DATA, dataLocation.samePath(dest, defaultDataDir) ? null : dest);
+    } catch (err) {
+      windows.quitting = false;
+      windows.setInputFrozen(false);
+      if (apiServer && store.settings.apiEnabled !== false) apiServer.start();
+      throw err;
+    }
+    pendingDataMove = dest;
     app.relaunch();
     app.quit();
   };
@@ -1382,6 +1397,10 @@ app.on('will-quit', () => {
   if (tray) { try { tray.destroy(); } catch { /* ignore */ } }
   if (store) store.flush();
   if (history) history.flush();
+  // Anything written after the data folder was copied would otherwise stay behind in the old one.
+  if (pendingDataMove && store) {
+    try { dataLocation.copyDataFiles(store.dir, pendingDataMove); } catch (err) { console.error('[data] final sync failed:', err); }
+  }
   if (vault) vault.lock();
 });
 
