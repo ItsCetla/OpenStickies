@@ -4,6 +4,26 @@ const { Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const { t: tr } = require('./i18n');
 
+// True when something owns org.kde.StatusNotifierWatcher (KDE, XFCE, Ubuntu's GNOME, ...). Asks
+// D-Bus through dbus-send or gdbus, so no dependency is needed. A failed probe counts as no tray:
+// opening the notes list beats starting invisibly.
+function linuxTrayHost() {
+  const { execFileSync } = require('child_process');
+  const name = 'org.kde.StatusNotifierWatcher';
+  const probes = [
+    ['dbus-send', ['--session', '--print-reply', '--dest=org.freedesktop.DBus', '/org/freedesktop/DBus',
+      'org.freedesktop.DBus.NameHasOwner', `string:${name}`], /boolean true/],
+    ['gdbus', ['call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path', '/org/freedesktop/DBus',
+      '--method', 'org.freedesktop.DBus.NameHasOwner', name], /\(true,\)/]
+  ];
+  for (const [cmd, args, yes] of probes) {
+    try {
+      return yes.test(execFileSync(cmd, args, { timeout: 1500, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+    } catch { /* tool missing or no answer: try the next one */ }
+  }
+  return false;
+}
+
 function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSnip, onTemplate, onLock }) {
   // The macOS menu bar wants a black-and-clear "template" image that it tints for light and dark
   // bars; everywhere else gets the yellow note.
@@ -12,9 +32,14 @@ function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSn
   const hiDpi = path.join(assetsDir, mac ? 'trayTemplate@2x.png' : 'tray@2x.png');
   try { img.addRepresentation({ scaleFactor: 2, buffer: require('fs').readFileSync(hiDpi) }); } catch { /* optional */ }
   if (mac) img.setTemplateImage(true);
+  // Some Linux desktops (stock GNOME without the AppIndicator extension) have no tray at all, but
+  // Electron creates the Tray anyway and its icon is never shown. Check for a StatusNotifierWatcher
+  // on the session bus first and skip the Tray without one, so the caller opens the notes list.
+  if (process.platform === 'linux' && !linuxTrayHost()) {
+    console.warn('OpenStickies: no system tray host on the session bus');
+    return null;
+  }
   let tray;
-  // Some Linux desktops (GNOME without the AppIndicator extension) have no tray at all. The app
-  // still works without one: the caller opens the notes list instead.
   try { tray = new Tray(img); } catch (err) { console.warn('OpenStickies: no system tray available', err); return null; }
   tray.setToolTip('OpenStickies');
 
