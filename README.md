@@ -198,6 +198,7 @@ Prefer to build it yourself? See [Build from source](#build-from-source).
 - **Workspaces:** save the current arrangement of notes (which are open, where they are, their size, whether they're on top or rolled up) as "Work", "Home" and so on, and switch from the sidebar, the tray or **Ctrl+Alt+W**. Each workspace remembers changes when you switch away. When you plug into a dock or change monitors, OpenStickies switches to the workspace you last used with that setup.
 - **Snap to grid:** turn on *Snap notes to a grid* in Settings and choose the grid size. **Locked** notes can't be moved or resized.
 - **Reminders:** a countdown strip and a colored frame show a reminder coming, turning from green to orange to red as it gets close. Choose a **Reminder sound** (Chime, Soft or None) in Settings.
+- **Languages:** the app runs in English, German, Spanish, French, Italian, Portuguese (Brazil), Dutch, Polish, Russian, Japanese, Chinese (Simplified) or Arabic (right to left). It follows your system language, or choose one in Settings → **Appearance → Language**. The welcome note and built-in templates stay in English.
 - **Templates:** six built-in templates (meeting notes, daily plan, daily habits, weekly review, packing list, shopping list). Turn any note into one from its ⋯ menu with **Save as template…**. Templates fill in `{{date}}`, `{{time}}`, `{{weekday}}`, `{{week}}` and `{{tomorrow}}`, and `{{cursor}}` marks where typing starts.
 
 ### Notes list, search and tasks
