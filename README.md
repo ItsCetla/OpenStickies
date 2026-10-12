@@ -4,12 +4,12 @@
 
 <h1>OpenStickies</h1>
 
-<p><b>Sticky notes for the Windows desktop, rebuilt with rich text, checklists, images, version history and private notes.</b></p>
+<p><b>Sticky notes for Windows, macOS and Linux, rebuilt with rich text, tabs, checklists, images, version history and private notes.</b></p>
 
 <p>
   <a href="https://github.com/ItsCetla/OpenStickies/releases/latest"><img src="https://img.shields.io/github/v/release/ItsCetla/OpenStickies?display_name=tag&sort=semver" alt="Latest release"></a>
   <a href="https://github.com/ItsCetla/OpenStickies/releases"><img src="https://img.shields.io/github/downloads/ItsCetla/OpenStickies/total" alt="Total downloads"></a>
-  <a href="#download"><img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4" alt="Platform: Windows 10 and 11"></a>
+  <a href="#download"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-0078D4" alt="Platforms: Windows, macOS and Linux"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
   <a href="https://www.electronjs.org"><img src="https://img.shields.io/badge/built%20with-Electron-47848F?logo=electron&logoColor=white" alt="Built with Electron"></a>
 </p>
@@ -28,17 +28,19 @@
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
-<img src="docs/screenshots/hero.png" alt="Several colorful OpenStickies notes floating on a Windows desktop" width="100%">
+<img src="docs/screenshots/hero.png" alt="Several colorful OpenStickies notes floating on a desktop" width="100%">
 
 </div>
 
 <br>
 
-**OpenStickies** is sticky notes for the Windows desktop, rebuilt with rich formatting, images, checklists, reminders, tags, links between notes, workspaces, version history, private notes, screen snips with searchable text, and an OpenCode integration. Every note is its own small floating window, like classic Stickies.
+**OpenStickies** is sticky notes for Windows, macOS and Linux, rebuilt with rich formatting, tabs, code blocks, images, file shortcuts, checklists, reminders, tags, links between notes, workspaces, custom backgrounds, version history, private notes, screen snips with searchable text, and an OpenCode integration. Every note is its own small floating window, like classic Stickies.
 
 ## Download
 
-OpenStickies runs on **Windows 10 and 11**. Get the latest version from the **[Releases page](https://github.com/ItsCetla/OpenStickies/releases/latest)**.
+OpenStickies runs on **Windows 10 and 11**, **macOS** (Apple silicon and Intel) and **Linux** (x64). Get the latest version from the **[Releases page](https://github.com/ItsCetla/OpenStickies/releases/latest)**.
+
+### Windows
 
 | Build | File | What it does |
 |---|---|---|
@@ -48,10 +50,38 @@ OpenStickies runs on **Windows 10 and 11**. Get the latest version from the **[R
 > [!NOTE]
 > The builds aren't code-signed, so Windows SmartScreen may say "Windows protected your PC". Click **More info → Run anyway**.
 
-To verify a download, compare `Get-FileHash .\OpenStickies-Setup-<version>.exe` (PowerShell) with the matching line in `SHA256SUMS.txt` from the same release.
-
 > [!TIP]
 > OpenStickies keeps running in the **system tray** after you close every note. Windows hides new tray icons behind the **^** arrow at the right end of the taskbar; drag the yellow icon onto the taskbar to keep it in view. Click it to bring your notes back, or right-click it for more.
+
+### macOS
+
+| Build | File | What it does |
+|---|---|---|
+| **Apple silicon** | `OpenStickies-<version>-mac-arm64.dmg` | Disk image for M1 and later Macs. Drag OpenStickies to Applications. |
+| **Intel** | `OpenStickies-<version>-mac-x64.dmg` | Disk image for Intel Macs. |
+
+Both are also attached as `.zip` files (`OpenStickies-<version>-mac-arm64.zip` and `OpenStickies-<version>-mac-x64.zip`).
+
+> [!NOTE]
+> The Mac builds aren't notarized by Apple, so the first time macOS may say OpenStickies can't be opened. Control-click (or right-click) OpenStickies in Applications and choose **Open**, then **Open** again. On macOS 15 and later, try to open it once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. You only need to do this once.
+
+On a Mac, OpenStickies has an icon in the menu bar, and clicking its Dock icon opens the notes list. Snipping the screen needs the **Screen Recording** permission: allow it in **System Settings → Privacy & Security → Screen & System Audio Recording**, then quit and reopen OpenStickies.
+
+### Linux
+
+| Build | File | What it does |
+|---|---|---|
+| **AppImage** | `OpenStickies-<version>-linux-x86_64.AppImage` | Runs on most distributions without installing. |
+| **Debian / Ubuntu** | `openstickies_<version>_amd64.deb` | Package for `apt`. |
+
+> [!NOTE]
+> Make the AppImage executable first, then start it: `chmod +x OpenStickies-<version>-linux-x86_64.AppImage && ./OpenStickies-<version>-linux-x86_64.AppImage`. Some distributions need `libfuse2` installed to run AppImages.
+
+On GNOME, the tray icon needs the AppIndicator extension; without a tray, OpenStickies opens its notes list instead. On Wayland, snipping the screen goes through the system's screen-sharing prompt, which needs `xdg-desktop-portal` and the portal for your desktop.
+
+### Checking a download
+
+Every release has a `SHA256SUMS.txt`. On macOS and Linux, run `shasum -a 256 -c SHA256SUMS.txt --ignore-missing` in the folder you downloaded to. In PowerShell, compare `Get-FileHash .\OpenStickies-Setup-<version>.exe` with the matching line.
 
 Prefer to build it yourself? See [Build from source](#build-from-source).
 
@@ -101,7 +131,7 @@ Prefer to build it yourself? See [Build from source](#build-from-source).
   <tr>
     <td colspan="2" valign="top">
       <img src="docs/screenshots/dark-mode.png" alt="Several notes in the dark theme" width="100%">
-      <p align="center"><b>Light and dark themes, or follow Windows.</b></p>
+      <p align="center"><b>Light and dark themes, or follow your system.</b></p>
     </td>
   </tr>
 </table>
@@ -112,6 +142,20 @@ Prefer to build it yourself? See [Build from source](#build-from-source).
 - **Formatting toolbar:** by default it pops up over the bottom edge when you select text or point at the bottom of a note, so a note never changes size. Settings has **While editing** and **Always** options.
 - **"/" command menu:** type `/` to insert a heading, checklist, table, image, screen snip, date, link, reminder, or one of your **templates**.
 - **Edit HTML source** (Ctrl+Shift+H) to change a note's HTML directly.
+- **Custom backgrounds:** give a note a solid color, a two-color gradient (with eight presets and an angle), or a picture set to **Fill**, **Fit** or **Tile** with a dimmer. The text color adjusts to stay readable.
+
+### Tabs
+
+- **Ctrl+Shift+T** adds a tab, up to three per note. The tab row appears once a note has two.
+- Tabs name themselves from their first line until you rename them (double-click or **F2**). Drag to reorder, and close with × or a middle-click.
+- Each tab keeps its own scroll position and undo history. **Ctrl+Tab** / **Ctrl+Shift+Tab** move between them (Control, not ⌘, on a Mac), and **Ctrl+1** to **3** jump to one.
+- Search looks inside every tab. A closed tab goes to the Trash, and restoring it puts it back in its note (or in a new note if that one is full).
+
+### Code blocks
+
+- Syntax highlighting for 18 languages: plain text, JavaScript, TypeScript, Python, SQL, HTML, XML, CSS, JSON, Shell, C, C++, Java, C#, Go, Rust, YAML and Markdown.
+- Start a block with ```` ```python ```` (or any of those languages), pick one from the **Code language** right-click menu, or let OpenStickies guess; a guess shows dimmed until you choose.
+- The language is kept when you export to Markdown and import it back.
 
 **Markdown-style typing** converts as you go:
 
@@ -139,13 +183,21 @@ Prefer to build it yourself? See [Build from source](#build-from-source).
 
 - Paste, drag in, insert, or **snip the screen** (Ctrl+Alt+X from anywhere, or `/snip` in a note).
 - Resize from any corner. The layout bar or right-click menu sets the picture **in line with text**, **wrapped left/right**, **top and bottom**, **behind text** or **in front of text**, like Word. You can drag pictures around, and arrow keys nudge floating ones.
-- **Text in pictures is searchable.** Windows' built-in text recognition reads snips, screenshots and photos, and the notes list finds them by those words. Right-click a picture to copy its text.
+- **Text in pictures is searchable.** Text recognition reads snips, screenshots and photos, and the notes list finds them by those words. Right-click a picture to copy its text. It uses Windows' built-in recognition on Windows, Apple's Vision on macOS, and `tesseract` on Linux if it's installed.
+- **Double-click a picture** to see it full size. Hover over a shrunken picture for a preview.
+
+### Files
+
+- Drop a file or folder into a note to add a **file shortcut**. Right-click it to **Open**, **Show in folder** or **Copy path**, or drag it back out into another app.
+- Hover over a shortcut for a preview. Shortcuts to files that have moved or been deleted are dimmed.
 
 ## Organizing
 
 - **Tags:** type `#project` anywhere. `#` suggests tags you've already used, and Ctrl+Click a tag to list every note that has it.
 - **Links between notes:** type `[[` to link to another note by title, or to create a new one. Ctrl+Click a link to open the note, and each note's ⋯ menu shows **Linked from**.
 - **Workspaces:** save the current arrangement of notes (which are open, where they are, their size, whether they're on top or rolled up) as "Work", "Home" and so on, and switch from the sidebar, the tray or **Ctrl+Alt+W**. Each workspace remembers changes when you switch away. When you plug into a dock or change monitors, OpenStickies switches to the workspace you last used with that setup.
+- **Snap to grid:** turn on *Snap notes to a grid* in Settings and choose the grid size. **Locked** notes can't be moved or resized.
+- **Reminders:** a countdown strip and a colored frame show a reminder coming, turning from green to orange to red as it gets close. Choose a **Reminder sound** (Chime, Soft or None) in Settings.
 - **Templates:** six built-in templates (meeting notes, daily plan, daily habits, weekly review, packing list, shopping list). Turn any note into one from its ⋯ menu with **Save as template…**. Templates fill in `{{date}}`, `{{time}}`, `{{weekday}}`, `{{week}}` and `{{tomorrow}}`, and `{{cursor}}` marks where typing starts.
 
 ### Notes list, search and tasks
@@ -170,15 +222,16 @@ Its search understands these filters:
 | By color | `color:blue` |
 | An exact phrase | `"call back"` |
 
-Click **Save this search** to keep a search in the sidebar.
+Click **Save this search** to keep a search in the sidebar. Matches are highlighted in the list and in the note.
 
 **Tasks** shows every unticked checklist item from every note, grouped by note or by due date. Tick items right there and the note updates, even if it's closed. Click an item to jump to it.
 
 ## Safety
 
 - **Version history:** OpenStickies keeps a snapshot whenever you come back to a note after a few minutes away. ⋯ → **Version history…** shows a timeline, previews old versions, highlights word-by-word **changes**, and restores any version. The current text stays in the history, so a restore can be undone.
-- **Trash** keeps deleted notes for 30 days. Daily backups cover the last 14 days, and saves are crash-safe.
+- **Trash** keeps your latest 300 deleted notes and 300 closed tabs. Nothing is removed because of its age, only once the Trash is full. Daily backups cover the last 14 days, and saves are crash-safe.
 - **Backup & restore** puts every note, image and template in one file (private notes stay encrypted).
+- **Export** every note at once as Markdown (one `.md` file per note, pictures in an `assets` folder), text or JSON. A single note exports as HTML, Markdown, text, PDF or JSON, or prints.
 
 ### Private notes
 
@@ -186,8 +239,8 @@ Set a password in Settings, then use ⋯ → **Make private…** on any note.
 
 - Its words and pictures are encrypted on disk (AES-256-GCM, with the key protected by your password via scrypt).
 - While locked, private notes are hidden from search, previews and exports.
-- They lock automatically after a set idle time, and when Windows locks or sleeps.
-- Windows Hello can unlock them if it's set up on the PC.
+- They lock automatically after a set idle time, and when your computer locks or sleeps.
+- Windows Hello (Windows) or Touch ID (macOS) can unlock them if it's set up. On Linux, you unlock them with the password.
 
 > [!WARNING]
 > If you forget the password, private notes can't be recovered.
@@ -225,7 +278,7 @@ The agent can only change stickies **it** created. It can't read, change or tick
 
 ### Local API
 
-Under the hood, OpenStickies runs a small local API on `127.0.0.1` with a random port and a token stored in `%USERPROFILE%\.stickies\api.json` (and a copy in `%APPDATA%\OpenStickies\data\api.json`). Requests from web pages are refused. Scripts can use it too.
+Under the hood, OpenStickies runs a small local API on `127.0.0.1` with a random port and a token stored in `~/.stickies/api.json` (`%USERPROFILE%\.stickies\api.json` on Windows), with a copy as `api.json` in the [data folder](#where-your-notes-live). Requests from web pages are refused. Scripts can use it too.
 
 <details>
 <summary><b>Example request and endpoints</b></summary>
@@ -249,7 +302,9 @@ curl -X POST http://127.0.0.1:PORT/v1/notes -H "Authorization: Bearer TOKEN" -H 
 
 ## Keyboard shortcuts
 
-**Anywhere in Windows** (you can change these in Settings)
+On a Mac, read **Ctrl** as **⌘** and **Alt** as **⌥** (Ctrl+Alt+N is ⌥⌘N), except where it says Control. OpenStickies shows them that way in its menus and settings.
+
+**Anywhere on your desktop** (you can change these in Settings)
 
 | Shortcut | Action |
 |---|---|
@@ -265,6 +320,10 @@ curl -X POST http://127.0.0.1:PORT/v1/notes -H "Authorization: Bearer TOKEN" -H 
 |---|---|
 | Ctrl+N / Ctrl+W / Ctrl+D | New / close / delete note |
 | Ctrl+H | Notes list |
+| Ctrl+Shift+T | New tab |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab (Control on a Mac too) |
+| Ctrl+1 / 2 / 3 | Go to a tab |
+| F2 | Rename the current tab |
 | Ctrl+B / I / U / T / E | Bold / italic / underline / strikethrough / inline code |
 | Ctrl+Shift+L / O / C | Bulleted / numbered list / checklist |
 | Ctrl+Alt+1 / 2 / 3 / 0 | Title / heading / subheading / normal text |
@@ -282,7 +341,15 @@ curl -X POST http://127.0.0.1:PORT/v1/notes -H "Authorization: Bearer TOKEN" -H 
 
 ## Where your notes live
 
-Everything stays on your computer, in `%APPDATA%\OpenStickies\data\`.
+Everything stays on your computer, in a `data` folder. Settings → **Open data folder** takes you there.
+
+| System | Folder |
+|---|---|
+| Windows | `%APPDATA%\OpenStickies\data\` |
+| macOS | `~/Library/Application Support/OpenStickies/data/` |
+| Linux | `~/.config/OpenStickies/data/` |
+
+**Keeping your notes somewhere else.** Settings → **Where your notes live → Change…** moves your notes, pictures, history, backups, settings and templates to a folder you choose, such as one synced with Dropbox, OneDrive or iCloud Drive. **Use default** moves them back. If the folder is synced, run OpenStickies on only one computer at a time. A small `data-location.json` in the default folder remembers your choice.
 
 > [!NOTE]
 > **Upgrading from Stickies?** The app used to be called Stickies and kept its notes in `%APPDATA%\Stickies\data\`. The first time OpenStickies starts, it copies them across automatically, along with your pictures, version history, settings and templates. The old folder is left in place as a backup (with a note saying so); delete it once you've checked everything is there. The installer also replaces an installed copy of Stickies, so you don't end up with both.
@@ -296,12 +363,12 @@ Everything stays on your computer, in `%APPDATA%\OpenStickies\data\`.
 - `settings.json`: your preferences
 - `templates.json`: your templates
 - `vault.json`: the private-notes key, wrapped by your password
-- `attachments\`: images; private ones end in `.enc`, and cached recognized text ends in `.txt`
-- `history\`: version history
-- `backups\`: daily copies of `notes.json`
-- `api.json`: the local API port and token, written while OpenStickies runs (also to `%USERPROFILE%\.stickies\api.json`, which Windows never redirects; see below)
+- `attachments`: images; private ones end in `.enc`, and cached recognized text ends in `.txt`
+- `history`: version history
+- `backups`: daily copies of `notes.json`
+- `api.json`: the local API port and token, written while OpenStickies runs (also to `~/.stickies/api.json`, which Windows never redirects; see below). It stays in the default folder even if you move your notes.
 
-**Started from a packaged Windows app?** If OpenStickies is started by a packaged Windows app (for example from a terminal inside Claude Desktop), Windows redirects everything it writes to AppData into that app's private folder (`%LOCALAPPDATA%\Packages\<app>\LocalCache\Roaming\OpenStickies\`). That copy of OpenStickies then has its own notes, separate from the ones you see when you start it from the Start menu.
+**Windows: started from a packaged app?** If OpenStickies is started by a packaged Windows app (for example from a terminal inside Claude Desktop), Windows redirects everything it writes to AppData into that app's private folder (`%LOCALAPPDATA%\Packages\<app>\LocalCache\Roaming\OpenStickies\`). That copy of OpenStickies then has its own notes, separate from the ones you see when you start it from the Start menu.
 
 </details>
 
@@ -321,9 +388,13 @@ npm start
 | `npm install` | Installs dependencies and also downloads Electron itself, through the project's `postinstall` script (npm 11 no longer runs dependencies' install scripts on its own) |
 | `npm start` | Runs OpenStickies |
 | `npm run dev` | Runs with DevTools turned on (Ctrl+Shift+I in a note) |
-| `npm run dist` | Builds the installer and portable app into `dist/` |
+| `npm run dist` | Builds the Windows installer and portable app into `dist/` |
+| `npm run dist:mac` | Builds the Mac disk images and `.zip` files into `dist/` |
+| `npm run dist:linux` | Builds the Linux AppImage and `.deb` into `dist/` |
 
-`OpenStickies.exe --quit` closes a running copy cleanly (it saves first).
+Build each platform on that platform; the [release workflow](.github/workflows/release.yml) does this on Windows, macOS and Linux runners.
+
+Starting OpenStickies with `--quit` (for example `OpenStickies.exe --quit` on Windows) closes a running copy cleanly (it saves first).
 
 ### Project layout
 
@@ -341,9 +412,13 @@ src/
     store-text.js        plain-text helpers shared by the store and the HTML scanners
     html-scan.js         tags, links, task counts and checklist resets from HTML, without a DOM
     history.js           version history snapshots
-    vault.js             private notes: key wrapping, AES-GCM, Windows Hello
+    vault.js             private notes: key wrapping, AES-GCM, Windows Hello and Touch ID
     workspaces.js        saved layouts and monitor-setup switching
-    snip.js / ocr.js     screen snips and Windows text recognition
+    snip.js              screen snips (with macOS and Wayland permission handling)
+    ocr.js               text in pictures: Windows OCR, macOS Vision or Tesseract on Linux
+    files.js             file shortcuts: opening, revealing, dragging out, previews
+    data-location.js     the custom data folder
+    migrate.js           one-time copy from the old Stickies folder
     api-server.js        local API for OpenCode and scripts
     agent-notes.js       AI task notes (OpenCode)
     opencode.js          installs/removes the OpenCode plugin
@@ -351,11 +426,13 @@ src/
   integrations/opencode-plugin.js   the plugin that runs inside OpenCode
   preload.js             the safe API the windows are allowed to use
   renderer/
-    note/                editor engine, "/" "#" "[[" suggestions, smart checklists, lock screen
+    note/                editor engine, tabs, "/" "#" "[[" suggestions, smart checklists,
+                         code highlighting, file chips, lock screen
     manager/             notes list, sidebar, tasks, settings
     history/             version history window
     snip/                screen snip overlay
-    shared/              palette, icons, HTML sanitizer, HTML → Markdown
+    lightbox/            full-size picture viewer
+    shared/              palette, icons, backgrounds, shortcut labels, reminders, HTML sanitizer, HTML → Markdown
 ```
 
 </details>

@@ -670,11 +670,51 @@ h3 { letter-spacing: -0.01em; }
 .lightbox[open], .lightbox[open]::backdrop { animation: lb-fade 0.18s ease-out; }
 @keyframes lb-fade { from { opacity: 0; } }
 
+/* ---------- hero: Mac builds ---------- */
+.hero-alt {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 10px;
+  margin: 16px 0 0; color: var(--muted); font-size: 0.9375rem;
+}
+.hero-alt a { font-weight: 600; }
+.hero-alt[hidden] { display: none; }
+
+/* ---------- Mac & Linux ---------- */
+.platform-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.platform-card {
+  padding: 24px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+}
+.platform-card h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 1.25rem; }
+.platform-card h3 .i { width: 24px; height: 24px; color: var(--link); }
+.platform-card .ticks { margin-top: 18px; gap: 10px; font-size: 0.9375rem; }
+.mac-only { display: none; }
+.is-mac .mac-only { display: inline; }
+
+/* ---------- download: one group per OS ---------- */
+.os-groups { display: grid; gap: 36px; margin-top: 36px; }
+.os-group { scroll-margin-top: calc(var(--header-h) + 16px); }
+.os-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.os-title h3 { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-size: 1.375rem; }
+.os-title h3 .i { width: 24px; height: 24px; }
+.os-title .badge { margin-left: 0; }
+.os-req { color: var(--muted); font-size: 0.9375rem; }
+.os-group .download-cards { margin-top: 16px; }
+.os-group.is-yours .dl-card { border-color: rgb(150 115 0 / 0.35); }
+.dl-card h4 { margin: 0; font-size: 1.1875rem; letter-spacing: -0.01em; }
+.dl-card .dl-alt { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; color: var(--muted); font-size: 0.875rem; }
+.dl-card .dl-alt a { font-weight: 600; }
+.checksums { display: flex; gap: 10px; align-items: flex-start; margin: 28px 0 0; color: var(--ink-2); font-size: 0.9375rem; }
+.checksums .i { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--link); }
+.faq-body ul { margin: 0 0 12px; padding-left: 1.25rem; }
+.faq-body li { margin: 4px 0; }
+.faq-body li code { overflow-wrap: anywhere; }
+
 /* ---------- responsive ---------- */
 @media (max-width: 1040px) {
   .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .search-card { grid-template-columns: 1fr; }
   .opencode-bottom { grid-template-columns: 1fr; }
+  .platform-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
   .feature-grid, .source-row { grid-template-columns: 1fr; }
@@ -682,6 +722,7 @@ h3 { letter-spacing: -0.01em; }
   .highlight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kbd-grid { grid-template-columns: 1fr; }
   .source-row { padding-inline: 0; }
+  .platform-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .highlight-grid { grid-template-columns: 1fr; gap: 12px; }
@@ -689,6 +730,8 @@ h3 { letter-spacing: -0.01em; }
   .highlight .tile { grid-row: span 2; margin: 0; }
   .filters { grid-template-columns: 1fr; }
   .download-cards { grid-template-columns: 1fr; }
+  .os-groups { gap: 28px; }
+  .platform-card { padding: 20px; }
   .download-head { flex-direction: column; gap: 14px; }
   .download-head img { width: 56px; height: 56px; margin: 0; }
   .card-grid { grid-template-columns: 1fr; gap: 12px; }
@@ -705,6 +748,7 @@ h3 { letter-spacing: -0.01em; }
 @media (max-width: 479.98px) {
   .cta-row .btn { width: 100%; }
   .download-note::after { width: 40px; height: 40px; }
+  .dl-card { padding: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
