@@ -46,6 +46,17 @@ function safeSrc(v) {
   return null;
 }
 
+// File shortcuts carry a local path in data-path. It's never used as a link target, only handed to
+// the main process (which checks it again), so all we accept is a plain absolute path.
+function safeFilePath(v) {
+  const s = String(v || '');
+  if (!s || s.length > 1024 || /[\u0000-\u001f\u007f]/.test(s)) return null;
+  if (/^\/(?!\/)/.test(s)) return s; // macOS / Linux
+  if (/^[A-Za-z]:[\\/]/.test(s)) return s; // Windows drive
+  if (/^\\\\[^\\?.]/.test(s)) return s; // Windows network share (\\server\share)
+  return null;
+}
+
 function isTransparent(c) {
   return /^(transparent|initial|inherit|none)$/i.test(c) || /rgba\([^)]*,\s*0(\.0+)?\s*\)$/i.test(c);
 }
@@ -168,7 +179,24 @@ export function sanitizeHtml(html, { mode = 'stored', normalize = mode === 'past
       else v = String(v).slice(0, 300);
       if (v != null) el.setAttribute(name, v);
     }
-    if (tag === 'A' && !el.hasAttribute('href')) { children(); return; }
+    // A file shortcut chip: only its name is kept as content, so nothing else can hide inside it.
+    if (tag === 'A' && !el.hasAttribute('href') && mode === 'stored' && /(^|\s)file-chip(\s|$)/.test(node.getAttribute('class') || '')) {
+      const path = safeFilePath(node.getAttribute('data-path'));
+      if (path) {
+        const kind = node.getAttribute('data-kind') === 'folder' ? 'folder' : 'file';
+        const ext = String(node.getAttribute('data-ext') || '').toLowerCase();
+        el.className = 'file-chip';
+        el.setAttribute('data-path', path);
+        el.setAttribute('data-kind', kind);
+        if (kind === 'file' && /^[a-z0-9]{1,10}$/.test(ext)) el.setAttribute('data-ext', ext);
+        el.setAttribute('contenteditable', 'false');
+        const base = path.split(/[\\/]/).filter(Boolean).pop() || path;
+        el.textContent = (node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 300) || base;
+        parent.appendChild(el);
+        return;
+      }
+    }
+    if (tag === 'A' && !el.hasAttribute('href') && !el.hasAttribute('data-path')) { children(); return; }
 
     const cls = node.getAttribute('class') || '';
     if (tag === 'UL' && /\b(checklist|contains-task-list|task-list)\b/.test(cls)) el.className = 'checklist';

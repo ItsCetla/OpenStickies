@@ -3,6 +3,18 @@ import { BLOCK_TAGS } from './sanitize.js';
 
 const escapeMd = (s) => s.replace(/([\\`*_[\]])/g, '\\$1');
 
+// A local path as a file:// URL. Parentheses are escaped too, so the URL can't end a Markdown link early.
+export function fileUrl(path) {
+  const p = String(path || '');
+  const enc = (seg) => encodeURIComponent(seg).replace(/[()]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+  if (/^\\\\/.test(p)) {
+    const [host, ...rest] = p.slice(2).split(/[\\/]/);
+    return `file://${enc(host)}/${rest.map(enc).join('/')}`;
+  }
+  if (/^[A-Za-z]:[\\/]/.test(p)) return `file:///${p.slice(0, 2)}/${p.slice(3).split(/[\\/]/).map(enc).join('/')}`;
+  return `file://${p.split('/').map(enc).join('/')}`;
+}
+
 function wrap(marker, text) {
   if (!text.trim()) return text;
   const lead = text.match(/^\s*/)[0];
@@ -29,7 +41,10 @@ function inlineOf(nodes) {
         s += `${fence}${t}${fence}`;
         break;
       }
-      case 'A': s += `[${kids()}](${c.getAttribute('href') || ''})`; break;
+      case 'A':
+        if (c.classList.contains('file-chip') && c.getAttribute('data-path')) s += `[${escapeMd(c.textContent)}](${fileUrl(c.getAttribute('data-path'))})`;
+        else s += `[${kids()}](${c.getAttribute('href') || ''})`;
+        break;
       case 'IMG': s += `![${escapeMd(c.getAttribute('alt') || '')}](${c.getAttribute('src') || ''})`; break;
       case 'BR': s += '  \n'; break;
       case 'SPAN': {

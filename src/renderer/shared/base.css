@@ -178,3 +178,32 @@ input[type="checkbox"] { accent-color: var(--primary); width: 15px; height: 15px
   pointer-events: none;
   animation: pop-in 0.15s ease-out;
 }
+
+/* ---------- file shortcut chips (notes, list previews, history) ---------- */
+/* [data-path] lifts these above the plain ".editor a" link style. */
+a.file-chip[data-path] {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+  padding: 0 0.4em 0 1.5em;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 5px;
+  background-color: color-mix(in srgb, currentColor 7%, transparent);
+  background-image: var(--chip-icon, none);
+  background-repeat: no-repeat;
+  background-position: 0.32em 50%;
+  background-size: auto 1.05em;
+  color: inherit;
+  text-decoration: none;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+a.file-chip[data-path]:hover { background-color: color-mix(in srgb, currentColor 13%, transparent); }
+a.file-chip[data-path].missing {
+  opacity: 0.55;
+  border-style: dashed;
+  text-decoration: line-through;
+}

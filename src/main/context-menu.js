@@ -3,6 +3,7 @@
 const { Menu, clipboard, shell, nativeImage, ClipboardItem } = require('electron');
 const { OPENABLE_RE } = require('./store');
 const exporter = require('./exporter');
+const files = require('./files');
 
 function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
   const wc = win.webContents;
@@ -89,6 +90,17 @@ function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
         t.push({ label: 'Edit link…', click: cmd('link-edit') });
         t.push({ label: 'Remove link', click: cmd('link-remove') });
       }
+      t.push({ type: 'separator' });
+    }
+
+    // A file shortcut chip. Opening goes through the note so it can warn about programs and say when the file is gone.
+    const filePath = ctx.onFile && typeof ctx.filePath === 'string' ? files.validFilePath(ctx.filePath) : null;
+    if (filePath) {
+      const folder = ctx.fileKind === 'folder';
+      t.push({ label: folder ? 'Open folder' : 'Open', click: cmd('file-open') });
+      t.push({ label: 'Show in folder', click: () => files.showFile(filePath) });
+      t.push({ label: 'Copy path', click: () => clipboard.writeText(filePath) });
+      if (!locked) t.push({ label: 'Remove', click: cmd('file-remove') });
       t.push({ type: 'separator' });
     }
 

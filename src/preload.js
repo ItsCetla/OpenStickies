@@ -118,5 +118,15 @@ contextBridge.exposeInMainWorld('stickies', {
   exportBackup: () => invoke('data:export-backup'),
   importBackup: () => invoke('data:import-backup'),
   importFiles: () => invoke('data:import-files'),
-  openDataFolder: () => invoke('data:open-folder')
+  openDataFolder: () => invoke('data:open-folder'),
+
+  // file shortcuts
+  fileInfo: (path, withThumb) => invoke('file:info', path, !!withThumb),
+  openFile: (path) => invoke('file:open', path),
+  showFile: (path) => invoke('file:show', path),
+  startDrag: (path) => invoke('file:start-drag', path),
+
+  // image lightbox
+  openLightbox: (url) => invoke('img:lightbox', url),
+  closeLightbox: () => invoke('lightbox:close')
 });

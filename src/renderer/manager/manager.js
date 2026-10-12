@@ -2,6 +2,7 @@ import { icon, hydrateIcons } from '../shared/icons.js';
 import { sanitizeHtml, escapeHtml } from '../shared/sanitize.js';
 import { cascadeCheck, sinkItem, ownText, dueLabel, isoDate, parentItem } from '../note/smart.js';
 import palette from '../shared/colors.json' with { type: 'json' };
+import { hydrateFileChips } from '../shared/file-icons.js';
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);
@@ -498,6 +499,7 @@ function render() {
   const { list, pq } = filtered();
   const focusedId = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.id : null;
   $('list').innerHTML = list.map(n => cardHtml(n, pq)).join('');
+  hydrateFileChips($('list'));
   if (focusedId) { const el = $('list').querySelector(`[data-id="${focusedId}"]`); if (el) el.focus({ preventScroll: true }); }
   $('view-title').textContent = VIEW_TITLES[state.view] || 'All notes';
 

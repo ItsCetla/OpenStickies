@@ -552,6 +552,62 @@ class WindowManager {
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     return win;
   }
+
+  // ---------- image lightbox ----------
+  // One borderless window that covers the screen the note is on. It's reused, so opening another
+  // image only swaps the URL in its hash.
+  openLightbox(url, parentWin) {
+    const target = 'app://stickies/lightbox/lightbox.html#' + encodeURIComponent(url);
+    const parent = parentWin && !parentWin.isDestroyed() ? parentWin : null;
+    const wa = (parent ? screen.getDisplayMatching(parent.getBounds()) : screen.getPrimaryDisplay()).workArea;
+    let win = this.lightbox && !this.lightbox.isDestroyed() ? this.lightbox : null;
+    this.lightboxParent = parent;
+    if (win) {
+      win.setBounds(wa);
+      win.loadURL(target);
+      this.bringToFront(win);
+      return win;
+    }
+    win = new BrowserWindow({
+      ...wa,
+      show: false,
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: false,
+      resizable: false,
+      movable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      skipTaskbar: true,
+      alwaysOnTop: true,
+      title: 'Image',
+      icon: this.icon,
+      webPreferences: { ...this.webPreferences(), spellcheck: false }
+    });
+    win.setAlwaysOnTop(true, 'floating');
+    this.lightbox = win;
+    win.loadURL(target);
+    win.once('ready-to-show', () => { win.show(); win.focus(); });
+    win.on('closed', () => {
+      if (this.lightbox === win) this.lightbox = null;
+      const back = this.lightboxParent;
+      this.lightboxParent = null;
+      if (back && !back.isDestroyed() && !this.quitting) back.focus();
+    });
+    win.webContents.on('will-navigate', (e) => e.preventDefault());
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    return win;
+  }
+
+  isLightbox(webContents) {
+    return !!(this.lightbox && !this.lightbox.isDestroyed() && this.lightbox.webContents === webContents);
+  }
+
+  closeLightbox() {
+    if (this.lightbox && !this.lightbox.isDestroyed()) this.lightbox.close();
+  }
 }
 
 module.exports = { WindowManager, HEADER_H, DEFAULT_W, DEFAULT_H };

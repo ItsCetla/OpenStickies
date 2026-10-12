@@ -5,6 +5,7 @@ import { Editor, normalizeUrl } from './editor.js';
 import { Suggest, rank } from './suggest.js';
 import { progress, checklistItems, applyResets, setReset, clearTicked, topChecklist, sinkItem, TAG_RE, ownText } from './smart.js';
 import { escapeHtml } from '../shared/sanitize.js';
+import { HoverPreview } from './chips.js';
 import palette from '../shared/colors.json' with { type: 'json' };
 
 const api = window.stickies;
@@ -40,6 +41,12 @@ const editor = new Editor($('editor'), {
   onChange: scheduleSave,
   onSelection: scheduleToolbarState,
   toast
+});
+
+new HoverPreview($('hover-card'), {
+  api,
+  root: editor.el,
+  isBusy: () => !!editor._draggingItem || !!editor.el.querySelector('img.dragging')
 });
 
 init().catch((err) => {
@@ -531,7 +538,7 @@ async function deleteNote() {
 async function exportAs(format) {
   closePops();
   await flush();
-  const payload = { html: editor.getHTML(), text: editor.getText(), markdown: htmlToMarkdown(editor.el) };
+  const payload = { html: editor.exportHTML(), text: editor.exportText(), markdown: htmlToMarkdown(editor.el) };
   try {
     const res = await api.exportNote(format, payload);
     if (res && res.ok && res.filePath) toast(`Saved ${res.filePath.split(/[\\/]/).pop()}`);
@@ -796,6 +803,8 @@ function onFocus() {
 new ResizeObserver(() => requestAnimationFrame(layoutTools)).observe(document.body);
 
 window.addEventListener('focus', onFocus);
+// Files may have been moved or deleted while the note was in the background.
+window.addEventListener('focus', () => { if (note && !privateLocked) editor.recheckChips(); });
 window.addEventListener('blur', () => {
   body.classList.remove('focused', 'ctrl');
   closePops();
@@ -939,6 +948,8 @@ api.onCommand(({ cmd, arg }) => {
       if (target && target.alt) { navigator.clipboard.writeText(target.alt); toast('Copied the text in the picture'); }
       break;
     case 'format': if (arg === 'clear') editor.command('removeFormat'); break;
+    case 'file-remove': { const a = target && target.closest && target.closest('a.file-chip'); if (a) editor.removeChip(a); break; }
+    case 'file-open': { const a = target && target.closest && target.closest('a.file-chip'); if (a) editor.openChip(a); break; }
     default: break;
   }
 });
