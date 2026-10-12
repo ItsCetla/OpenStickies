@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenStickies — Sticky notes for the Windows desktop</title>
-  <meta name="description" content="OpenStickies is a free, open-source sticky notes app for Windows 10 and 11, with rich formatting, smart checklists, pictures, tags, workspaces, version history and private notes. Everything stays on your computer.">
+  <title>OpenStickies — Sticky notes for your desktop</title>
+  <meta name="description" content="OpenStickies is a free, open-source sticky notes app for Windows, macOS and Linux, with rich formatting, tabs, smart checklists, code blocks, pictures, tags, workspaces, version history and private notes. Everything stays on your computer.">
   <link rel="canonical" href="https://openstickies.cetla.dev/">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#FFFBEA" media="(prefers-color-scheme: light)">
@@ -14,18 +14,18 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="OpenStickies">
-  <meta property="og:title" content="OpenStickies — Sticky notes for the Windows desktop">
-  <meta property="og:description" content="Free, open-source sticky notes for Windows 10 and 11: rich formatting, smart checklists, pictures, tags, workspaces, version history and private notes.">
+  <meta property="og:title" content="OpenStickies — Sticky notes for your desktop">
+  <meta property="og:description" content="Free, open-source sticky notes for Windows, macOS and Linux: rich formatting, tabs, smart checklists, code blocks, pictures, tags, workspaces, version history and private notes.">
   <meta property="og:url" content="https://openstickies.cetla.dev/">
   <meta property="og:image" content="https://openstickies.cetla.dev/screenshots/social-preview.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
-  <meta property="og:image:alt" content="OpenStickies: colorful sticky notes on a Windows desktop">
+  <meta property="og:image:alt" content="OpenStickies: colorful sticky notes on a desktop">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="OpenStickies — Sticky notes for the Windows desktop">
-  <meta name="twitter:description" content="Free, open-source sticky notes for Windows 10 and 11: rich formatting, smart checklists, pictures, tags, workspaces, version history and private notes.">
+  <meta name="twitter:title" content="OpenStickies — Sticky notes for your desktop">
+  <meta name="twitter:description" content="Free, open-source sticky notes for Windows, macOS and Linux: rich formatting, tabs, smart checklists, code blocks, pictures, tags, workspaces, version history and private notes.">
   <meta name="twitter:image" content="https://openstickies.cetla.dev/screenshots/social-preview.png">
-  <meta name="twitter:image:alt" content="OpenStickies: colorful sticky notes on a Windows desktop">
+  <meta name="twitter:image:alt" content="OpenStickies: colorful sticky notes on a desktop">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,12 +39,12 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "OpenStickies",
-    "description": "Sticky notes for the Windows desktop, rebuilt with rich formatting, images, checklists, reminders, tags, links between notes, workspaces, version history, private notes, screen snips with searchable text, and an OpenCode integration.",
+    "description": "Sticky notes for Windows, macOS and Linux, rebuilt with rich formatting, tabs, code blocks, images, file shortcuts, checklists, reminders, tags, links between notes, workspaces, custom backgrounds, version history, private notes, screen snips with searchable text, and an OpenCode integration.",
     "url": "https://openstickies.cetla.dev/",
     "downloadUrl": "https://github.com/ItsCetla/OpenStickies/releases/latest",
     "image": "https://openstickies.cetla.dev/assets/icon.png",
     "screenshot": "https://openstickies.cetla.dev/screenshots/hero.png",
-    "operatingSystem": "Windows 10, Windows 11",
+    "operatingSystem": "Windows, macOS, Linux",
     "applicationCategory": "ProductivityApplication",
     "isAccessibleForFree": true,
     "license": "https://github.com/ItsCetla/OpenStickies/blob/main/LICENSE",
@@ -80,6 +80,17 @@
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-tabs" viewBox="0 0 24 24"><path d="M3.5 9.5V6.5A1.5 1.5 0 0 1 5 5h4.5A1.5 1.5 0 0 1 11 6.5v3"/><path d="M11 9.5V7.5A1.5 1.5 0 0 1 12.5 6h4A1.5 1.5 0 0 1 18 7.5v2"/><rect x="3.5" y="9.5" width="17" height="10" rx="2"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m8.5 8-4 4 4 4M15.5 8l4 4-4 4M13.5 5.5l-3 13"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6.5 3.5h7l4.5 4.5v11a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1.5-1.5Z"/><path d="M13.5 3.5V8H18M8.5 13h7M8.5 16.5h5"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.75"/><path d="m4 17.5 5-4.5 3.5 3 3-2.5 4.5 4"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 2H5l1.5-2Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-.9.7-1.5 1.7-1.5h2A4 4 0 0 0 20.5 10.7C20.5 6.6 16.7 3.5 12 3.5Z"/><circle cx="7.8" cy="11.5" r="1"/><circle cx="10.5" cy="7.6" r="1"/><circle cx="15.2" cy="8" r="1"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4.2l2 2.5H19a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 19.5H5a1.5 1.5 0 0 1-1.5-1.5V7Z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path d="M15.8 12.6c0-2 1.6-2.9 1.7-3a3.7 3.7 0 0 0-2.9-1.6c-1.2-.1-2.4.7-3 .7-.6 0-1.6-.7-2.6-.7a3.9 3.9 0 0 0-3.3 2c-1.4 2.4-.4 6 1 8 .7.9 1.4 2 2.4 2 1 0 1.3-.7 2.5-.7s1.5.7 2.5.6c1 0 1.7-1 2.4-2a7.8 7.8 0 0 0 1-2.2 3.4 3.4 0 0 1-1.7-3Z"/><path d="M14 5.9a3.3 3.3 0 0 0 .8-2.4 3.3 3.3 0 0 0-2.2 1.1 3.1 3.1 0 0 0-.8 2.3c.9.1 1.7-.4 2.2-1Z"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.7 5.4 3.7 8.5s-1.2 5.9-3.7 8.5c-2.5-2.6-3.7-5.4-3.7-8.5S9.5 6.1 12 3.5Z"/></symbol>
+    <symbol id="i-penguin" viewBox="0 0 24 24"><path d="M12 3a3.8 3.8 0 0 0-3.8 3.8v2.6c0 1-.5 1.9-1.1 2.7-1 1.4-2.1 3.3-2.1 5.4 0 1.6 1 2.5 2.4 2.5h9.2c1.4 0 2.4-.9 2.4-2.5 0-2.1-1.1-4-2.1-5.4-.6-.8-1.1-1.7-1.1-2.7V6.8A3.8 3.8 0 0 0 12 3Z"/><path d="M10.6 7.5h.01M13.4 7.5h.01M10.8 9.8 12 10.8l1.2-1M9.5 14.5a2.5 3 0 0 0 5 0"/></symbol>
   </svg>
 
   <a class="skip-link" href="#main">Skip to content</a>
@@ -93,7 +104,9 @@
       <nav class="primary-nav" id="primary-nav" aria-label="Primary">
         <ul>
           <li><a href="#features">Features</a></li>
+          <li><a href="#new">New in 4.0</a></li>
           <li><a href="#opencode">OpenCode</a></li>
+          <li><a href="#platforms">Mac &amp; Linux</a></li>
           <li><a href="#shortcuts">Shortcuts</a></li>
           <li><a href="#faq">FAQ</a></li>
           <li class="nav-only-menu"><a href="https://github.com/ItsCetla/OpenStickies">GitHub</a></li>
@@ -118,7 +131,7 @@
       <div class="wrap hero-copy">
         <div class="mini-note n-yellow deco-left" aria-hidden="true">
           <span class="mini-bar"></span>
-          <span class="mini-text">Ctrl+Alt+N<br>= new note!</span>
+          <span class="mini-text"><span data-keys>Ctrl+Alt+N</span><br>= new note!</span>
         </div>
         <div class="mini-note n-pink deco-right" aria-hidden="true">
           <span class="mini-bar"></span>
@@ -130,21 +143,29 @@
           Works with OpenCode: see your agent’s plan on a sticky
           <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg>
         </a>
-        <h1 id="hero-title">Sticky notes, <span class="marker">rebuilt</span> for the Windows desktop.</h1>
-        <p class="lede">Every note is its own small floating window, like classic Stickies — now with rich formatting, pictures, smart checklists, tags, workspaces, version history and private notes.</p>
+        <h1 id="hero-title">Sticky notes, <span class="marker">rebuilt</span> for your desktop.</h1>
+        <p class="lede">Every note is its own small floating window, like classic Stickies — now with tabs, rich formatting, code blocks, pictures, smart checklists, tags, workspaces, version history and private notes. For Windows, macOS and Linux.</p>
         <div class="cta-row">
-          <a class="btn btn-primary btn-lg" href="#download">
+          <a class="btn btn-primary btn-lg" href="#download" data-hero-dl>
             <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
-            Download for Windows
+            <span data-hero-label>Download</span>
           </a>
           <a class="btn btn-secondary btn-lg" href="https://github.com/ItsCetla/OpenStickies">
             <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
             View on GitHub
           </a>
         </div>
+        <p class="hero-alt" data-hero-mac hidden>
+          For your Mac:
+          <a data-dl="mac-arm64" href="https://github.com/ItsCetla/OpenStickies/releases/latest">Apple silicon</a>
+          <span aria-hidden="true">·</span>
+          <a data-dl="mac-x64" href="https://github.com/ItsCetla/OpenStickies/releases/latest">Intel</a>
+          <span aria-hidden="true">·</span>
+          <a href="#download-mac">Other formats</a>
+        </p>
         <p class="hero-meta">
           <span>Free &amp; open source</span>
-          <span>Windows 10 &amp; 11</span>
+          <span>Windows, macOS &amp; Linux</span>
           <span>MIT license</span>
           <span class="release-chip" data-release-version hidden></span>
         </p>
@@ -172,6 +193,11 @@
             <h3>Rich formatting</h3>
             <p>Headings, colors, highlights, tables, code and a “/” command menu.</p>
           </li>
+          <li class="highlight n-blue">
+            <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-tabs"/></svg></span>
+            <h3>Tabs</h3>
+            <p>Up to three tabs in one note, each with its own scroll and undo.</p>
+          </li>
           <li class="highlight n-green">
             <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-checklist"/></svg></span>
             <h3>Smart checklists</h3>
@@ -182,6 +208,11 @@
             <h3>Searchable snips</h3>
             <p>Snip the screen into a note; the words in pictures become searchable.</p>
           </li>
+          <li class="highlight n-charcoal">
+            <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-code"/></svg></span>
+            <h3>Code blocks</h3>
+            <p>Syntax highlighting for 18 languages, with the language guessed for you.</p>
+          </li>
           <li class="highlight n-purple">
             <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-layers"/></svg></span>
             <h3>Workspaces</h3>
@@ -191,6 +222,11 @@
             <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-history"/></svg></span>
             <h3>Version history</h3>
             <p>See word-by-word changes and restore any earlier version.</p>
+          </li>
+          <li class="highlight n-gray">
+            <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-palette"/></svg></span>
+            <h3>Custom backgrounds</h3>
+            <p>A solid color, a gradient or your own picture behind any note.</p>
           </li>
           <li class="highlight n-orange">
             <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-lock"/></svg></span>
@@ -213,6 +249,7 @@
             <li>9 text colors, 6 highlights, 5 sizes, alignment, links, tables and dividers.</li>
             <li>Type <code>#&nbsp;</code> for a heading, <code>-&nbsp;</code> for bullets or <code>[]&nbsp;</code> for a checklist, and <code>**bold**</code> or <code>==highlight==</code> inline.</li>
             <li>By default the formatting toolbar pops up over the bottom edge when you select text, so a note never changes size.</li>
+            <li>Code blocks with syntax highlighting for 18 languages. Start one with <code>```python</code>, or let OpenStickies guess.</li>
             <li>Six built-in templates, from meeting notes to a packing list, that fill in the date for you.</li>
           </ul>
         </div>
@@ -260,7 +297,8 @@
             <li>Snip the screen from anywhere with <span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd></span>, or type <code>/snip</code> in a note.</li>
             <li>Resize from any corner, and set a picture in line with text, wrapped left or right, top and bottom, behind or in front of text.</li>
             <li>Drag pictures around; the arrow keys nudge floating ones.</li>
-            <li>Windows’ built-in text recognition reads snips, screenshots and photos, so the notes list finds them by their words.</li>
+            <li>Text recognition reads snips, screenshots and photos, so the notes list finds them by their words. It uses the recognition built into Windows and macOS, and Tesseract on Linux if it’s installed.</li>
+            <li>Double-click a picture to see it full size.</li>
             <li>Right-click a picture to copy its text.</li>
           </ul>
         </div>
@@ -284,6 +322,7 @@
             <li><code>#</code> suggests tags you’ve already used. <span class="keys"><kbd>Ctrl</kbd>+Click</span> a tag to list every note that has it.</li>
             <li>Link to a note by title, or create a new one, and see what points back under <strong>Linked from</strong>.</li>
             <li>A sidebar with All, On desktop, Kept on top, Reminders, Tasks and Trash, plus your saved searches, tags and workspaces.</li>
+            <li>Search looks inside every tab, and highlights the matches in the list and in the note.</li>
             <li>Workspaces remember which notes are open, where and how big. Switch with <span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd></span>, or let OpenStickies switch when you dock or change monitors.</li>
           </ul>
         </div>
@@ -349,7 +388,7 @@
             <li>Open ⋯ → <strong>Version history…</strong> for a timeline of a note’s versions.</li>
             <li>Preview any old version with its changes highlighted.</li>
             <li>Restore any version. Your current text stays in the history, so a restore can be undone.</li>
-            <li>Deleted a note by mistake? The Trash keeps it for 30 days.</li>
+            <li>Deleted a note or closed a tab by mistake? The Trash keeps the latest 300, with no time limit.</li>
           </ul>
         </div>
         <figure class="feature-media">
@@ -371,8 +410,8 @@
           <ul class="ticks">
             <li>AES-256-GCM encryption, with the key protected by your password via scrypt.</li>
             <li>While locked, private notes are hidden from search, previews and exports.</li>
-            <li>They lock after a set idle time, and whenever Windows locks or sleeps.</li>
-            <li>Windows Hello can unlock them if it’s set up on the PC.</li>
+            <li>They lock after a set idle time, and whenever your computer locks or sleeps.</li>
+            <li>Windows Hello on Windows or Touch ID on a Mac can unlock them, if it’s set up. On Linux, you use the password.</li>
           </ul>
           <p class="callout callout-warn">
             <svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>
@@ -394,7 +433,7 @@
         <div class="feature-copy">
           <p class="tag">Dark mode</p>
           <h2 id="themes-title">Easy on the eyes, day or night.</h2>
-          <p class="feature-lede">Choose System, Light or Dark in Settings. System follows Windows, and every note color has its own dark version.</p>
+          <p class="feature-lede">Choose System, Light or Dark in Settings. System follows your computer’s setting, and every note color has its own dark version.</p>
           <ul class="swatches" aria-label="Note colors">
             <li class="n-yellow"><span>Yellow</span></li>
             <li class="n-orange"><span>Orange</span></li>
@@ -408,6 +447,7 @@
           </ul>
           <ul class="ticks">
             <li>Nine note colors, each with a light and a dark version.</li>
+            <li>Give any note its own background: a solid color, a two-color gradient or a picture. The text color adjusts so it stays readable.</li>
             <li>Settings also picks the color and font for new notes, and the text size for all of them.</li>
           </ul>
         </div>
@@ -417,6 +457,105 @@
                  alt="Four notes in the dark theme, in purple, yellow, charcoal and pink.">
           </a>
         </figure>
+      </div>
+    </section>
+
+    <!-- ============ New in 4.0 ============ -->
+    <section class="section" id="new" aria-labelledby="new-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">New in 4.0</p>
+          <h2 id="new-title">More room in every note.</h2>
+          <p>Version 4.0 runs on macOS and Linux as well as Windows, and adds these to every note.</p>
+        </div>
+        <ul class="card-grid">
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-tabs"/></svg>
+            <h3>Tabs</h3>
+            <p>Press <span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd></span> for up to three tabs in one note. They name themselves from their first line, and each keeps its own scroll and undo. Double-click or press <kbd>F2</kbd> to rename one, and drag to reorder.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-code"/></svg>
+            <h3>Code blocks</h3>
+            <p>Syntax highlighting for 18 languages, from Python and JavaScript to SQL, Go and Rust. Choose one from the right-click menu, or let OpenStickies guess. The language is kept when you export to Markdown.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-file"/></svg>
+            <h3>File shortcuts</h3>
+            <p>Drop a file or folder into a note to keep a shortcut to it. Open it, show it in its folder, copy its path, or drag it back out.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-image"/></svg>
+            <h3>Pictures up close</h3>
+            <p>Double-click a picture to see it full size. Hover over a file shortcut or a shrunken picture for a quick preview.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-bell"/></svg>
+            <h3>Reminders you can see coming</h3>
+            <p>A countdown strip and a frame that turns from green to orange to red as a reminder gets close. Pick a chime, a soft sound or none.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-palette"/></svg>
+            <h3>Custom backgrounds</h3>
+            <p>A solid color, a gradient with eight presets, or your own picture set to fill, fit or tile, with a dimmer to keep text readable.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-grid"/></svg>
+            <h3>Snap to grid</h3>
+            <p>Line notes up neatly on a grid you can size in Settings. Locked notes now stay put: they can’t be moved or resized.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-folder"/></svg>
+            <h3>Your data, your way</h3>
+            <p>Export every note as Markdown, text or JSON, and keep your notes in any folder you like, such as one synced with Dropbox, OneDrive or iCloud Drive.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-globe"/></svg>
+            <h3>Your language</h3>
+            <p>The app speaks twelve languages: English, German, Spanish, French, Italian, Portuguese, Dutch, Polish, Russian, Japanese, Chinese and Arabic, which lays out right to left. It follows your system, or pick one in Settings → Appearance → Language.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ Platforms ============ -->
+    <section class="section band band-paper" id="platforms" aria-labelledby="platforms-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Windows, macOS &amp; Linux</p>
+          <h2 id="platforms-title">At home on every desktop.</h2>
+          <p>The same notes and features everywhere, with a few things that work the way your system does.</p>
+        </div>
+        <div class="platform-grid">
+          <article class="platform-card">
+            <h3><svg class="i" aria-hidden="true"><use href="#i-window"/></svg>Windows</h3>
+            <ul class="ticks">
+              <li>Windows 10 and 11, as an installer or a portable app.</li>
+              <li>OpenStickies lives in the system tray, and can open at login.</li>
+              <li>Windows Hello can unlock private notes.</li>
+            </ul>
+          </article>
+          <article class="platform-card">
+            <h3><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS</h3>
+            <ul class="ticks">
+              <li>Builds for Apple silicon and Intel Macs.</li>
+              <li>Shortcuts use <kbd>⌘</kbd> where Windows uses <kbd>Ctrl</kbd>, and <kbd>⌥</kbd> for <kbd>Alt</kbd>. This page shows them that way on a Mac.</li>
+              <li>A menu bar icon, an app menu with <strong>Settings…</strong> (<kbd>⌘</kbd><kbd>,</kbd>), and the notes list when you click the Dock icon.</li>
+              <li>Touch ID can unlock private notes.</li>
+              <li>Snipping the screen needs the Screen Recording permission the first time.</li>
+            </ul>
+          </article>
+          <article class="platform-card">
+            <h3><svg class="i" aria-hidden="true"><use href="#i-penguin"/></svg>Linux</h3>
+            <ul class="ticks">
+              <li>An AppImage that runs on most distributions, and a <code>.deb</code> for Debian and Ubuntu.</li>
+              <li>Open at login adds a launcher to <code>~/.config/autostart</code>.</li>
+              <li>On GNOME, the tray icon needs the AppIndicator extension. Without a tray, the notes list opens instead.</li>
+              <li>Text in pictures is read by Tesseract, if it’s installed. Private notes unlock with the password.</li>
+              <li>On Wayland, snips go through the system’s screen-sharing prompt.</li>
+            </ul>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -497,13 +636,13 @@
         <div class="section-head">
           <p class="eyebrow">Safety &amp; privacy</p>
           <h2 id="safety-title">Your notes are safe, and they stay on your computer.</h2>
-          <p>No account to sign up for. Your notes live in <code>%APPDATA%\OpenStickies\data\</code>, with several layers of protection against slips, crashes and prying eyes.</p>
+          <p>No account to sign up for. Your notes live in a folder on your computer (<a href="#faq-storage">where?</a>), with several layers of protection against slips, crashes and prying eyes.</p>
         </div>
         <ul class="card-grid">
           <li class="card">
             <svg class="i card-icon" aria-hidden="true"><use href="#i-monitor"/></svg>
             <h3>Stored locally</h3>
-            <p>Notes, pictures, templates and settings are saved as files on your PC. Everything stays on your computer.</p>
+            <p>Notes, pictures, templates and settings are saved as files on your computer, in a folder you can choose.</p>
           </li>
           <li class="card">
             <svg class="i card-icon" aria-hidden="true"><use href="#i-history"/></svg>
@@ -512,8 +651,8 @@
           </li>
           <li class="card">
             <svg class="i card-icon" aria-hidden="true"><use href="#i-trash"/></svg>
-            <h3>Trash for 30 days</h3>
-            <p>Deleted notes wait in the Trash for 30 days before they’re gone.</p>
+            <h3>A roomy Trash</h3>
+            <p>The Trash keeps your latest 300 deleted notes and 300 closed tabs, with no time limit.</p>
           </li>
           <li class="card">
             <svg class="i card-icon" aria-hidden="true"><use href="#i-calendar"/></svg>
@@ -550,12 +689,12 @@
         <div class="section-head">
           <p class="eyebrow">Keyboard shortcuts</p>
           <h2 id="shortcuts-title">Keep your hands on the keyboard.</h2>
-          <p>Global shortcuts work anywhere in Windows, and you can change them in Settings.</p>
+          <p>Global shortcuts work anywhere on your desktop, and you can change them in Settings. On a Mac, <kbd>Ctrl</kbd> is <kbd>⌘</kbd> and <kbd>Alt</kbd> is <kbd>⌥</kbd><span class="mac-only">, and this page already shows them that way</span>.</p>
         </div>
         <div class="kbd-grid">
           <div class="kbd-col">
             <div class="kbd-card">
-              <h3>Anywhere in Windows</h3>
+              <h3>Anywhere on your desktop</h3>
               <table class="kbd-table">
                 <caption class="sr-only">Global shortcuts</caption>
                 <tbody>
@@ -594,6 +733,10 @@
                 <tbody>
               <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>N</kbd></span> / <span class="keys"><kbd>Ctrl</kbd>+<kbd>W</kbd></span> / <span class="keys"><kbd>Ctrl</kbd>+<kbd>D</kbd></span></th><td>New / close / delete note</td></tr>
               <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>H</kbd></span></th><td>Notes list</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd></span></th><td>New tab</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd data-key="Control">Ctrl</kbd>+<kbd>Tab</kbd></span> / <span class="keys"><kbd data-key="Control">Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Tab</kbd></span></th><td>Next / previous tab</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>1</kbd></span> / <kbd>2</kbd> / <kbd>3</kbd></th><td>Go to a tab</td></tr>
+              <tr><th scope="row"><kbd>F2</kbd></th><td>Rename the current tab</td></tr>
               <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>B</kbd></span> / <kbd>I</kbd> / <kbd>U</kbd> / <kbd>T</kbd> / <kbd>E</kbd></th><td>Bold / italic / underline / strikethrough / inline code</td></tr>
               <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></span> / <kbd>O</kbd> / <kbd>C</kbd></th><td>Bulleted / numbered list / checklist</td></tr>
               <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>1</kbd></span> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>0</kbd></th><td>Title / heading / subheading / normal text</td></tr>
@@ -623,8 +766,8 @@
           <div class="download-head">
             <img src="assets/icon.png" width="72" height="72" alt="">
             <div>
-              <h2 id="download-title">Get OpenStickies for Windows</h2>
-              <p>Free for Windows 10 and 11. Choose the installer, or the portable version if you’d rather not install anything.</p>
+              <h2 id="download-title">Get OpenStickies</h2>
+              <p>Free for Windows, macOS and Linux. Pick the download for your computer.</p>
               <p class="release-line" data-release-info hidden>
                 <span>Latest: <strong data-release-version></strong></span>
                 <span data-release-date></span>
@@ -633,44 +776,138 @@
             </div>
           </div>
 
-          <div class="download-cards">
-            <article class="dl-card">
-              <div class="dl-card-head">
-                <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-install"/></svg></span>
-                <h3>Installer</h3>
-                <span class="badge">Recommended</span>
+          <div class="os-groups">
+            <div class="os-group" id="download-windows">
+              <div class="os-title">
+                <h3><svg class="i" aria-hidden="true"><use href="#i-window"/></svg>Windows</h3>
+                <span class="badge" data-yours hidden>Your computer</span>
+                <span class="os-req">Windows 10 and 11</span>
               </div>
-              <p>Installs OpenStickies and adds Start menu and desktop shortcuts.</p>
-              <p class="dl-file"><code data-dl-file="installer">OpenStickies-Setup-&lt;version&gt;.exe</code><span class="dl-size" data-dl-size="installer" hidden></span></p>
-              <a class="btn btn-primary btn-block" data-dl="installer" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
-                <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
-                Download installer
-              </a>
-            </article>
-            <article class="dl-card">
-              <div class="dl-card-head">
-                <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-window"/></svg></span>
-                <h3>Portable</h3>
+              <div class="download-cards">
+                <article class="dl-card">
+                  <div class="dl-card-head">
+                    <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-install"/></svg></span>
+                    <h4>Installer</h4>
+                    <span class="badge">Recommended</span>
+                  </div>
+                  <p>Installs OpenStickies and adds Start menu and desktop shortcuts.</p>
+                  <p class="dl-file"><code data-dl-file="installer">OpenStickies-Setup-&lt;version&gt;.exe</code><span class="dl-size" data-dl-size="installer" hidden></span></p>
+                  <a class="btn btn-primary btn-block" data-dl="installer" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
+                    <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+                    Download installer
+                  </a>
+                </article>
+                <article class="dl-card">
+                  <div class="dl-card-head">
+                    <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-window"/></svg></span>
+                    <h4>Portable</h4>
+                  </div>
+                  <p>Runs without installing anything. Download it and double-click.</p>
+                  <p class="dl-file"><code data-dl-file="portable">OpenStickies-Portable-&lt;version&gt;.exe</code><span class="dl-size" data-dl-size="portable" hidden></span></p>
+                  <a class="btn btn-secondary btn-block" data-dl="portable" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
+                    <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+                    Download portable
+                  </a>
+                </article>
               </div>
-              <p>Runs without installing anything. Download it and double-click.</p>
-              <p class="dl-file"><code data-dl-file="portable">OpenStickies-Portable-&lt;version&gt;.exe</code><span class="dl-size" data-dl-size="portable" hidden></span></p>
-              <a class="btn btn-secondary btn-block" data-dl="portable" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
-                <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
-                Download portable
-              </a>
-            </article>
+              <div class="callout callout-info">
+                <svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>
+                <p><strong>Seeing “Windows protected your PC”?</strong> The builds aren’t code-signed, so Windows SmartScreen may warn you the first time. Click <strong>More info → Run anyway</strong>.</p>
+              </div>
+            </div>
+
+            <div class="os-group" id="download-mac">
+              <div class="os-title">
+                <h3><svg class="i" aria-hidden="true"><use href="#i-apple"/></svg>macOS</h3>
+                <span class="badge" data-yours hidden>Your computer</span>
+                <span class="os-req">Apple silicon and Intel</span>
+              </div>
+              <div class="download-cards">
+                <article class="dl-card">
+                  <div class="dl-card-head">
+                    <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-apple"/></svg></span>
+                    <h4>Apple silicon</h4>
+                    <span class="badge" data-mac-arch="arm64" hidden>Your Mac</span>
+                  </div>
+                  <p>For Macs with an M-series chip. Open the disk image and drag OpenStickies into Applications.</p>
+                  <p class="dl-file"><code data-dl-file="mac-arm64">OpenStickies-&lt;version&gt;-mac-arm64.dmg</code><span class="dl-size" data-dl-size="mac-arm64" hidden></span></p>
+                  <a class="btn btn-primary btn-block" data-dl="mac-arm64" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
+                    <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+                    Download for Apple silicon
+                  </a>
+                  <p class="dl-alt">Or the <a data-dl="mac-arm64-zip" href="https://github.com/ItsCetla/OpenStickies/releases/latest">.zip</a><span class="dl-size" data-dl-size="mac-arm64-zip" hidden></span></p>
+                </article>
+                <article class="dl-card">
+                  <div class="dl-card-head">
+                    <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-monitor"/></svg></span>
+                    <h4>Intel</h4>
+                    <span class="badge" data-mac-arch="x64" hidden>Your Mac</span>
+                  </div>
+                  <p>For Macs with an Intel processor. Open the disk image and drag OpenStickies into Applications.</p>
+                  <p class="dl-file"><code data-dl-file="mac-x64">OpenStickies-&lt;version&gt;-mac-x64.dmg</code><span class="dl-size" data-dl-size="mac-x64" hidden></span></p>
+                  <a class="btn btn-secondary btn-block" data-dl="mac-x64" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
+                    <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+                    Download for Intel
+                  </a>
+                  <p class="dl-alt">Or the <a data-dl="mac-x64-zip" href="https://github.com/ItsCetla/OpenStickies/releases/latest">.zip</a><span class="dl-size" data-dl-size="mac-x64-zip" hidden></span></p>
+                </article>
+              </div>
+              <div class="callout callout-info">
+                <svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>
+                <p><strong>“OpenStickies can’t be opened”?</strong> The builds aren’t signed by Apple. Control-click (or right-click) OpenStickies in Applications, choose <strong>Open</strong>, then <strong>Open</strong> again. On macOS 15 and later, try opening it once, then go to <strong>System Settings → Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>.</p>
+              </div>
+            </div>
+
+            <div class="os-group" id="download-linux">
+              <div class="os-title">
+                <h3><svg class="i" aria-hidden="true"><use href="#i-penguin"/></svg>Linux</h3>
+                <span class="badge" data-yours hidden>Your computer</span>
+                <span class="os-req">64-bit x86</span>
+              </div>
+              <div class="download-cards">
+                <article class="dl-card">
+                  <div class="dl-card-head">
+                    <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-box"/></svg></span>
+                    <h4>AppImage</h4>
+                    <span class="badge">Most distros</span>
+                  </div>
+                  <p>One file that runs without installing. Make it executable, then run it.</p>
+                  <p class="dl-file"><code data-dl-file="appimage">OpenStickies-&lt;version&gt;-linux-x86_64.AppImage</code><span class="dl-size" data-dl-size="appimage" hidden></span></p>
+                  <a class="btn btn-primary btn-block" data-dl="appimage" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
+                    <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+                    Download AppImage
+                  </a>
+                </article>
+                <article class="dl-card">
+                  <div class="dl-card-head">
+                    <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-install"/></svg></span>
+                    <h4>Debian / Ubuntu</h4>
+                  </div>
+                  <p>A <code>.deb</code> package that installs OpenStickies with your other apps.</p>
+                  <p class="dl-file"><code data-dl-file="deb">openstickies_&lt;version&gt;_amd64.deb</code><span class="dl-size" data-dl-size="deb" hidden></span></p>
+                  <a class="btn btn-secondary btn-block" data-dl="deb" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
+                    <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+                    Download .deb
+                  </a>
+                </article>
+              </div>
+              <div class="callout callout-info">
+                <svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>
+                <p><strong>Running the AppImage:</strong> <code>chmod +x OpenStickies-*-linux-x86_64.AppImage</code>, then open it. Some distributions need <code>libfuse2</code> first. On GNOME, install the AppIndicator extension to see the tray icon.</p>
+              </div>
+            </div>
           </div>
 
-          <div class="callout callout-info">
-            <svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>
-            <p><strong>Seeing “Windows protected your PC”?</strong> The builds aren’t code-signed, so Windows SmartScreen may warn you the first time. Click <strong>More info → Run anyway</strong>.</p>
-          </div>
+          <p class="checksums">
+            <svg class="i" aria-hidden="true"><use href="#i-check"/></svg>
+            <span>Every release lists SHA-256 checksums in <a data-dl="sums" href="https://github.com/ItsCetla/OpenStickies/releases/latest"><code>SHA256SUMS.txt</code></a>.</span>
+          </p>
         </div>
 
         <div class="source-row">
           <div class="source-copy">
             <h3>Build from source</h3>
-            <p>Needs Node.js 20 or newer. <code>npm run dist</code> builds the installer and portable app into <code>dist/</code>.</p>
+            <p>Needs Node.js 20 or newer. <code>npm run dist</code> builds the Windows installer and portable app, <code>npm run dist:mac</code> the Mac disk images and <code>npm run dist:linux</code> the AppImage and <code>.deb</code>, all into <code>dist/</code>.</p>
             <p class="all-releases"><a href="https://github.com/ItsCetla/OpenStickies/releases">All releases on GitHub <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
           </div>
           <div class="code-block">
@@ -704,10 +941,28 @@ npm start</code></pre>
             </div>
           </details>
           <details>
+            <summary>macOS says OpenStickies “can’t be opened”. What do I do?</summary>
+            <div class="faq-body">
+              <p>The Mac builds aren’t signed by Apple, so macOS asks first. Control-click (or right-click) OpenStickies in Applications, choose <strong>Open</strong>, then <strong>Open</strong> again. On macOS 15 and later, try opening it once, then go to <strong>System Settings → Privacy &amp; Security</strong> and click <strong>Open Anyway</strong>. You only need to do this once.</p>
+            </div>
+          </details>
+          <details id="faq-storage">
             <summary>Where are my notes stored?</summary>
             <div class="faq-body">
-              <p>Everything stays on your computer, in <code>%APPDATA%\OpenStickies\data\</code>: your notes in <code>notes.json</code>, pictures in <code>attachments\</code>, version history in <code>history\</code> and daily backups in <code>backups\</code>. Settings → <strong>Open data folder</strong> takes you there.</p>
+              <p>Everything stays on your computer, in a <code>data</code> folder: your notes in <code>notes.json</code>, pictures in <code>attachments</code>, version history in <code>history</code> and daily backups in <code>backups</code>. Settings → <strong>Open data folder</strong> takes you there.</p>
+              <ul>
+                <li>Windows: <code>%APPDATA%\OpenStickies\data\</code></li>
+                <li>macOS: <code>~/Library/Application Support/OpenStickies/data/</code></li>
+                <li>Linux: <code>~/.config/OpenStickies/data/</code></li>
+              </ul>
+              <p>To keep your notes somewhere else, such as a folder synced with Dropbox, OneDrive or iCloud Drive, use <strong>Where your notes live → Change…</strong> in Settings. If you sync the folder, run OpenStickies on only one computer at a time.</p>
               <p>One catch: if OpenStickies is started by a packaged Windows app (for example from a terminal inside Claude Desktop), Windows redirects that copy’s data to the app’s private folder, so it has its own separate notes.</p>
+            </div>
+          </details>
+          <details id="faq-language">
+            <summary>Can I use OpenStickies in my language?</summary>
+            <div class="faq-body">
+              <p>Yes. Settings → <strong>Appearance → Language</strong> offers English, German, Spanish, French, Italian, Portuguese (Brazil), Dutch, Polish, Russian, Japanese, Chinese (Simplified) and Arabic. <strong>System</strong>, the default, follows your computer’s language. Arabic flips the windows to run right to left. Your notes are never translated, only the app’s menus, buttons and settings, and the welcome note and built-in templates stay in English.</p>
             </div>
           </details>
           <details>
@@ -724,16 +979,17 @@ npm start</code></pre>
             </div>
           </details>
           <details>
-            <summary>How do I back up my notes, or move them to another PC?</summary>
+            <summary>How do I back up my notes, or move them to another computer?</summary>
             <div class="faq-body">
-              <p>Open Settings → <strong>Back up all notes…</strong> to save one file with every note, image and template (private notes stay encrypted). On the other PC, use <strong>Restore from backup…</strong>, which adds the backup’s notes alongside your current ones.</p>
-              <p>OpenStickies also keeps daily copies of your notes for the last 14 days, and the Trash keeps deleted notes for 30 days.</p>
+              <p>Open Settings → <strong>Back up all notes…</strong> to save one file with every note, image and template (private notes stay encrypted). On the other computer, use <strong>Restore from backup…</strong>, which adds the backup’s notes alongside your current ones.</p>
+              <p>OpenStickies also keeps daily copies of your notes for the last 14 days, and the Trash keeps your latest 300 deleted notes and closed tabs.</p>
             </div>
           </details>
           <details>
             <summary>I closed every note. Where did OpenStickies go?</summary>
             <div class="faq-body">
-              <p>It keeps running in the <strong>system tray</strong>. Windows hides new tray icons behind the <strong>^</strong> arrow at the right end of the taskbar; drag the yellow icon onto the taskbar to keep it in view. Click it to bring your notes back, or right-click it for more.</p>
+              <p>It keeps running in the background. On Windows it’s in the <strong>system tray</strong>: Windows hides new tray icons behind the <strong>^</strong> arrow at the right end of the taskbar, so drag the yellow icon onto the taskbar to keep it in view. Click it to bring your notes back, or right-click it for more.</p>
+              <p>On a Mac, it’s in the menu bar, and clicking its Dock icon opens the notes list. On Linux it’s in the tray; on GNOME that needs the AppIndicator extension.</p>
               <p>You can also press <span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd></span> to show or hide all notes, or <span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd></span> for a new one.</p>
             </div>
           </details>
@@ -746,7 +1002,7 @@ npm start</code></pre>
           <details>
             <summary>Is there a Mac or Linux version?</summary>
             <div class="faq-body">
-              <p>No. OpenStickies is made for Windows 10 and 11, and the releases are Windows builds.</p>
+              <p>Yes. Since version 4.0, every release has builds for Macs with Apple silicon or Intel, and for Linux as an AppImage or a <code>.deb</code>. See <a href="#download">Download</a> and the <a href="#platforms">notes for Mac and Linux</a>.</p>
             </div>
           </details>
         </div>
@@ -760,7 +1016,7 @@ npm start</code></pre>
         <img src="assets/favicon.png" width="36" height="36" alt="">
         <div>
           <p class="footer-name">OpenStickies</p>
-          <p>Sticky notes for the Windows desktop. Free and open source under the <a href="https://github.com/ItsCetla/OpenStickies/blob/main/LICENSE">MIT license</a>.</p>
+          <p>Sticky notes for Windows, macOS and Linux. Free and open source under the <a href="https://github.com/ItsCetla/OpenStickies/blob/main/LICENSE">MIT license</a>.</p>
         </div>
       </div>
       <nav aria-label="Project links">
@@ -775,7 +1031,7 @@ npm start</code></pre>
     <div class="wrap">
       <div class="footer-bottom">
         <p>© 2026 the OpenStickies authors</p>
-        <p class="made-for"><svg class="i" aria-hidden="true"><use href="#i-window"/></svg>Made for Windows 10 &amp; 11</p>
+        <p class="made-for"><svg class="i" aria-hidden="true"><use href="#i-monitor"/></svg>Made for Windows, macOS &amp; Linux</p>
       </div>
     </div>
   </footer>

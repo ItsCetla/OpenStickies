@@ -1,10 +1,11 @@
-/* OpenStickies site: nav menu, latest-release download links, screenshot lightbox, copy button.
+/* OpenStickies site: nav menu, download links for this computer and the latest release, Mac
+   shortcut labels, screenshot lightbox, copy button.
    Everything here is progressive enhancement; the page works without it. */
 (function () {
   'use strict';
 
   var API_URL = 'https://api.github.com/repos/ItsCetla/OpenStickies/releases/latest';
-  var CACHE_KEY = 'openstickies:latest-release:v1';
+  var CACHE_KEY = 'openstickies:latest-release:v2'; // v2: every platform's files
   var CACHE_OK_MS = 60 * 60 * 1000;    // a found release
   var CACHE_FAIL_MS = 10 * 60 * 1000;  // 404 (nothing published yet) or 403 (rate limited)
 
@@ -40,6 +41,85 @@
     if (wide.addEventListener) wide.addEventListener('change', onWide);
   }
 
+  /* ---------- which computer is this? ---------- */
+  // 'windows' | 'mac' | 'linux' | '' (phones, tablets, ChromeOS and anything unknown).
+  function detectOS() {
+    var nav = window.navigator || {};
+    var hint = nav.userAgentData && typeof nav.userAgentData.platform === 'string' ? nav.userAgentData.platform : '';
+    var ua = String(nav.userAgent || '');
+    var plat = String(nav.platform || '');
+    var all = (hint + ' ' + plat + ' ' + ua).toLowerCase();
+    if (/android|iphone|ipad|ipod|cros|chrome os/.test(all)) return '';
+    if (/win/.test(hint.toLowerCase() || plat.toLowerCase()) || /windows/.test(ua.toLowerCase())) return 'windows';
+    if (/mac/.test(all)) {
+      // iPads ask for the desktop site and say "Macintosh"; they are the ones with a touch screen.
+      if (nav.maxTouchPoints > 1) return '';
+      return 'mac';
+    }
+    if (/linux|x11|bsd/.test(all)) return 'linux';
+    return '';
+  }
+
+  // Browsers on Apple silicon Macs still say "Intel" in their user agent. Chromium can tell the
+  // real CPU when asked; everywhere else this stays unknown and both builds are offered as equals.
+  function detectMacArch() {
+    var data = window.navigator && window.navigator.userAgentData;
+    if (!data || typeof data.getHighEntropyValues !== 'function') return Promise.resolve('');
+    return data.getHighEntropyValues(['architecture']).then(function (v) {
+      var a = v && typeof v.architecture === 'string' ? v.architecture.toLowerCase() : '';
+      return a === 'arm' ? 'arm64' : a === 'x86' ? 'x64' : '';
+    }, function () { return ''; });
+  }
+
+  /* ---------- shortcut labels on a Mac ---------- */
+  // Mirrors src/renderer/shared/keys.js: Ctrl reads as ⌘, Alt as ⌥, Shift as ⇧, and macOS orders
+  // them Control, Option, Shift, Command. A <kbd data-key="Control"> really is the Control key.
+  var MAC_SYMBOL = { Ctrl: '⌘', Control: '⌃', Alt: '⌥', Shift: '⇧' };
+  var MAC_NAME = { '⌘': 'Command', '⌃': 'Control', '⌥': 'Option', '⇧': 'Shift' };
+  var MAC_ORDER = ['⌃', '⌥', '⇧', '⌘'];
+
+  function macChord(text) {
+    return String(text).replace(/\b((?:(?:Ctrl|Control|Alt|Shift)\+)+)/g, function (chord) {
+      var syms = chord.split('+').filter(Boolean).map(function (n) { return MAC_SYMBOL[n] || n; });
+      return syms.sort(function (a, b) { return MAC_ORDER.indexOf(a) - MAC_ORDER.indexOf(b); }).join('');
+    });
+  }
+
+  function initMacKeys() {
+    root.classList.add('is-mac');
+    $$('.keys').forEach(function (group) {
+      var mods = [];
+      var rest = [];
+      Array.prototype.slice.call(group.childNodes).forEach(function (node) {
+        var isKbd = node.nodeName === 'KBD';
+        var name = isKbd ? (node.getAttribute('data-key') || node.textContent.trim()) : '';
+        if (isKbd && MAC_SYMBOL[name]) { mods.push(MAC_SYMBOL[name]); return; }
+        var text = isKbd ? node.textContent.trim() : node.textContent.replace(/\+/g, '').trim();
+        if (!text) return;
+        // "⌘-click", as macOS and src/renderer/shared/keys.js write it.
+        if (/^click$/i.test(text)) rest.push({ text: '-click' });
+        else rest.push(isKbd ? { kbd: text } : { text: text });
+      });
+      if (!mods.length) return;
+      mods.sort(function (a, b) { return MAC_ORDER.indexOf(a) - MAC_ORDER.indexOf(b); });
+      group.textContent = '';
+      mods.forEach(function (sym) {
+        var kbd = document.createElement('kbd');
+        kbd.textContent = sym;
+        kbd.title = MAC_NAME[sym];
+        group.appendChild(kbd);
+      });
+      rest.forEach(function (part) {
+        if (part.text) { group.appendChild(document.createTextNode(part.text)); return; }
+        var kbd = document.createElement('kbd');
+        kbd.textContent = part.kbd;
+        group.appendChild(kbd);
+      });
+    });
+    $$('[data-keys]').forEach(function (el) { el.textContent = macChord(el.textContent); });
+    $$('[data-mac-text]').forEach(function (el) { el.textContent = el.getAttribute('data-mac-text'); });
+  }
+
   /* ---------- latest release ---------- */
   function readCache() {
     try {
@@ -69,12 +149,28 @@
     return null;
   }
 
+  // Release files, by the names electron-builder gives them (see "build" in package.json):
+  //   OpenStickies-Setup-4.0.0.exe, OpenStickies-Portable-4.0.0.exe,
+  //   OpenStickies-4.0.0-mac-arm64.dmg / -mac-x64.dmg (and .zip),
+  //   OpenStickies-4.0.0-linux-x86_64.AppImage, openstickies_4.0.0_amd64.deb, SHA256SUMS.txt
+  var ASSETS = {
+    installer: /setup.*\.exe$/i,
+    portable: /portable.*\.exe$/i,
+    'mac-arm64': /mac.*arm64.*\.dmg$/i,
+    'mac-x64': /mac.*x64.*\.dmg$/i,
+    'mac-arm64-zip': /mac.*arm64.*\.zip$/i,
+    'mac-x64-zip': /mac.*x64.*\.zip$/i,
+    appimage: /linux.*(x86_64|x64).*\.AppImage$/i,
+    deb: /(amd64|x64).*\.deb$/i,
+    sums: /^SHA256SUMS(\.txt)?$/i
+  };
+
   // The asset file names carry the app's own version (electron-builder puts it there), so they
   // win over the release tag/title, which are free text (e.g. a tag called "Release").
   function findVersion(release, files) {
     var i, m;
     for (i = 0; i < files.length; i++) {
-      m = files[i] && files[i].name.match(/(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)\.exe$/i);
+      m = files[i] && files[i].name.match(/[-_](\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+?)?)(?:-(?:mac|linux)-|_(?:amd64|arm64)\.|\.exe$)/i);
       if (m) return m[1];
     }
     var labels = [release.tag_name, release.name];
@@ -87,15 +183,20 @@
 
   function summarize(release) {
     var assets = Array.isArray(release.assets) ? release.assets : [];
-    var installer = pickAsset(assets, /setup.*\.exe$/i);
-    var portable = pickAsset(assets, /portable.*\.exe$/i);
+    var files = {};
+    var found = [];
+    Object.keys(ASSETS).forEach(function (kind) {
+      var a = pickAsset(assets, ASSETS[kind]);
+      if (!a) return;
+      files[kind] = a;
+      if (kind !== 'sums') found.push(a);
+    });
     return {
-      ok: !!(installer || portable),
-      version: findVersion(release, [installer, portable]),
+      ok: found.length > 0,
+      version: findVersion(release, found),
       date: release.published_at || '',
       page: release.html_url || '',
-      installer: installer,
-      portable: portable
+      files: files
     };
   }
 
@@ -141,7 +242,7 @@
   }
 
   function applyRelease(info) {
-    if (!info) return;
+    if (!info || !info.files) return;
     var version = info.version ? 'v' + info.version : '';
 
     $$('[data-release-version]').forEach(function (el) {
@@ -149,9 +250,8 @@
       el.hidden = !version;
     });
 
-    ['installer', 'portable'].forEach(function (kind) {
-      var asset = info[kind];
-      if (!asset) return;
+    Object.keys(info.files).forEach(function (kind) {
+      var asset = info.files[kind];
       $$('[data-dl="' + kind + '"]').forEach(function (a) { a.href = asset.url; });
       $$('[data-dl-file="' + kind + '"]').forEach(function (el) { el.textContent = asset.name; });
       var size = formatSize(asset.size);
@@ -165,6 +265,37 @@
     });
     if (info.page) $$('[data-release-page]').forEach(function (a) { a.href = info.page; });
     if (version) $$('[data-release-info]').forEach(function (el) { el.hidden = false; });
+  }
+
+  /* ---------- download button for this computer ---------- */
+  var OS_LABEL = { windows: 'Windows', mac: 'Mac', linux: 'Linux' };
+
+  function initPlatform(os) {
+    if (!os) return;
+    root.setAttribute('data-os', os);
+
+    $$('[data-hero-dl]').forEach(function (a) {
+      a.href = '#download-' + os;
+      var label = a.querySelector('[data-hero-label]');
+      if (label) label.textContent = 'Download for ' + OS_LABEL[os];
+    });
+    if (os === 'mac') $$('[data-hero-mac]').forEach(function (el) { el.hidden = false; });
+
+    // Put this computer's downloads first and mark them, without hiding the others.
+    var group = document.getElementById('download-' + os);
+    if (group && group.parentNode) {
+      group.parentNode.insertBefore(group, group.parentNode.firstElementChild);
+      group.classList.add('is-yours');
+      var badge = group.querySelector('[data-yours]');
+      if (badge) badge.hidden = false;
+    }
+
+    if (os === 'mac') {
+      detectMacArch().then(function (arch) {
+        if (!arch) return;
+        $$('[data-mac-arch="' + arch + '"]').forEach(function (el) { el.hidden = false; });
+      });
+    }
   }
 
   function initRelease() {
@@ -229,7 +360,7 @@
         navigator.clipboard.writeText(target.textContent.trim()).then(function () {
           label.textContent = 'Copied';
         }, function () {
-          label.textContent = 'Press Ctrl+C';
+          label.textContent = root.classList.contains('is-mac') ? 'Press ⌘C' : 'Press Ctrl+C';
           var range = document.createRange();
           range.selectNodeContents(target);
           var sel = window.getSelection();
@@ -244,7 +375,10 @@
   }
 
   function init() {
+    var os = detectOS();
     initHeader();
+    if (os === 'mac') initMacKeys();
+    initPlatform(os);
     initRelease();
     initLightbox();
     initCopy();

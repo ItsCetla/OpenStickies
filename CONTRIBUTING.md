@@ -8,7 +8,13 @@ Thanks for helping out! Bug reports, ideas and pull requests are all welcome.
 
 ## Development setup
 
-You need [Node.js](https://nodejs.org/) 20 or newer. OpenStickies is a Windows app, so develop on Windows 10 or 11 if you can: text recognition and Windows Hello only work there.
+You need [Node.js](https://nodejs.org/) 20 or newer. OpenStickies runs on Windows, macOS and Linux, and you can develop on any of them. A few features depend on the system:
+
+- **Windows:** text recognition uses Windows' built-in OCR, and private notes can unlock with Windows Hello.
+- **macOS:** text recognition uses Apple's Vision, and private notes can unlock with Touch ID. Snipping needs the Screen Recording permission for the app you run it from.
+- **Linux:** text recognition needs `tesseract` installed. Private notes unlock with the password only. On Wayland, snips go through the desktop's screen-sharing prompt, and on GNOME the tray icon needs the AppIndicator extension.
+
+If your change touches one of these, try it on that system or say in the pull request that you couldn't.
 
 ```bash
 git clone https://github.com/ItsCetla/OpenStickies.git
@@ -23,13 +29,24 @@ npm start
 |---|---|
 | `npm start` | Runs OpenStickies from source |
 | `npm run dev` | Runs with DevTools turned on: press Ctrl+Shift+I in a note. Errors from the main process print in the terminal. |
-| `npm run dist` | Builds the installer and the portable app into `dist/` (run it on Windows) |
+| `npm run dist` | Builds the Windows installer and the portable app into `dist/` (run it on Windows) |
+| `npm run dist:mac` | Builds the Mac disk images and `.zip` files into `dist/` (run it on a Mac) |
+| `npm run dist:linux` | Builds the Linux AppImage and `.deb` into `dist/` (run it on Linux) |
 | `npm run icons` | Redraws the app icons in `assets/` |
 | `npm run screenshots` | Regenerates the screenshots in `docs/screenshots/` (see [below](#screenshots)) |
+| `npm run check:locales` | Checks the translation files in `src/locales/` against `src/locales/en.json` and the keys used in code (see [below](#translations)) |
 
 ### Keep your real notes out of it
 
-Point `STICKIES_USER_DATA` at a scratch folder and OpenStickies keeps all its data there (in a `data` subfolder) instead of in `%APPDATA%\OpenStickies`. It also skips the one-time copy of notes from the old `%APPDATA%\Stickies` folder (see `src/main/migrate.js`). It also skips writing `%USERPROFILE%\.stickies\api.json`, so a test copy can't take over your everyday copy's OpenCode connection.
+Point `STICKIES_USER_DATA` at a scratch folder and OpenStickies keeps all its data there (in a `data` subfolder) instead of in the usual folder:
+
+| System | Usual folder |
+|---|---|
+| Windows | `%APPDATA%\OpenStickies` |
+| macOS | `~/Library/Application Support/OpenStickies` |
+| Linux | `~/.config/OpenStickies` |
+
+It also skips the one-time copy of notes from the old `%APPDATA%\Stickies` folder on Windows (see `src/main/migrate.js`), and skips writing `~/.stickies/api.json`, so a test copy can't take over your everyday copy's OpenCode connection. While it's set, the **Where your notes live** setting can't move the data folder.
 
 ```powershell
 # PowerShell
@@ -38,7 +55,7 @@ npm run dev
 ```
 
 ```bash
-# Git Bash or Linux
+# macOS, Linux or Git Bash
 STICKIES_USER_DATA=/tmp/stickies-test npm run dev
 ```
 
@@ -69,13 +86,17 @@ Security rules every change has to keep:
 
 ## Testing your change
 
-There's no automated test suite yet, so try your change by hand in the running app, ideally with `STICKIES_USER_DATA` pointing at a scratch folder. Say in the pull request what you tried and on which Windows version. If your change touches checklists, private notes, workspaces or saving, please also check that existing notes still load correctly.
+There's no automated test suite yet, so try your change by hand in the running app, ideally with `STICKIES_USER_DATA` pointing at a scratch folder. Say in the pull request what you tried and on which system and version (for example Windows 11, macOS 15 or Ubuntu 24.04). If your change touches checklists, private notes, workspaces or saving, please also check that existing notes still load correctly.
 
 ## Screenshots
 
 The screenshots on the README and the website are generated, not taken by hand. `npm run screenshots` starts OpenStickies with sample notes in a throwaway data folder, captures its windows, and writes the images to `docs/screenshots/`. It runs on Windows, or on Linux under Xvfb, and needs nothing beyond `npm install`. See [scripts/screenshots/README.md](scripts/screenshots/README.md) for how scenes work.
 
 Rerun it when your change alters something visible, and include the updated images in your pull request.
+
+## Translations
+
+The interface strings live in `src/locales/`, one JSON file per language, with `en.json` as the reference. Code looks strings up by key, so to fix a translation edit the value in that language's file, and to add a string add it to `en.json` first and then to the other files (a missing key falls back to English). To add a language, copy `en.json` to `<code>.json`, translate the values and keep every `{placeholder}` as it is, then add the code to the `SUPPORTED` list in `src/main/i18n.js` and the language, named in itself, to the Language setting in `src/renderer/manager/manager.html`. `npm run check:locales` reports keys that are missing, unknown or have the wrong placeholders. The welcome note and the built-in templates stay in English.
 
 ## Pull requests
 
@@ -87,7 +108,7 @@ Rerun it when your change alters something visible, and include the updated imag
 
 ## Releasing
 
-For maintainers. Releases are built by the [Release workflow](.github/workflows/release.yml) on GitHub Actions.
+For maintainers. Releases are built by the [Release workflow](.github/workflows/release.yml) on GitHub Actions, which builds on Windows, macOS and Linux runners at the same time.
 
 1. Bump the version in `package.json` (and `package-lock.json`) without creating a tag:
 
@@ -109,10 +130,15 @@ For maintainers. Releases are built by the [Release workflow](.github/workflows/
    git tag v3.1.0 && git push origin v3.1.0
    ```
 
-5. The workflow checks that the tag matches the version in `package.json`, builds `OpenStickies-Setup-3.1.0.exe` and `OpenStickies-Portable-3.1.0.exe`, writes `SHA256SUMS.txt`, and creates a **draft** release using that version's CHANGELOG section as the release notes.
+5. The workflow checks that the tag matches the version in `package.json`, builds every platform, writes `SHA256SUMS.txt`, and creates a **draft** release with all the files attached:
+   - Windows: `OpenStickies-Setup-3.1.0.exe` and `OpenStickies-Portable-3.1.0.exe`
+   - macOS: `OpenStickies-3.1.0-mac-arm64.dmg`, `OpenStickies-3.1.0-mac-x64.dmg`, and the matching `-mac-arm64.zip` and `-mac-x64.zip`
+   - Linux: `OpenStickies-3.1.0-linux-x86_64.AppImage` and `openstickies_3.1.0_amd64.deb`
+
+   It uses that version's CHANGELOG section as the release notes.
 6. Open the draft on the [Releases page](https://github.com/ItsCetla/OpenStickies/releases), download and try the builds, edit the notes if needed, then click **Publish release**.
 
-To rebuild an existing tag (for example after a failed run), open **Actions → Release → Run workflow** and enter the tag. The builds aren't code-signed.
+To rebuild an existing tag (for example after a failed run), open **Actions → Release → Run workflow** and enter the tag. The Windows builds aren't code-signed, and the Mac builds are signed ad hoc but not notarized by Apple. If one platform fails, the others still build.
 
 > [!IMPORTANT]
 > Keep `build.nsis.guid` in `package.json` as it is. It's the installer identity electron-builder derived from the app's old id (`com.stickies.desktop`), and it's how the installer finds an existing Stickies or OpenStickies install to upgrade. Changing it makes new installers install a second copy next to the old one.
