@@ -23,6 +23,8 @@
     <button class="tb-btn tb-close" id="btn-close" title="Close note (Ctrl+W)"><i data-icon="close"></i></button>
   </header>
 
+  <nav class="tabbar" id="tabbar" role="tablist" aria-label="Tabs" hidden></nav>
+
   <div class="banner" id="reminder-banner" hidden>
     <i data-icon="bell" data-size="16"></i>
     <span class="banner-text" id="reminder-banner-text">Reminder</span>
@@ -134,6 +136,7 @@
     </div>
     <button class="menu-item" data-action="save-template"><i data-icon="template" data-size="16"></i><span>Save as template…</span></button>
     <button class="menu-item" data-action="duplicate"><i data-icon="copy" data-size="16"></i><span>Duplicate note</span></button>
+    <button class="menu-item" data-action="new-tab" id="menu-new-tab"><i data-icon="plus" data-size="16"></i><span>New tab</span><span class="hint">Ctrl+Shift+T</span></button>
     <button class="menu-item" data-action="list"><i data-icon="notes" data-size="16"></i><span>All notes</span><span class="hint">Ctrl+H</span></button>
     <div class="backlinks" id="menu-backlinks" hidden>
       <div class="pop-title">Linked from</div>

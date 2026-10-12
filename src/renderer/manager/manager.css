@@ -491,3 +491,4 @@ input.switch:checked::after { transform: translateX(18px); }
 
 /* macOS draws its close/minimise/zoom buttons at the left of the app bar; keep clear of them. */
 :root[data-platform="darwin"] { --appbar-inset: 84px; }
+.tab-card .tab-from { font-size: 12px; font-weight: 650; opacity: 0.72; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

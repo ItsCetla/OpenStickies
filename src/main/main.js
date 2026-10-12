@@ -6,7 +6,7 @@ const {
 const path = require('path');
 const fs = require('fs');
 
-const { Store, OPENABLE_RE, ATTACHMENT_RE, writeFileAtomic } = require('./store');
+const { Store, OPENABLE_RE, ATTACHMENT_RE, writeFileAtomic, MAX_TABS } = require('./store');
 const { WindowManager } = require('./windows');
 const { Reminders } = require('./reminders');
 const { createTray } = require('./tray');
@@ -496,6 +496,8 @@ function savePrivate(id, html) {
 async function setPrivate(id, on) {
   const note = store.get(id);
   if (!note || !!note.private === !!on) return { ok: true };
+  // Only the note's single page is encrypted, so other tabs would stay readable on disk.
+  if (on && note.tabs && note.tabs.length > 1) return { ok: false, reason: 'tabs' };
   if (!vault.unlocked) return { ok: false, reason: vault.configured ? 'locked' : 'setup' };
   await windows.flushRenderer(windows.windowFor(id));
   if (on) {
@@ -550,6 +552,17 @@ function onVaultUnlocked() {
 // ---------- checklist resets ----------
 function runChecklistResets() {
   for (const n of store.active()) {
+    if (n.tabs && n.tabs.some(t => t.html.includes('data-reset='))) {
+      if (windows.windowFor(n.id)) { windows.emitCommand(n.id, 'checklist-reset'); continue; }
+      let any = false;
+      const tabs = n.tabs.map(t => {
+        const next = scan.resetChecklists(t.html);
+        if (next) any = true;
+        return next ? { ...t, html: next, text: '' } : t;
+      });
+      if (any) store.update(n.id, { tabs, activeTab: n.activeTab });
+      continue;
+    }
     if (n.private || !n.html.includes('data-reset=')) continue;
     if (windows.windowFor(n.id)) { windows.emitCommand(n.id, 'checklist-reset'); continue; }
     const next = scan.resetChecklists(n.html);
@@ -593,7 +606,11 @@ function noteSummary(n) {
     open: n.open, pinned: n.pinned, locked: n.locked, trashed: n.trashed, trashedAt: n.trashedAt,
     reminder: n.reminder, createdAt: n.createdAt, updatedAt: n.updatedAt,
     tags: n.tags || [], links: n.links || [], imageText: (n.imageText || '').slice(0, 4000), tasks: n.tasks || { total: 0, done: 0 },
-    private: !!n.private, privateLocked: false
+    private: !!n.private, privateLocked: false,
+    // search looks at every tab, not just the one on screen
+    searchText: n.private ? '' : store.searchText(n).slice(0, 20000),
+    tabCount: n.tabs ? n.tabs.length : 1,
+    hasImage: n.tabs ? n.tabs.some(t => /<img\b/.test(t.html)) : /<img\b/.test(n.html)
   };
   if (n.private) {
     const p = privatePlain(n);
@@ -617,6 +634,20 @@ function wireEvents() {
 
 // ---------- IPC ----------
 const NOTE_PATCH_KEYS = ['html', 'text', 'title', 'color', 'font', 'pinned', 'opacity', 'zoom', 'locked', 'reminder', 'tasks', 'imageText'];
+NOTE_PATCH_KEYS.push('tabs', 'activeTab');
+
+// Shape check only; the store does the full normalization (ids, titles, the 2..MAX_TABS rule).
+function cleanTabs(list) {
+  if (!Array.isArray(list)) return null;
+  return list.slice(0, MAX_TABS).filter(t => t && typeof t === 'object').map(t => ({
+    id: String(t.id || '').slice(0, 40),
+    title: String(t.title || '').slice(0, 80),
+    renamed: !!t.renamed,
+    html: typeof t.html === 'string' ? t.html : '',
+    text: typeof t.text === 'string' ? t.text : '',
+    scroll: Math.max(0, Number(t.scroll) || 0)
+  }));
+}
 
 function cleanPatch(patch) {
   const out = {};
@@ -643,6 +674,8 @@ function cleanPatch(patch) {
       dom: Number.isInteger(r.dom) && r.dom >= 1 && r.dom <= 31 ? r.dom : new Date(r.at).getDate()
     };
   }
+  if ('tabs' in out) out.tabs = cleanTabs(out.tabs);
+  if ('activeTab' in out) out.activeTab = Number.isInteger(out.activeTab) ? Math.min(MAX_TABS - 1, Math.max(0, out.activeTab)) : 0;
   return out;
 }
 
@@ -683,6 +716,7 @@ function registerIpc() {
     if (note && note.private) {
       const content = 'html' in clean ? clean.html : null;
       for (const k of ['html', 'text', 'title', 'tasks', 'imageText']) delete clean[k];
+      delete clean.tabs; delete clean.activeTab; // private notes keep one page (see setPrivate)
       if (content !== null) {
         if (!vault.unlocked) return false; // never write plaintext; the window shows its lock screen
         savePrivate(id, content);
@@ -694,6 +728,8 @@ function registerIpc() {
     const keys = Object.keys(clean);
     if (!keys.length) return true;
     store.update(id, clean);
+    // Switching or renaming tabs changes the mirrored title, so the window title follows.
+    if (('tabs' in clean || 'activeTab' in clean) && !keys.includes('title')) keys.push('title');
     windows.applyNoteProps(id, keys);
     return true;
   });
@@ -985,6 +1021,7 @@ function registerIpc() {
   ipcMain.handle('notes:empty-trash', (e) => {
     managerOnly(e);
     for (const n of store.all().filter(n => n.trashed)) store.purge(n.id);
+    store.emptyTrashedTabs();
   });
   ipcMain.handle('notes:new', (e) => { managerOnly(e); windows.newNote(); });
   ipcMain.handle('notes:duplicate', (e, id) => { managerOnly(e); windows.duplicateNote(id); });
@@ -1057,6 +1094,39 @@ function registerIpc() {
     const win = BrowserWindow.fromWebContents(e.sender);
     if (note && win) buildNoteMenu({ note, windows, noteId: note.id }).popup({ window: win });
   });
+
+  // ----- tabs -----
+  // The window saves its tabs first (note:update), so the closed tab is trashed with its latest text.
+  ipcMain.handle('note:close-tab', (e, tabId) => {
+    const id = noteOf(e);
+    const n = store.trashTab(id, String(tabId || ''));
+    if (!n) return null;
+    windows.applyNoteProps(id, ['title']);
+    return { tabs: n.tabs, activeTab: n.activeTab, html: n.html };
+  });
+  ipcMain.handle('notes:list-trashed-tabs', (e) => {
+    managerOnly(e);
+    return store.listTrashedTabs().map(t => ({
+      id: t.id, noteId: t.noteId, noteTitle: t.noteTitle, title: t.title,
+      text: t.text.slice(0, 4000), html: t.html, trashedAt: t.trashedAt
+    }));
+  });
+  ipcMain.handle('notes:restore-tab', async (e, tabId) => {
+    managerOnly(e);
+    const t = store.trashedTabs.find(x => x.id === tabId);
+    if (!t) return { ok: false };
+    // Let an open note save its last keystrokes, or its next save would drop the restored tab.
+    await windows.flushRenderer(windows.windowFor(t.noteId), 600);
+    const r = store.restoreTab(tabId);
+    if (!r) return { ok: false };
+    const n = store.get(r.noteId);
+    if (!r.created && n) {
+      windows.sendToNote(n.id, 'note:changed', { tabs: n.tabs, activeTab: n.activeTab, html: n.html });
+      windows.applyNoteProps(n.id, ['title']);
+    }
+    return { ok: true, created: r.created, noteId: r.noteId, noteTitle: t.noteTitle };
+  });
+  ipcMain.handle('notes:purge-tab', (e, tabId) => { managerOnly(e); return store.purgeTab(String(tabId || '')); });
 }
 
 // ---------- lifecycle ----------

@@ -228,7 +228,9 @@ async function importBackup({ parent, store, vault }) {
     if (typeof raw.html !== 'string') continue;
     const html = fixRefs(raw.html);
     if (existingHtml.has(html)) continue; // skip exact duplicates
-    store.create({ ...raw, html, open: false, trashed: !!raw.trashed, bounds: raw.bounds || null });
+    // Tabs carry their own copy of the page HTML, so their image links need the same renaming.
+    const tabs = Array.isArray(raw.tabs) ? raw.tabs.map(t => (t && typeof t.html === 'string' ? { ...t, html: fixRefs(t.html) } : t)) : null;
+    store.create({ ...raw, html, tabs, open: false, trashed: !!raw.trashed, bounds: raw.bounds || null });
     added++;
   }
   for (const t of Array.isArray(data.templates) ? data.templates : []) {
