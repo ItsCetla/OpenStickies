@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenStickies — Sticky notes for the Windows desktop</title>
+  <meta name="description" content="Stickies is a free, open-source sticky notes app for Windows 10 and 11, with rich formatting, smart checklists, pictures, tags, workspaces, version history and private notes. Everything stays on your computer.">
+  <link rel="canonical" href="https://itscetla.github.io/OpenStickies/">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#FFFBEA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16140E" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="OpenStickies">
+  <meta property="og:title" content="OpenStickies — Sticky notes for the Windows desktop">
+  <meta property="og:description" content="Free, open-source sticky notes for Windows 10 and 11: rich formatting, smart checklists, pictures, tags, workspaces, version history and private notes.">
+  <meta property="og:url" content="https://itscetla.github.io/OpenStickies/">
+  <meta property="og:image" content="https://itscetla.github.io/OpenStickies/screenshots/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Stickies: colorful sticky notes on a Windows desktop">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="OpenStickies — Sticky notes for the Windows desktop">
+  <meta name="twitter:description" content="Free, open-source sticky notes for Windows 10 and 11: rich formatting, smart checklists, pictures, tags, workspaces, version history and private notes.">
+  <meta name="twitter:image" content="https://itscetla.github.io/OpenStickies/screenshots/social-preview.png">
+  <meta name="twitter:image:alt" content="Stickies: colorful sticky notes on a Windows desktop">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&amp;family=Inter:wght@400..800&amp;display=swap">
+  <link rel="stylesheet" href="assets/site.css">
+  <script>document.documentElement.className = 'js';</script>
+  <script src="assets/site.js" defer></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "OpenStickies",
+    "alternateName": "Stickies",
+    "description": "Sticky notes for the Windows desktop, rebuilt with rich formatting, images, checklists, reminders, tags, links between notes, workspaces, version history, private notes, screen snips with searchable text, and an OpenCode integration.",
+    "url": "https://itscetla.github.io/OpenStickies/",
+    "downloadUrl": "https://github.com/ItsCetla/OpenStickies/releases/latest",
+    "image": "https://itscetla.github.io/OpenStickies/assets/icon.png",
+    "screenshot": "https://itscetla.github.io/OpenStickies/screenshots/hero.png",
+    "operatingSystem": "Windows 10, Windows 11",
+    "applicationCategory": "ProductivityApplication",
+    "isAccessibleForFree": true,
+    "license": "https://github.com/ItsCetla/OpenStickies/blob/main/LICENSE",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "sameAs": ["https://github.com/ItsCetla/OpenStickies"]
+  }
+  </script>
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 .6a11.4 11.4 0 0 0-3.6 22.2c.57.1.78-.25.78-.55v-2c-3.17.69-3.84-1.53-3.84-1.53-.52-1.32-1.27-1.67-1.27-1.67-1.03-.7.08-.69.08-.69 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.67 1.24 3.32.95.1-.74.4-1.24.72-1.53-2.53-.29-5.2-1.27-5.2-5.64 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.45.11-3.02 0 0 .96-.31 3.14 1.17a10.9 10.9 0 0 1 5.72 0c2.18-1.48 3.14-1.17 3.14-1.17.62 1.57.23 2.73.11 3.02.73.8 1.18 1.82 1.18 3.07 0 4.38-2.67 5.35-5.21 5.63.41.36.77 1.06.77 2.13v3.16c0 .3.2.66.79.55A11.4 11.4 0 0 0 12 .6Z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5.5-5.5L19 12l-5.5 5.5"/></symbol>
+    <symbol id="i-type" viewBox="0 0 24 24"><path d="M4.5 7V5h15v2M12 5v14M9 19h6"/></symbol>
+    <symbol id="i-checklist" viewBox="0 0 24 24"><path d="m3.5 7 2 2 3.5-3.5M3.5 15.5l2 2 3.5-3.5M12.5 7.5h8M12.5 16h8"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8.5V6.5A2.5 2.5 0 0 1 6.5 4h2M15.5 4h2A2.5 2.5 0 0 1 20 6.5v2M20 15.5v2a2.5 2.5 0 0 1-2.5 2.5h-2M8.5 20h-2A2.5 2.5 0 0 1 4 17.5v-2M8 10h8M8 14h5"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3.5 3 8.25 12 13l9-4.75-9-4.75Z"/><path d="m3 12.5 9 4.75 9-4.75M3 16.5l9 4.75 9-4.75"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3.8 12a8.2 8.2 0 1 0 2.4-5.8L3.8 8.6"/><path d="M3.8 4.2v4.4h4.4M12 7.8V12l3 1.8"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12.5" rx="2.5"/><path d="M8.5 20.5h7M12 16.5v4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.9 12.2a1.5 1.5 0 0 0 1.5 1.3h6.2a1.5 1.5 0 0 0 1.5-1.3L17.5 7M10 11v5.5M14 11v5.5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M8.5 14.5l2 2 4-4"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 5.5A1.5 1.5 0 0 1 6.5 4H16l4 4v10.5a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 5 18.5v-13Z"/><path d="M8.5 4v4.5h6V4M8.5 20v-5.5h7V20"/></symbol>
+    <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4.5" rx="1.5"/><path d="M4.5 8.5V18a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.5M10 12.5h4"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.5" r="4.5"/><path d="m11.2 12.3 8.3-8.3M16.5 7l2.5 2.5M14.2 9.3l2 2"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 2.8 8.5 4.7v9L12 21.2l-8.5-4.7v-9L12 2.8Z"/><path d="m3.8 7.7 8.2 4.6 8.2-4.6M12 12.3v8.6"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 5.8v5.7c0 4.3 2.9 7.9 7 9.5 4.1-1.6 7-5.2 7-9.5V5.8L12 3Z"/><path d="M12 8.5v4.5M12 16.2v.1"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="m7.5 9.5 3 2.5-3 2.5M13 15h4"/></symbol>
+    <symbol id="i-install" viewBox="0 0 24 24"><path d="M12 3.5v10m0 0-4-4m4 4 4-4"/><path d="M4 14.5v3.5a2.5 2.5 0 0 0 2.5 2.5h11a2.5 2.5 0 0 0 2.5-2.5v-3.5"/></symbol>
+    <symbol id="i-window" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M6.5 6.5h.01M9 6.5h.01"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="./">
+        <img src="assets/favicon.png" width="32" height="32" alt="">
+        <span>OpenStickies</span>
+      </a>
+      <nav class="primary-nav" id="primary-nav" aria-label="Primary">
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#opencode">OpenCode</a></li>
+          <li><a href="#shortcuts">Shortcuts</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li class="nav-only-menu"><a href="https://github.com/ItsCetla/OpenStickies">GitHub</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <a class="icon-button gh-link" href="https://github.com/ItsCetla/OpenStickies" aria-label="OpenStickies on GitHub">
+          <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
+        </a>
+        <a class="btn btn-primary btn-sm" href="#download">Download</a>
+        <button class="icon-button nav-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Menu">
+          <svg class="i i-open" aria-hidden="true"><use href="#i-menu"/></svg>
+          <svg class="i i-shut" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============ Hero ============ -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap hero-copy">
+        <div class="mini-note n-yellow deco-left" aria-hidden="true">
+          <span class="mini-bar"></span>
+          <span class="mini-text">Ctrl+Alt+N<br>= new note!</span>
+        </div>
+        <div class="mini-note n-pink deco-right" aria-hidden="true">
+          <span class="mini-bar"></span>
+          <span class="mini-text"><i class="box on"></i>write it down<br><i class="box on"></i>tick it off<br><i class="box"></i>feel great</span>
+        </div>
+
+        <a class="hero-pill" href="#opencode">
+          <span class="pill-dot" aria-hidden="true"></span>
+          Works with OpenCode: see your agent’s plan on a sticky
+          <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg>
+        </a>
+        <h1 id="hero-title">Sticky notes, <span class="marker">rebuilt</span> for the Windows desktop.</h1>
+        <p class="lede">Every note is its own small floating window, like classic Stickies — now with rich formatting, pictures, smart checklists, tags, workspaces, version history and private notes.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary btn-lg" href="#download">
+            <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+            Download for Windows
+          </a>
+          <a class="btn btn-secondary btn-lg" href="https://github.com/ItsCetla/OpenStickies">
+            <svg class="i" aria-hidden="true"><use href="#i-github"/></svg>
+            View on GitHub
+          </a>
+        </div>
+        <p class="hero-meta">
+          <span>Free &amp; open source</span>
+          <span>Windows 10 &amp; 11</span>
+          <span>MIT license</span>
+          <span class="release-chip" data-release-version hidden></span>
+        </p>
+      </div>
+
+      <div class="wrap wrap-wide hero-media">
+        <a class="shot shot-hero" href="screenshots/hero.png" data-lightbox>
+          <img src="screenshots/hero.png" width="2560" height="1440" fetchpriority="high" decoding="async"
+               alt="Stickies on the desktop: a meeting note with formatted text, a “Launch week” checklist with due dates and a 3/8 progress count, a hiking note with a picture, a daily-habits checklist, a rolled-up groceries note and an OpenCode task note working on step 3 of 7.">
+        </a>
+      </div>
+    </section>
+
+    <!-- ============ Highlights ============ -->
+    <section class="section highlights" id="features" aria-labelledby="features-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Features</p>
+          <h2 id="features-title">Everything a sticky note should do — and plenty it never could.</h2>
+          <p>Stickies keeps the classic idea of small notes floating on your desktop, and rebuilds everything inside them.</p>
+        </div>
+        <ul class="highlight-grid">
+          <li class="highlight n-yellow">
+            <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-type"/></svg></span>
+            <h3>Rich formatting</h3>
+            <p>Headings, colors, highlights, tables, code and a “/” command menu.</p>
+          </li>
+          <li class="highlight n-green">
+            <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-checklist"/></svg></span>
+            <h3>Smart checklists</h3>
+            <p>Nested items that stay in sync, due dates and a progress count.</p>
+          </li>
+          <li class="highlight n-pink">
+            <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-scan"/></svg></span>
+            <h3>Searchable snips</h3>
+            <p>Snip the screen into a note; the words in pictures become searchable.</p>
+          </li>
+          <li class="highlight n-purple">
+            <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-layers"/></svg></span>
+            <h3>Workspaces</h3>
+            <p>Save note layouts as “Work” or “Home” and switch in a keystroke.</p>
+          </li>
+          <li class="highlight n-teal">
+            <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-history"/></svg></span>
+            <h3>Version history</h3>
+            <p>See word-by-word changes and restore any earlier version.</p>
+          </li>
+          <li class="highlight n-orange">
+            <span class="tile" aria-hidden="true"><svg class="i"><use href="#i-lock"/></svg></span>
+            <h3>Private notes</h3>
+            <p>Encrypted on disk with AES-256-GCM, unlocked by your password.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ Writing ============ -->
+    <section class="feature n-yellow" id="writing" aria-labelledby="writing-title">
+      <div class="wrap feature-grid">
+        <div class="feature-copy">
+          <p class="tag">Writing</p>
+          <h2 id="writing-title">Write the way you think.</h2>
+          <p class="feature-lede">Format as you type with Markdown-style shortcuts, or type <kbd>/</kbd> to insert a heading, checklist, table, image, screen snip, date, link, reminder or template.</p>
+          <ul class="ticks">
+            <li>Bold, italic, underline, strikethrough, superscript and subscript, titles and headings, quotes and code blocks.</li>
+            <li>9 text colors, 6 highlights, 5 sizes, alignment, links, tables and dividers.</li>
+            <li>Type <code>#&nbsp;</code> for a heading, <code>-&nbsp;</code> for bullets or <code>[]&nbsp;</code> for a checklist, and <code>**bold**</code> or <code>==highlight==</code> inline.</li>
+            <li>By default the formatting toolbar pops up over the bottom edge when you select text, so a note never changes size.</li>
+            <li>Six built-in templates, from meeting notes to a packing list, that fill in the date for you.</li>
+          </ul>
+        </div>
+        <figure class="feature-media">
+          <a class="shot" href="screenshots/formatting.png" data-lightbox>
+            <img src="screenshots/formatting.png" width="2400" height="1500" loading="lazy" decoding="async"
+                 alt="A meeting note with headings, highlights, colored text and the formatting toolbar along its bottom edge, next to a note where typing “/” has opened the command menu: Title, Heading, Subheading, Normal text, Checklist, Bulleted list, Numbered list and Quote.">
+          </a>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ Checklists ============ -->
+    <section class="feature feature-flip n-green" id="checklists" aria-labelledby="checklists-title">
+      <div class="wrap feature-grid">
+        <div class="feature-copy">
+          <p class="tag">Checklists</p>
+          <h2 id="checklists-title">Checklists that keep themselves in order.</h2>
+          <p class="feature-lede">Nest items with <kbd>Tab</kbd>, and parents and sub-items stay in sync. A progress count like <strong>3/8</strong> shows in the title bar.</p>
+          <ul class="ticks">
+            <li>Ticking a parent ticks everything under it, and once every sub-item is ticked, the parent ticks itself.</li>
+            <li>Add <code>@today</code>, <code>@fri</code>, <code>@nextweek</code>, <code>@+3d</code> or <code>@10/20</code> for a due date. Overdue items turn red.</li>
+            <li>Move items with <span class="keys"><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></span>, or drag the grip on their left.</li>
+            <li>Make a checklist untick itself every day or every Monday, for routines and habits.</li>
+            <li>Ticked items stay where they are, or move to the bottom if you prefer.</li>
+          </ul>
+        </div>
+        <figure class="feature-media">
+          <a class="shot" href="screenshots/checklists.png" data-lightbox>
+            <img src="screenshots/checklists.png" width="2400" height="1500" loading="lazy" decoding="async"
+                 alt="Three checklist notes: “Launch week” with nested items, due dates such as @tomorrow and @fri, an overdue date in red and a 3/8 count in the title bar; “Daily habits”, which unticks every day; and a “Stand-up” list.">
+          </a>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ Pictures ============ -->
+    <section class="feature n-pink" id="pictures" aria-labelledby="pictures-title">
+      <div class="wrap feature-grid">
+        <div class="feature-copy">
+          <p class="tag">Pictures &amp; snips</p>
+          <h2 id="pictures-title">Pictures go exactly where you want them.</h2>
+          <p class="feature-lede">Paste, drag in or snip the screen, then lay pictures out the way you would in Word.</p>
+          <ul class="ticks">
+            <li>Snip the screen from anywhere with <span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd></span>, or type <code>/snip</code> in a note.</li>
+            <li>Resize from any corner, and set a picture in line with text, wrapped left or right, top and bottom, behind or in front of text.</li>
+            <li>Drag pictures around; the arrow keys nudge floating ones.</li>
+            <li>Windows’ built-in text recognition reads snips, screenshots and photos, so the notes list finds them by their words.</li>
+            <li>Right-click a picture to copy its text.</li>
+          </ul>
+        </div>
+        <figure class="feature-media">
+          <a class="shot" href="screenshots/images.png" data-lightbox>
+            <img src="screenshots/images.png" width="2400" height="1500" loading="lazy" decoding="async"
+                 alt="A hiking note with a picture wrapped in its text above a checklist, next to a note with a snipped bar chart selected, showing its resize handles and the picture layout bar.">
+          </a>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ Organize ============ -->
+    <section class="feature feature-flip n-purple" id="organize" aria-labelledby="organize-title">
+      <div class="wrap feature-grid">
+        <div class="feature-copy">
+          <p class="tag">Organize</p>
+          <h2 id="organize-title">Tag it, link it, find it.</h2>
+          <p class="feature-lede">Type <code>#project</code> to tag a note and <code>[[</code> to link to another. Open the notes list with <span class="keys"><kbd>Ctrl</kbd>+<kbd>H</kbd></span> to search all of them.</p>
+          <ul class="ticks">
+            <li><code>#</code> suggests tags you’ve already used. <span class="keys"><kbd>Ctrl</kbd>+Click</span> a tag to list every note that has it.</li>
+            <li>Link to a note by title, or create a new one, and see what points back under <strong>Linked from</strong>.</li>
+            <li>A sidebar with All, On desktop, Kept on top, Reminders, Tasks and Trash, plus your saved searches, tags and workspaces.</li>
+            <li>Workspaces remember which notes are open, where and how big. Switch with <span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd></span>, or let Stickies switch when you dock or change monitors.</li>
+          </ul>
+        </div>
+        <figure class="feature-media">
+          <a class="shot" href="screenshots/notes-list.png" data-lightbox>
+            <img src="screenshots/notes-list.png" width="2400" height="1500" loading="lazy" decoding="async"
+                 alt="The Notes list searching for #work, with a sidebar of views, saved searches and tags, and previews of the matching notes.">
+          </a>
+        </figure>
+      </div>
+
+      <div class="wrap">
+        <div class="search-card" role="group" aria-labelledby="search-title">
+          <div class="search-card-head">
+            <h3 id="search-title">A small search language</h3>
+            <p>Type a filter into the notes list, then click <strong>Save this search</strong> to keep it in the sidebar.</p>
+          </div>
+          <dl class="filters">
+            <div><dt>A tag</dt><dd><code>#work</code></dd></div>
+            <div><dt>Unfinished checklists</dt><dd><code>has:unchecked</code></dd></div>
+            <div><dt>Notes with pictures</dt><dd><code>has:image</code></dd></div>
+            <div><dt>Recent edits</dt><dd><code>edited:today</code> <code>edited:week</code> <code>edited:3d</code></dd></div>
+            <div><dt>Due dates</dt><dd><code>due:today</code> <code>due:week</code> <code>due:overdue</code></dd></div>
+            <div><dt>On the desktop / kept on top</dt><dd><code>is:open</code> <code>is:pinned</code></dd></div>
+            <div><dt>By color</dt><dd><code>color:blue</code></dd></div>
+            <div><dt>An exact phrase</dt><dd><code>"call back"</code></dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Tasks ============ -->
+    <section class="feature n-orange" id="tasks" aria-labelledby="tasks-title">
+      <div class="wrap feature-grid">
+        <div class="feature-copy">
+          <p class="tag">Tasks</p>
+          <h2 id="tasks-title">Every to-do from every note, in one list.</h2>
+          <p class="feature-lede">The Tasks view gathers every unticked checklist item from all your notes, grouped by note or by due date.</p>
+          <ul class="ticks">
+            <li>Tick items right there and the note updates, even if it’s closed.</li>
+            <li>Click an item to jump straight to it.</li>
+            <li>Due dates come from the <code>@fri</code> or <code>@10/20</code> you type in a checklist.</li>
+            <li>Search the notes list with <code>due:today</code>, <code>due:week</code> or <code>due:overdue</code>.</li>
+          </ul>
+        </div>
+        <figure class="feature-media">
+          <a class="shot" href="screenshots/tasks.png" data-lightbox>
+            <img src="screenshots/tasks.png" width="2400" height="1500" loading="lazy" decoding="async"
+                 alt="The Tasks view grouped by date (overdue, tomorrow, next 7 days and no date), with each item showing the note it comes from.">
+          </a>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ History ============ -->
+    <section class="feature feature-flip n-teal" id="history" aria-labelledby="history-title">
+      <div class="wrap feature-grid">
+        <div class="feature-copy">
+          <p class="tag">Version history</p>
+          <h2 id="history-title">Changed your mind? Go back.</h2>
+          <p class="feature-lede">Stickies keeps a snapshot whenever you come back to a note after a few minutes away, and shows exactly what changed, word by word.</p>
+          <ul class="ticks">
+            <li>Open ⋯ → <strong>Version history…</strong> for a timeline of a note’s versions.</li>
+            <li>Preview any old version with its changes highlighted.</li>
+            <li>Restore any version. Your current text stays in the history, so a restore can be undone.</li>
+            <li>Deleted a note by mistake? The Trash keeps it for 30 days.</li>
+          </ul>
+        </div>
+        <figure class="feature-media">
+          <a class="shot" href="screenshots/history.png" data-lightbox>
+            <img src="screenshots/history.png" width="2400" height="1500" loading="lazy" decoding="async"
+                 alt="The Version history window for a note: a timeline of versions on the left, and the Changes view with added and removed words highlighted.">
+          </a>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ Private ============ -->
+    <section class="feature n-gray" id="private" aria-labelledby="private-title">
+      <div class="wrap feature-grid">
+        <div class="feature-copy">
+          <p class="tag">Private notes</p>
+          <h2 id="private-title">Lock away the notes that are just for you.</h2>
+          <p class="feature-lede">Set a password in Settings, then choose ⋯ → <strong>Make private…</strong> on any note. Its words and pictures are encrypted on disk.</p>
+          <ul class="ticks">
+            <li>AES-256-GCM encryption, with the key protected by your password via scrypt.</li>
+            <li>While locked, private notes are hidden from search, previews and exports.</li>
+            <li>They lock after a set idle time, and whenever Windows locks or sleeps.</li>
+            <li>Windows Hello can unlock them if it’s set up on the PC.</li>
+          </ul>
+          <p class="callout callout-warn">
+            <svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>
+            <span><strong>If you forget the password, private notes can’t be recovered.</strong></span>
+          </p>
+        </div>
+        <figure class="feature-media">
+          <a class="shot" href="screenshots/private.png" data-lightbox>
+            <img src="screenshots/private.png" width="2400" height="1500" loading="lazy" decoding="async"
+                 alt="A locked private note asking for its password, next to the Private notes settings: lock automatically after 5 minutes, and unlock with Windows Hello.">
+          </a>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ Themes ============ -->
+    <section class="feature feature-flip n-charcoal" id="themes" aria-labelledby="themes-title">
+      <div class="wrap feature-grid">
+        <div class="feature-copy">
+          <p class="tag">Dark mode</p>
+          <h2 id="themes-title">Easy on the eyes, day or night.</h2>
+          <p class="feature-lede">Choose System, Light or Dark in Settings. System follows Windows, and every note color has its own dark version.</p>
+          <ul class="swatches" aria-label="Note colors">
+            <li class="n-yellow"><span>Yellow</span></li>
+            <li class="n-orange"><span>Orange</span></li>
+            <li class="n-pink"><span>Pink</span></li>
+            <li class="n-purple"><span>Purple</span></li>
+            <li class="n-blue"><span>Blue</span></li>
+            <li class="n-teal"><span>Teal</span></li>
+            <li class="n-green"><span>Green</span></li>
+            <li class="n-gray"><span>Gray</span></li>
+            <li class="n-charcoal"><span>Charcoal</span></li>
+          </ul>
+          <ul class="ticks">
+            <li>Nine note colors, each with a light and a dark version.</li>
+            <li>Settings also picks the color and font for new notes, and the text size for all of them.</li>
+          </ul>
+        </div>
+        <figure class="feature-media">
+          <a class="shot" href="screenshots/dark-mode.png" data-lightbox>
+            <img src="screenshots/dark-mode.png" width="2400" height="1500" loading="lazy" decoding="async"
+                 alt="Four notes in the dark theme, in purple, yellow, charcoal and pink.">
+          </a>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ OpenCode ============ -->
+    <section class="section band band-blue n-blue" id="opencode" aria-labelledby="opencode-title">
+      <div class="wrap">
+        <div class="feature-grid opencode-top">
+          <div class="feature-copy">
+            <p class="tag">OpenCode integration</p>
+            <h2 id="opencode-title">Watch your AI agent’s plan on a sticky.</h2>
+            <p class="feature-lede">While <a href="https://opencode.ai">OpenCode</a> works on a multi-step task, a sticky on your desktop shows its plan.</p>
+            <ul class="ticks">
+              <li>The steps it has finished are ticked, and the step it’s on is marked ▶.</li>
+              <li>The steps still to do stay open, so you can see where it’s going.</li>
+              <li>Sub-agents’ lists appear as sections of the same note.</li>
+              <li>A status line says <em>Working on step 3 of 7</em>, <em>Waiting for you</em>, <em>All 7 steps done</em> or <em>Stopped with an error</em>.</li>
+            </ul>
+            <ol class="steps" aria-label="Set up">
+              <li><span>In Stickies, open <strong>Settings → OpenCode → Connect</strong>. This adds a small plugin to <code>~/.config/opencode/plugins/</code>.</span></li>
+              <li><span>Restart OpenCode.</span></li>
+            </ol>
+          </div>
+          <figure class="feature-media">
+            <a class="shot" href="screenshots/opencode.png" data-lightbox>
+              <img src="screenshots/opencode.png" width="2400" height="1500" loading="lazy" decoding="async"
+                   alt="An OpenCode task note, “Add dark mode to the storefront”, working on step 3 of 7: finished steps ticked, the current step marked ▶ and a sub-agent’s section below. Next to it, a “Deploy steps” checklist sticky.">
+            </a>
+          </figure>
+        </div>
+
+        <div class="opencode-bottom">
+          <div class="tools">
+            <h3>Notes on request</h3>
+            <p>The plugin also gives the agent four tools, so you can just ask: <em>“put the deploy steps on a sticky”</em> or <em>“make me a checklist sticky for this refactor and tick items off as you go.”</em></p>
+            <div class="table-wrap">
+              <table class="tools-table">
+                <caption class="sr-only">The agent’s Stickies tools</caption>
+                <thead><tr><th scope="col">Tool</th><th scope="col">What it does</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row"><code>stickies_create</code></th><td>New sticky with a title and Markdown content (<code>- [ ]</code> makes a checkbox), optional color and tags</td></tr>
+                  <tr><th scope="row"><code>stickies_update</code></th><td>Replace the content, append to it, rename it or change its color</td></tr>
+                  <tr><th scope="row"><code>stickies_check</code></th><td>Tick or untick a checklist item by its text or number</td></tr>
+                  <tr><th scope="row"><code>stickies_list</code></th><td>List the stickies the agent has made (with ids), e.g. to continue one from an earlier session</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="opencode-notes">
+            <div class="mini-card">
+              <svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>
+              <div>
+                <h3>Your notes stay yours</h3>
+                <p>The agent can only change stickies <strong>it</strong> created. It can’t read, change or tick your own notes, and a sticky you delete can’t be edited back.</p>
+              </div>
+            </div>
+            <div class="mini-card">
+              <svg class="i" aria-hidden="true"><use href="#i-checklist"/></svg>
+              <div>
+                <h3>Every multi-part task gets a sticky</h3>
+                <p>Requests with two or more distinct subtasks get a to-do list first. Quick questions don’t create a note. Task notes are blue, locked so your typing can’t clash with the agent, and tagged <code>#opencode</code> plus the project name.</p>
+              </div>
+            </div>
+            <div class="mini-card">
+              <svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>
+              <div>
+                <h3>Local, and scriptable</h3>
+                <p>It runs over a small API on <code>127.0.0.1</code> with a random port and token; requests from web pages are refused. Scripts can use it too — <a href="https://github.com/ItsCetla/OpenStickies#opencode-integration">see the README</a>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Safety ============ -->
+    <section class="section" id="safety" aria-labelledby="safety-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Safety &amp; privacy</p>
+          <h2 id="safety-title">Your notes are safe, and they stay on your computer.</h2>
+          <p>No account to sign up for. Your notes live in <code>%APPDATA%\Stickies\data\</code>, with several layers of protection against slips, crashes and prying eyes.</p>
+        </div>
+        <ul class="card-grid">
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-monitor"/></svg>
+            <h3>Stored locally</h3>
+            <p>Notes, pictures, templates and settings are saved as files on your PC. Everything stays on your computer.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-history"/></svg>
+            <h3>Version history</h3>
+            <p>A snapshot whenever you return to a note after a few minutes away. Restore any version, and undo a restore.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-trash"/></svg>
+            <h3>Trash for 30 days</h3>
+            <p>Deleted notes wait in the Trash for 30 days before they’re gone.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-calendar"/></svg>
+            <h3>Daily backups</h3>
+            <p>Daily copies of your notes cover the last 14 days.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-save"/></svg>
+            <h3>Crash-safe saves</h3>
+            <p>Saves are written atomically and flushed to disk, so a crash won’t leave a half-written file.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-archive"/></svg>
+            <h3>Backup &amp; restore</h3>
+            <p>One file with every note, image and template. Private notes stay encrypted inside it.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-key"/></svg>
+            <h3>Encrypted private notes</h3>
+            <p>AES-256-GCM, with the key protected by your password via scrypt.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-box"/></svg>
+            <h3>Sandboxed windows</h3>
+            <p>Context isolation, a strict Content-Security-Policy and an allowlist sanitizer for anything pasted or imported.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ Shortcuts ============ -->
+    <section class="section band band-paper" id="shortcuts" aria-labelledby="shortcuts-title">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Keyboard shortcuts</p>
+          <h2 id="shortcuts-title">Keep your hands on the keyboard.</h2>
+          <p>Global shortcuts work anywhere in Windows, and you can change them in Settings.</p>
+        </div>
+        <div class="kbd-grid">
+          <div class="kbd-col">
+            <div class="kbd-card">
+              <h3>Anywhere in Windows</h3>
+              <table class="kbd-table">
+                <caption class="sr-only">Global shortcuts</caption>
+                <tbody>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd></span></th><td>New note</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd></span></th><td>Snip the screen into a note</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd></span></th><td>Bring all notes to the front</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd></span></th><td>Show / hide all notes</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>W</kbd></span></th><td>Next workspace</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="kbd-card">
+              <h3>As you type</h3>
+              <table class="kbd-table typing-table">
+                <caption class="sr-only">Typing shortcuts</caption>
+                <tbody>
+                  <tr><th scope="row"><code>#&nbsp;</code> <code>##&nbsp;</code> <code>###&nbsp;</code></th><td>Headings</td></tr>
+                  <tr><th scope="row"><code>-&nbsp;</code> <code>1.&nbsp;</code></th><td>Bulleted / numbered list</td></tr>
+                  <tr><th scope="row"><code>[]&nbsp;</code></th><td>Checklist item</td></tr>
+                  <tr><th scope="row"><code>&gt;&nbsp;</code></th><td>Quote</td></tr>
+                  <tr><th scope="row"><code>```</code> <code>---</code> then <kbd>Enter</kbd></th><td>Code block / divider</td></tr>
+                  <tr><th scope="row"><code>**bold**</code> <code>*italic*</code> <code>~~strike~~</code></th><td>Bold / italic / strikethrough</td></tr>
+                  <tr><th scope="row"><code>`code`</code> <code>==highlight==</code></th><td>Inline code / highlight</td></tr>
+                  <tr><th scope="row"><code>/</code></th><td>Command menu</td></tr>
+                  <tr><th scope="row"><code>#project</code> <code>[[</code></th><td>Tag / link to a note</td></tr>
+                  <tr><th scope="row"><code>@fri</code> <code>@+3d</code></th><td>Due date on a checklist item</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="kbd-col">
+            <div class="kbd-card">
+              <h3>In a note</h3>
+              <table class="kbd-table">
+                <caption class="sr-only">Shortcuts in a note</caption>
+                <tbody>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>N</kbd></span> / <span class="keys"><kbd>Ctrl</kbd>+<kbd>W</kbd></span> / <span class="keys"><kbd>Ctrl</kbd>+<kbd>D</kbd></span></th><td>New / close / delete note</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>H</kbd></span></th><td>Notes list</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>B</kbd></span> / <kbd>I</kbd> / <kbd>U</kbd> / <kbd>T</kbd> / <kbd>E</kbd></th><td>Bold / italic / underline / strikethrough / inline code</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></span> / <kbd>O</kbd> / <kbd>C</kbd></th><td>Bulleted / numbered list / checklist</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>1</kbd></span> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>0</kbd></th><td>Title / heading / subheading / normal text</td></tr>
+              <tr><th scope="row"><kbd>Tab</kbd> / <span class="keys"><kbd>Shift</kbd>+<kbd>Tab</kbd></span></th><td>Indent / outdent (list items, table cells)</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>↑</kbd></span> / <kbd>↓</kbd></th><td>Move a list item</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>K</kbd></span></th><td>Link</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>F</kbd></span></th><td>Find in note</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd></span></th><td>Edit HTML source</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd></span></th><td>Paste as plain text</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></span></th><td>Keep on top</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></span></th><td>Roll up / unroll (or double-click the title bar)</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>=</kbd></span> / <span class="keys"><kbd>Ctrl</kbd>+<kbd>-</kbd></span> / <span class="keys"><kbd>Ctrl</kbd>+<kbd>0</kbd></span></th><td>Zoom in / out / reset</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>P</kbd></span></th><td>Print</td></tr>
+              <tr><th scope="row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Click</kbd></span></th><td>Open a link, linked note or #tag</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Download ============ -->
+    <section class="section" id="download" aria-labelledby="download-title">
+      <div class="wrap">
+        <div class="download-note n-yellow">
+          <div class="download-head">
+            <img src="assets/icon.png" width="72" height="72" alt="">
+            <div>
+              <h2 id="download-title">Get Stickies for Windows</h2>
+              <p>Free for Windows 10 and 11. Choose the installer, or the portable version if you’d rather not install anything.</p>
+              <p class="release-line" data-release-info hidden>
+                <span>Latest: <strong data-release-version></strong></span>
+                <span data-release-date></span>
+                <a data-release-page href="https://github.com/ItsCetla/OpenStickies/releases/latest">Release notes</a>
+              </p>
+            </div>
+          </div>
+
+          <div class="download-cards">
+            <article class="dl-card">
+              <div class="dl-card-head">
+                <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-install"/></svg></span>
+                <h3>Installer</h3>
+                <span class="badge">Recommended</span>
+              </div>
+              <p>Installs Stickies and adds Start menu and desktop shortcuts.</p>
+              <p class="dl-file"><code data-dl-file="installer">Stickies-Setup-&lt;version&gt;.exe</code><span class="dl-size" data-dl-size="installer" hidden></span></p>
+              <a class="btn btn-primary btn-block" data-dl="installer" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
+                <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+                Download installer
+              </a>
+            </article>
+            <article class="dl-card">
+              <div class="dl-card-head">
+                <span class="dl-icon" aria-hidden="true"><svg class="i"><use href="#i-window"/></svg></span>
+                <h3>Portable</h3>
+              </div>
+              <p>Runs without installing anything. Download it and double-click.</p>
+              <p class="dl-file"><code data-dl-file="portable">Stickies-Portable-&lt;version&gt;.exe</code><span class="dl-size" data-dl-size="portable" hidden></span></p>
+              <a class="btn btn-secondary btn-block" data-dl="portable" href="https://github.com/ItsCetla/OpenStickies/releases/latest">
+                <svg class="i" aria-hidden="true"><use href="#i-download"/></svg>
+                Download portable
+              </a>
+            </article>
+          </div>
+
+          <div class="callout callout-info">
+            <svg class="i" aria-hidden="true"><use href="#i-shield"/></svg>
+            <p><strong>Seeing “Windows protected your PC”?</strong> The builds aren’t code-signed, so Windows SmartScreen may warn you the first time. Click <strong>More info → Run anyway</strong>.</p>
+          </div>
+        </div>
+
+        <div class="source-row">
+          <div class="source-copy">
+            <h3>Build from source</h3>
+            <p>Needs Node.js 20 or newer. <code>npm run dist</code> builds the installer and portable app into <code>dist/</code>.</p>
+            <p class="all-releases"><a href="https://github.com/ItsCetla/OpenStickies/releases">All releases on GitHub <svg class="i" aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
+          </div>
+          <div class="code-block">
+            <div class="code-head">
+              <span>Terminal</span>
+              <button class="copy-btn" type="button" data-copy="build-cmds" hidden>
+                <svg class="i" aria-hidden="true"><use href="#i-copy"/></svg><span aria-live="polite">Copy</span>
+              </button>
+            </div>
+<pre id="build-cmds"><code>git clone https://github.com/ItsCetla/OpenStickies.git
+cd OpenStickies
+npm install
+npm start</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section class="section" id="faq" aria-labelledby="faq-title">
+      <div class="wrap wrap-narrow">
+        <div class="section-head">
+          <p class="eyebrow">FAQ</p>
+          <h2 id="faq-title">Questions, answered.</h2>
+        </div>
+        <div class="faq">
+          <details>
+            <summary>Windows says “Windows protected your PC”. Is that normal?</summary>
+            <div class="faq-body">
+              <p>Yes. The builds aren’t code-signed, so Windows SmartScreen may show that warning the first time you run Stickies. Click <strong>More info → Run anyway</strong>.</p>
+            </div>
+          </details>
+          <details>
+            <summary>Where are my notes stored?</summary>
+            <div class="faq-body">
+              <p>Everything stays on your computer, in <code>%APPDATA%\Stickies\data\</code>: your notes in <code>notes.json</code>, pictures in <code>attachments\</code>, version history in <code>history\</code> and daily backups in <code>backups\</code>. Settings → <strong>Open data folder</strong> takes you there.</p>
+              <p>One catch: if Stickies is started by a packaged Windows app (for example from a terminal inside Claude Desktop), Windows redirects that copy’s data to the app’s private folder, so it has its own separate notes.</p>
+            </div>
+          </details>
+          <details>
+            <summary>Do I need an account or an internet connection?</summary>
+            <div class="faq-body">
+              <p>No account. Your notes are saved on your computer, not in the cloud. The OpenCode integration is local too: it talks to Stickies over a small API on <code>127.0.0.1</code>, and requests from web pages are refused.</p>
+            </div>
+          </details>
+          <details>
+            <summary>How do I back up my notes, or move them to another PC?</summary>
+            <div class="faq-body">
+              <p>Open Settings → <strong>Back up all notes…</strong> to save one file with every note, image and template (private notes stay encrypted). On the other PC, use <strong>Restore from backup…</strong>, which adds the backup’s notes alongside your current ones.</p>
+              <p>Stickies also keeps daily copies of your notes for the last 14 days, and the Trash keeps deleted notes for 30 days.</p>
+            </div>
+          </details>
+          <details>
+            <summary>I closed every note. Where did Stickies go?</summary>
+            <div class="faq-body">
+              <p>It keeps running in the <strong>system tray</strong>. Windows hides new tray icons behind the <strong>^</strong> arrow at the right end of the taskbar; drag the yellow icon onto the taskbar to keep it in view. Click it to bring your notes back, or right-click it for more.</p>
+              <p>You can also press <span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd></span> to show or hide all notes, or <span class="keys"><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd></span> for a new one.</p>
+            </div>
+          </details>
+          <details>
+            <summary>I forgot my private-notes password. Can I get my notes back?</summary>
+            <div class="faq-body">
+              <p>No. Private notes are encrypted with a key that only your password can unlock, so if you forget the password, they can’t be recovered. Your other notes aren’t affected.</p>
+            </div>
+          </details>
+          <details>
+            <summary>Is there a Mac or Linux version?</summary>
+            <div class="faq-body">
+              <p>No. Stickies is made for Windows 10 and 11, and the releases are Windows builds.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <img src="assets/favicon.png" width="36" height="36" alt="">
+        <div>
+          <p class="footer-name">OpenStickies</p>
+          <p>Sticky notes for the Windows desktop. Free and open source under the <a href="https://github.com/ItsCetla/OpenStickies/blob/main/LICENSE">MIT license</a>.</p>
+        </div>
+      </div>
+      <nav aria-label="Project links">
+        <ul class="footer-links">
+          <li><a href="https://github.com/ItsCetla/OpenStickies">GitHub</a></li>
+          <li><a href="https://github.com/ItsCetla/OpenStickies/releases">Releases</a></li>
+          <li><a href="https://github.com/ItsCetla/OpenStickies/issues">Issues</a></li>
+          <li><a href="https://github.com/ItsCetla/OpenStickies/blob/main/LICENSE">License</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="wrap">
+      <div class="footer-bottom">
+        <p>© 2026 the Stickies authors</p>
+        <p class="made-for"><svg class="i" aria-hidden="true"><use href="#i-window"/></svg>Made for Windows 10 &amp; 11</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
