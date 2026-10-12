@@ -79,6 +79,18 @@ function renderBlocks(nodes) {
   return blocks;
 }
 
+// <br> inside a code block is a line break (formatBlock 'pre' joins lines with <br>),
+// matching the editor's codeText(); textContent would drop it and merge the lines.
+function preText(el) {
+  let s = '';
+  for (let c = el.firstChild; c; c = c.nextSibling) {
+    if (c.nodeType === 3) s += c.data;
+    else if (c.nodeName === 'BR') s += '\n';
+    else if (c.nodeType === 1) s += preText(c);
+  }
+  return s;
+}
+
 function renderBlock(el) {
   switch (el.nodeName) {
     case 'H1': case 'H2': case 'H3': case 'H4': case 'H5': case 'H6':
@@ -88,7 +100,7 @@ function renderBlock(el) {
     case 'PRE': {
       // A chosen language wins over the editor's guess; plain text gets a bare fence.
       const lang = el.getAttribute('data-lang') || el.getAttribute('data-lang-auto') || '';
-      const code = el.textContent.replace(/\n$/, '');
+      const code = preText(el).replace(/\u200b/g, '').replace(/\n$/, '');
       // The fence must be longer than any run of backticks inside the code.
       const runs = code.match(/`{3,}/g) || [];
       const fence = '`'.repeat(Math.max(3, ...runs.map(r => r.length + 1)));
