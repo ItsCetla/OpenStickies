@@ -209,7 +209,7 @@ const SQL_RULES = (() => {
     { re: /#[^\n]*/y, kind: (m, i, text) => (atLineStart(text, i) ? 'comment' : false) },
     { re: BLOCK_COMMENT, kind: 'comment' },
     { re: /[nNeE]?'(?:''|\\.|[^'\\])*'?/y, kind: 'string' },
-    { re: /"(?:""|[^"\n])*"?|`[^`\n]*`?|\[[^\]\n]+\]/y, kind: 'property' },
+    { re: /"(?:""|[^"\n])*"?|`[^`\n]*`?|\[[^\]\n]{1,128}\]/y, kind: 'property' },
     { re: /[@:$][\w]+/y, kind: (m, i, text) => (text[i] === ':' && text[i + 1] === ':' ? false : 'property') },
     { re: NUM, kind: 'number' },
     { re: IDENT, kind: word, word: true },
@@ -365,9 +365,17 @@ function cLikeRules(lang) {
 
 const YAML_RULES = (() => {
   // Only indentation and "- " list markers may come before a mapping key on its line.
+  // Scans backwards and stops at the first other character, so the cost is the indent,
+  // not the line (a long flow mapping would otherwise be quadratic).
   const keyPos = (text, i) => {
-    const nl = text.lastIndexOf('\n', i - 1);
-    return /^[ \t]*(?:-[ \t]+)*$/.test(text.slice(nl + 1, i));
+    for (let j = i - 1; j >= 0; j--) {
+      const c = text[j];
+      if (c === '\n') return true;
+      if (c === '-') {
+        if (!(text[j + 1] === ' ' || text[j + 1] === '\t')) return false;
+      } else if (c !== ' ' && c !== '\t') return false;
+    }
+    return true;
   };
   const scalarEnds = (text, end) => /^[ \t]*(?:$|\n|#|,|\]|\})/.test(text.slice(end, end + 64));
   return [
@@ -375,7 +383,7 @@ const YAML_RULES = (() => {
     { re: /(?:---|\.\.\.)(?=[ \t]|\n|$)/y, bol: true, kind: 'punctuation' },
     { re: /-(?=[ \t]|\n|$)/y, kind: 'punctuation' },
     {
-      re: /(?:"(?:\\.|[^"\\\n])*"|'(?:''|[^'\n])*'|[^\s#'"{}[\],:&*!|>-][^\n#]*?)(?=[ \t]*:(?:[ \t]|\n|$))/y,
+      re: /(?:"(?:\\.|[^"\\\n]){0,200}"|'(?:''|[^'\n]){0,200}'|[^\s#'"{}[\],:&*!|>-][^\n#]{0,200}?)(?=[ \t]*:(?:[ \t]|\n|$))/y,
       kind: (m, i, text) => (keyPos(text, i) ? 'property' : false)
     },
     { re: /"(?:\\.|[^"\\])*"?|'(?:''|[^'])*'?/y, kind: 'string' },
@@ -402,16 +410,16 @@ const MD_RULES = [
   { re: /<(?:https?:|mailto:)[^>\s]+>/y, kind: 'string' },
   { re: /<\/?[A-Za-z][^>\n]*>/y, kind: 'tag' },
   {
-    re: /!?\[([^\]\n]*)\]\(([^)\n]*)\)/y,
+    re: /!?\[([^\]\n]{0,500})\]\(([^)\n]{0,2000})\)/y,
     kind: (m) => {
       const open = m[0].indexOf('[');
       const close = open + 1 + m[1].length;
       return [[0, open + 1, 'punctuation'], [open + 1, close, 'function'], [close, close + 2, 'punctuation'], [close + 2, close + 2 + m[2].length, 'string'], [m[0].length - 1, m[0].length, 'punctuation']];
     }
   },
-  { re: /(\*\*|__)(?=\S)[^\n]*?\S\1/y, kind: (m, i, text) => (/\w/.test(text[i - 1] || '') && m[1] === '__' ? false : 'type') },
-  { re: /([*_])(?=[^\s*_])[^\n*_]*?[^\s*_]\1(?!\w)/y, kind: (m, i, text) => (/\w/.test(text[i - 1] || '') ? false : 'type') },
-  { re: /~~(?=\S)[^\n]*?\S~~/y, kind: 'comment' },
+  { re: /(\*\*|__)(?=\S)[^\n]{0,500}?\S\1/y, kind: (m, i, text) => (/\w/.test(text[i - 1] || '') && m[1] === '__' ? false : 'type') },
+  { re: /([*_])(?=[^\s*_])[^\n*_]{0,500}?[^\s*_]\1(?!\w)/y, kind: (m, i, text) => (/\w/.test(text[i - 1] || '') ? false : 'type') },
+  { re: /~~(?=\S)[^\n]{0,500}?\S~~/y, kind: 'comment' },
   { re: /[\p{L}\p{N}]+/uy, kind: null }
 ];
 

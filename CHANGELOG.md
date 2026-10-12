@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - Opening a search result whose match is in another tab of the note now switches to that tab and highlights the match, and the scroll to the match is no longer undone by the saved scroll position.
+- A note no longer freezes for seconds after each edit when a YAML, Markdown or SQL code block holds one very long line; code blocks with a line over 10,000 characters are left uncolored, and unchanged blocks are not re-colored on every edit.
 
 ## [3.1.0] - 2026-10-12
 

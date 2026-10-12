@@ -17,6 +17,23 @@ const INLINE_FORMAT = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'DE
 const URL_RE = /^(?:https?:\/\/[\w[\]-][^\s<>]*|www\.[\w-]+\.[^\s<>]+|(?:[a-z\d](?:[a-z\d-]*[a-z\d])?\.)+[a-z]{2,24}(?::\d{2,5})?\/[^\s<>]*)$/i;
 // Large code blocks are left uncolored rather than slowing typing down.
 const HIGHLIGHT_MAX_CHARS = 100000;
+// So are blocks with a very long line (minified code, pasted data): a backstop for any
+// lexer rule that still scans a line more than once.
+const HIGHLIGHT_MAX_LINE = 10000;
+// Tokens per code block, reused while its text and language are unchanged, so editing one
+// block doesn't re-tokenize every other block in the note.
+const tokenCache = new WeakMap();
+
+function hasLongLine(text, max) {
+  let start = 0;
+  while (start <= text.length) {
+    let nl = text.indexOf('\n', start);
+    if (nl === -1) nl = text.length;
+    if (nl - start > max) return true;
+    start = nl + 1;
+  }
+  return false;
+}
 
 export class Editor {
   constructor(el, { api, content, imgTools, dropCaret, dropHint, grip, itemDrop, onChange, onSelection, toast }) {
@@ -223,8 +240,14 @@ export class Editor {
       setAttr(pre, 'data-lang-auto', chosen ? null : lang);
       setAttr(pre, 'data-lang-label', lang === 'text' ? null : langLabel(lang));
       if (text.length > HIGHLIGHT_MAX_CHARS || !pieces.length) continue;
+      let cached = tokenCache.get(pre);
+      if (!cached || cached.text !== text || cached.lang !== lang) {
+        const tokens = hasLongLine(text, HIGHLIGHT_MAX_LINE) ? [] : tokenize(text, lang);
+        cached = { text, lang, tokens };
+        tokenCache.set(pre, cached);
+      }
       let hint = 0;
-      for (const tok of tokenize(text, lang)) {
+      for (const tok of cached.tokens) {
         const [range, next] = rangeOver(pieces, tok.start, tok.end, hint);
         hint = next;
         if (range) byKind.get(tok.kind).push(range);

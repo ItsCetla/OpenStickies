@@ -65,9 +65,20 @@ assert.equal(normalizeLang('JS'), 'javascript');
 assert.equal(normalizeLang('c++'), 'cpp');
 assert.equal(normalizeLang('<script>'), null);
 
+// One long line must tokenize in linear time; these patterns used to rescan to the end of
+// the line from every position.
+const repeatTo = (unit, n) => unit.repeat(Math.ceil(n / unit.length)).slice(0, n);
+for (const [lang, unit] of [['yaml', 'a b c d e f '], ['markdown', '[a'], ['markdown', '**a '], ['sql', '[x']]) {
+  const line = repeatTo(unit, 99000);
+  const t0 = performance.now();
+  tokenize(line, lang);
+  const ms = performance.now() - t0;
+  assert.ok(ms < 200, `${lang}: ${JSON.stringify(unit)} x 99k took ${ms.toFixed(0)} ms`);
+}
+
 // The main process can't import this ES module, so its context-menu list is a copy; keep them equal.
 const menuSrc = readFileSync(new URL('../src/main/context-menu.js', import.meta.url), 'utf8');
-const menuIds = [...menuSrc.matchAll(/^\s*\['([\w]+)', '([^']+)'\],?\s*$/gm)].map(m => `${m[1]}:${m[2]}`);
+const menuIds = [...menuSrc.matchAll(/^\s*\['([\w]+)', '([^']+)'\],?\s*(?:\/\/.*)?$/gm)].map(m => `${m[1]}:${m[2]}`);
 assert.deepEqual(menuIds, LANGUAGES.map(l => `${l.id}:${l.label}`), 'CODE_LANGUAGES in context-menu.js is out of sync');
 
 if (failed) {
