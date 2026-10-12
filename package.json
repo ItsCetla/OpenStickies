@@ -1,0 +1,51 @@
+{
+  "name": "stickies",
+  "productName": "Stickies",
+  "version": "3.0.0",
+  "description": "Desktop sticky notes with rich HTML formatting, images, checklists, reminders and more.",
+  "main": "src/main/main.js",
+  "author": "Stickies",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "postinstall": "node node_modules/electron/install.js",
+    "icons": "node scripts/make-icons.js",
+    "dist": "electron-builder --win nsis portable",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.stickies.desktop",
+    "productName": "Stickies",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Stickies"
+    },
+    "portable": {
+      "artifactName": "Stickies-Portable-${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
+  }
+}

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' sticky-img: data: https: http:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>Version history</title>
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="history.css">
+</head>
+<body>
+  <header class="appbar">
+    <span class="logo"><i data-icon="history" data-size="17"></i></span>
+    <div class="titles"><div class="t1">Version history</div><div class="t2" id="note-title"></div></div>
+  </header>
+  <div class="shell">
+    <aside class="versions" id="versions"></aside>
+    <main class="pane">
+      <div class="pane-bar">
+        <div class="pane-when" id="when"></div>
+        <div class="segmented" id="mode"><button data-v="preview" class="on">Preview</button><button data-v="changes">Changes</button></div>
+        <button class="btn primary" id="restore" disabled>Restore this version</button>
+      </div>
+      <div class="legend" id="legend" hidden><span class="ins">added</span><span class="del">removed</span> compared with the version before it</div>
+      <article class="doc" id="doc"></article>
+    </main>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="history.js"></script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' sticky-img: data: blob: https: http:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>Sticky note</title>
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="note.css">
+</head>
+<body>
+  <header class="titlebar" id="titlebar">
+    <button class="tb-btn" id="btn-new" title="New note (Ctrl+N)"><i data-icon="plus"></i></button>
+    <div class="title-text" id="title-text"></div>
+    <div class="tb-indicators">
+      <span class="progress-pill" id="progress" hidden></span>
+      <span class="indicator" id="ind-private" title="Private note — click to lock" hidden><i data-icon="shield" data-size="15"></i></span>
+      <span class="indicator" id="ind-reminder" title="Reminder" hidden><i data-icon="bell" data-size="15"></i></span>
+      <span class="indicator" id="ind-lock" title="Locked — click to unlock" hidden><i data-icon="lock" data-size="15"></i></span>
+    </div>
+    <button class="tb-btn tb-hover" id="btn-pin" title="Keep on top"><i data-icon="pin"></i></button>
+    <button class="tb-btn tb-hover" id="btn-roll" title="Roll up (double-click title bar)"><i data-icon="chevronUp"></i></button>
+    <button class="tb-btn tb-hover" id="btn-menu" title="Menu"><i data-icon="more"></i></button>
+    <button class="tb-btn tb-close" id="btn-close" title="Close note (Ctrl+W)"><i data-icon="close"></i></button>
+  </header>
+
+  <div class="banner" id="reminder-banner" hidden>
+    <i data-icon="bell" data-size="16"></i>
+    <span class="banner-text" id="reminder-banner-text">Reminder</span>
+    <button class="chip" id="btn-snooze" title="Remind me again in 10 minutes">Snooze 10m</button>
+    <button class="chip strong" id="btn-dismiss">Dismiss</button>
+  </div>
+
+  <main class="content" id="content">
+    <div class="editor" id="editor" contenteditable="true" spellcheck="true" data-placeholder="Take a note…" role="textbox" aria-multiline="true"></div>
+    <div class="img-tools" id="img-tools" hidden>
+      <div class="img-handle" data-corner="nw" title="Drag to resize"></div>
+      <div class="img-handle" data-corner="ne" title="Drag to resize"></div>
+      <div class="img-handle" data-corner="sw" title="Drag to resize"></div>
+      <div class="img-handle" data-corner="se" title="Drag to resize"></div>
+      <div class="img-bar" id="img-bar" role="toolbar" aria-label="Image layout">
+        <button class="tool" data-set-wrap="inline" title="In line with text"><i data-icon="wrapInline"></i></button>
+        <button class="tool" data-set-wrap="left" title="Wrap text — image on the left"><i data-icon="wrapLeft"></i></button>
+        <button class="tool" data-set-wrap="right" title="Wrap text — image on the right"><i data-icon="wrapRight"></i></button>
+        <button class="tool" data-set-wrap="block" title="Top and bottom"><i data-icon="wrapBlock"></i></button>
+        <button class="tool" data-set-wrap="behind" title="Behind text (drag to move)"><i data-icon="wrapBehind"></i></button>
+        <button class="tool" data-set-wrap="front" title="In front of text (drag to move)"><i data-icon="wrapFront"></i></button>
+        <span class="sep"></span>
+        <button class="tool" data-img-action="delete" title="Delete image"><i data-icon="trash"></i></button>
+      </div>
+    </div>
+    <div class="img-drop-caret" id="img-drop-caret" hidden></div>
+    <div class="drop-hint" id="drop-hint" hidden><i data-icon="image" data-size="28"></i><span>Drop to add</span></div>
+    <div class="li-grip" id="li-grip" hidden title="Drag to reorder (Alt+Shift+↑/↓)"><i data-icon="grip" data-size="14"></i></div>
+    <div class="item-drop" id="item-drop" hidden></div>
+  </main>
+
+  <section class="lockscreen" id="lockscreen" hidden>
+    <div class="lock-art"><i data-icon="shield" data-size="30"></i></div>
+    <div class="lock-title">Private note</div>
+    <div class="lock-sub" id="lock-sub">Enter your password to open it.</div>
+    <form class="lock-form" id="lock-form" autocomplete="off">
+      <input type="password" id="lock-password" placeholder="Password" aria-label="Password">
+      <button class="btn primary" type="submit">Unlock</button>
+    </form>
+    <button class="btn ghost" id="lock-hello" hidden><i data-icon="fingerprint" data-size="16"></i> Use Windows Hello</button>
+    <div class="lock-hint" id="lock-hint"></div>
+  </section>
+
+  <textarea class="source" id="source" spellcheck="false" hidden></textarea>
+
+  <footer class="toolbar" id="toolbar" role="toolbar" aria-label="Formatting">
+    <div class="tools" id="tools">
+      <button class="tool" data-cmd="bold" title="Bold (Ctrl+B)"><i data-icon="bold"></i></button>
+      <button class="tool" data-cmd="italic" title="Italic (Ctrl+I)"><i data-icon="italic"></i></button>
+      <button class="tool" data-cmd="underline" title="Underline (Ctrl+U)"><i data-icon="underline"></i></button>
+      <button class="tool" data-cmd="strikeThrough" title="Strikethrough (Ctrl+T)"><i data-icon="strike"></i></button>
+      <span class="sep"></span>
+      <button class="tool" data-pop="style" title="Text style & size"><i data-icon="textSize"></i></button>
+      <button class="tool color-tool" data-pop="color" title="Text color & highlight"><i data-icon="textColor"></i><span class="color-bar" id="color-bar"></span></button>
+      <span class="sep"></span>
+      <button class="tool" data-cmd="insertUnorderedList" title="Bulleted list (Ctrl+Shift+L)"><i data-icon="listUl"></i></button>
+      <button class="tool" data-cmd="insertOrderedList" title="Numbered list (Ctrl+Shift+O)"><i data-icon="listOl"></i></button>
+      <button class="tool" data-cmd="checklist" title="Checklist (Ctrl+Shift+C)"><i data-icon="checklist"></i></button>
+      <span class="sep"></span>
+      <button class="tool" data-cmd="image" title="Insert image"><i data-icon="image"></i></button>
+      <button class="tool" data-cmd="link" title="Link (Ctrl+K)"><i data-icon="link"></i></button>
+      <button class="tool" data-pop="table" title="Insert table"><i data-icon="table"></i></button>
+      <span class="sep"></span>
+      <button class="tool" data-pop="format" title="More formatting"><i data-icon="more"></i></button>
+    </div>
+    <div class="source-bar" id="source-bar" hidden>
+      <i data-icon="html" data-size="16"></i>
+      <span class="grow">Editing HTML</span>
+      <button class="btn ghost" id="source-cancel">Cancel</button>
+      <button class="btn primary" id="source-apply">Apply</button>
+    </div>
+  </footer>
+
+  <!-- Popovers -->
+  <div class="pop menu-pop" id="pop-menu" hidden>
+    <div class="swatches" id="note-swatches"></div>
+    <div class="menu-row">
+      <i data-icon="drop" data-size="16"></i>
+      <label for="opacity" class="grow">Opacity</label>
+      <input type="range" id="opacity" min="25" max="100" step="5">
+      <span class="value" id="opacity-value">100%</span>
+    </div>
+    <div class="menu-row">
+      <i data-icon="textSize" data-size="16"></i>
+      <label for="font-select" class="grow">Font</label>
+      <select id="font-select"></select>
+    </div>
+    <div class="menu-sep"></div>
+    <button class="menu-item" data-action="toggle-pin"><i data-icon="pin" data-size="16"></i><span>Keep on top</span><span class="check" id="chk-pin"></span></button>
+    <button class="menu-item" data-action="toggle-lock"><i data-icon="lock" data-size="16"></i><span>Lock editing</span><span class="check" id="chk-lock"></span></button>
+    <button class="menu-item" data-action="reminder"><i data-icon="bell" data-size="16"></i><span>Reminder…</span><span class="hint" id="menu-reminder-hint"></span></button>
+    <button class="menu-item" data-action="toggle-private"><i data-icon="shield" data-size="16"></i><span id="menu-private-label">Make private</span></button>
+    <div class="menu-sep"></div>
+    <button class="menu-item" data-action="snip"><i data-icon="snip" data-size="16"></i><span>Insert screen snip</span><span class="hint" id="menu-snip-hint"></span></button>
+    <button class="menu-item has-sub" data-sub="templates"><i data-icon="template" data-size="16"></i><span>Insert template</span><i data-icon="chevronRight" data-size="14"></i></button>
+    <div class="submenu" id="sub-templates" hidden></div>
+    <button class="menu-item" data-action="source"><i data-icon="html" data-size="16"></i><span>Edit HTML source</span><span class="hint">Ctrl+Shift+H</span></button>
+    <button class="menu-item" data-action="history" id="menu-history"><i data-icon="history" data-size="16"></i><span>Version history…</span></button>
+    <div class="menu-sep"></div>
+    <button class="menu-item has-sub" data-sub="export"><i data-icon="download" data-size="16"></i><span>Export &amp; share</span><i data-icon="chevronRight" data-size="14"></i></button>
+    <div class="submenu" id="sub-export" hidden>
+      <button class="menu-item" data-action="export-pdf"><span>Save as PDF…</span></button>
+      <button class="menu-item" data-action="export-html"><span>Save as web page…</span></button>
+      <button class="menu-item" data-action="export-md"><span>Save as Markdown…</span></button>
+      <button class="menu-item" data-action="export-txt"><span>Save as text…</span></button>
+      <button class="menu-item" data-action="print"><span>Print…</span></button>
+      <button class="menu-item" data-action="copy-md"><span>Copy as Markdown</span></button>
+      <button class="menu-item" data-action="copy-text"><span>Copy as plain text</span></button>
+    </div>
+    <button class="menu-item" data-action="save-template"><i data-icon="template" data-size="16"></i><span>Save as template…</span></button>
+    <button class="menu-item" data-action="duplicate"><i data-icon="copy" data-size="16"></i><span>Duplicate note</span></button>
+    <button class="menu-item" data-action="list"><i data-icon="notes" data-size="16"></i><span>All notes</span><span class="hint">Ctrl+H</span></button>
+    <div class="backlinks" id="menu-backlinks" hidden>
+      <div class="pop-title">Linked from</div>
+      <div id="menu-backlinks-list"></div>
+    </div>
+    <div class="menu-sep"></div>
+    <button class="menu-item danger" data-action="delete"><i data-icon="trash" data-size="16"></i><span>Delete note</span><span class="hint">Ctrl+D</span></button>
+    <div class="menu-foot" id="menu-stats"></div>
+  </div>
+
+  <div class="pop" id="pop-style" hidden>
+    <div class="pop-title">Paragraph</div>
+    <button class="menu-item style-item" data-block="p"><span>Normal text</span></button>
+    <button class="menu-item style-item" data-block="h1"><span class="s-h1">Title</span><span class="hint">Ctrl+Alt+1</span></button>
+    <button class="menu-item style-item" data-block="h2"><span class="s-h2">Heading</span><span class="hint">Ctrl+Alt+2</span></button>
+    <button class="menu-item style-item" data-block="h3"><span class="s-h3">Subheading</span><span class="hint">Ctrl+Alt+3</span></button>
+    <button class="menu-item style-item" data-block="blockquote"><span class="s-quote">Quote</span></button>
+    <button class="menu-item style-item" data-block="pre"><span class="s-code">Code block</span></button>
+    <div class="menu-sep"></div>
+    <div class="pop-title">Size</div>
+    <div class="seg" id="size-seg">
+      <button data-size="2" title="Small">S</button>
+      <button data-size="3" title="Normal">M</button>
+      <button data-size="4" title="Large">L</button>
+      <button data-size="5" title="Extra large">XL</button>
+      <button data-size="6" title="Huge">2X</button>
+    </div>
+  </div>
+
+  <div class="pop" id="pop-color" hidden>
+    <div class="pop-title">Text color</div>
+    <div class="color-grid" id="text-colors"></div>
+    <div class="pop-title">Highlight</div>
+    <div class="color-grid" id="hl-colors"></div>
+  </div>
+
+  <div class="pop" id="pop-format" hidden>
+    <div class="icon-row">
+      <button class="tool" data-cmd="code" title="Inline code (Ctrl+E)"><i data-icon="code"></i></button>
+      <button class="tool" data-cmd="superscript" title="Superscript"><i data-icon="superscript"></i></button>
+      <button class="tool" data-cmd="subscript" title="Subscript"><i data-icon="subscript"></i></button>
+      <button class="tool" data-cmd="removeFormat" title="Clear formatting (Ctrl+\)"><i data-icon="eraser"></i></button>
+    </div>
+    <div class="icon-row">
+      <button class="tool" data-cmd="justifyLeft" title="Align left"><i data-icon="alignLeft"></i></button>
+      <button class="tool" data-cmd="justifyCenter" title="Align center"><i data-icon="alignCenter"></i></button>
+      <button class="tool" data-cmd="justifyRight" title="Align right"><i data-icon="alignRight"></i></button>
+      <button class="tool" data-cmd="outdent" title="Decrease indent (Shift+Tab)"><i data-icon="outdent"></i></button>
+      <button class="tool" data-cmd="indent" title="Increase indent (Tab)"><i data-icon="indent"></i></button>
+    </div>
+    <div class="menu-sep"></div>
+    <button class="menu-item" data-cmd="hr"><i data-icon="hr" data-size="16"></i><span>Divider line</span><span class="hint">---</span></button>
+    <button class="menu-item" data-cmd="date"><i data-icon="calendar" data-size="16"></i><span>Insert date &amp; time</span><span class="hint">Ctrl+;</span></button>
+    <button class="menu-item" data-cmd="source"><i data-icon="html" data-size="16"></i><span>Edit HTML source</span></button>
+    <button class="menu-item" data-cmd="find"><i data-icon="search" data-size="16"></i><span>Find in note</span><span class="hint">Ctrl+F</span></button>
+  </div>
+
+  <div class="pop" id="pop-table" hidden>
+    <div class="pop-title" id="table-label">Insert table</div>
+    <div class="table-grid" id="table-grid"></div>
+  </div>
+
+  <div class="pop form-pop" id="pop-link" hidden>
+    <div class="pop-title">Link</div>
+    <input type="text" id="link-text" placeholder="Text to display">
+    <input type="text" id="link-url" placeholder="https://…">
+    <div class="pop-actions">
+      <button class="btn ghost" id="link-remove">Remove</button>
+      <span class="grow"></span>
+      <button class="btn ghost" id="link-cancel">Cancel</button>
+      <button class="btn primary" id="link-save">Save</button>
+    </div>
+  </div>
+
+  <div class="pop form-pop" id="pop-reminder" hidden>
+    <div class="pop-title">Remind me</div>
+    <div class="quick" id="reminder-quick">
+      <button class="chip" data-in="10">In 10 min</button>
+      <button class="chip" data-in="60">In 1 hour</button>
+      <button class="chip" data-at="evening">This evening</button>
+      <button class="chip" data-at="tomorrow">Tomorrow 9 AM</button>
+      <button class="chip" data-at="monday">Next Monday</button>
+    </div>
+    <input type="datetime-local" id="reminder-at">
+    <select id="reminder-repeat">
+      <option value="none">Does not repeat</option>
+      <option value="daily">Every day</option>
+      <option value="weekdays">Every weekday</option>
+      <option value="weekly">Every week</option>
+      <option value="monthly">Every month</option>
+    </select>
+    <div class="pop-actions">
+      <button class="btn ghost" id="reminder-clear">Remove</button>
+      <span class="grow"></span>
+      <button class="btn ghost" id="reminder-cancel">Cancel</button>
+      <button class="btn primary" id="reminder-save">Set</button>
+    </div>
+  </div>
+
+  <div class="findbar" id="findbar" hidden>
+    <i data-icon="search" data-size="15"></i>
+    <input type="text" id="find-input" placeholder="Find in note">
+    <span class="find-count" id="find-count"></span>
+    <button class="tb-btn small" id="find-prev" title="Previous (Shift+Enter)"><i data-icon="chevronUp" data-size="16"></i></button>
+    <button class="tb-btn small" id="find-next" title="Next (Enter)"><i data-icon="chevronDown" data-size="16"></i></button>
+    <button class="tb-btn small" id="find-close" title="Close (Esc)"><i data-icon="close" data-size="16"></i></button>
+  </div>
+
+  <div class="modal" id="confirm" hidden>
+    <div class="dialog">
+      <div class="dialog-title" id="confirm-title">Delete this note?</div>
+      <div class="dialog-body" id="confirm-body">It will move to Trash in the notes list, where you can restore it for 30 days.</div>
+      <label class="dialog-check" id="confirm-check-wrap"><input type="checkbox" id="confirm-check"> Don't ask again</label>
+      <div class="pop-actions">
+        <span class="grow"></span>
+        <button class="btn ghost" id="confirm-cancel">Keep</button>
+        <button class="btn danger" id="confirm-ok">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pop suggest" id="suggest" hidden></div>
+
+  <div class="modal" id="prompt" hidden>
+    <form class="dialog" id="prompt-form">
+      <div class="dialog-title" id="prompt-title">Name</div>
+      <input type="text" id="prompt-input" maxlength="80">
+      <div class="pop-actions">
+        <span class="grow"></span>
+        <button class="btn ghost" type="button" id="prompt-cancel">Cancel</button>
+        <button class="btn primary" type="submit" id="prompt-ok">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script type="module" src="note.js"></script>
+</body>
+</html>

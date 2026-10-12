@@ -1,0 +1,41 @@
+{
+  "order": ["yellow", "orange", "pink", "purple", "blue", "teal", "green", "gray", "charcoal"],
+  "notes": {
+    "yellow":   { "name": "Yellow",   "swatch": "#F7D94C", "light": { "bg": "#FFF7C9", "bar": "#FDEB8F", "text": "#2B2716", "accent": "#C9A400" }, "dark": { "bg": "#35311F", "bar": "#5C5118", "text": "#F3EED8", "accent": "#E8C83A" } },
+    "orange":   { "name": "Orange",   "swatch": "#FFAE5C", "light": { "bg": "#FFEAD3", "bar": "#FFD3A3", "text": "#2E2115", "accent": "#D9730D" }, "dark": { "bg": "#382C20", "bar": "#66431C", "text": "#F5E8DA", "accent": "#F0923A" } },
+    "pink":     { "name": "Pink",     "swatch": "#FF8FB8", "light": { "bg": "#FFE6EF", "bar": "#FFC9DD", "text": "#2E1822", "accent": "#D6417F" }, "dark": { "bg": "#38252E", "bar": "#683049", "text": "#F7E4EC", "accent": "#F06A9E" } },
+    "purple":   { "name": "Purple",   "swatch": "#B48CFF", "light": { "bg": "#F1E8FF", "bar": "#DECBFF", "text": "#231A33", "accent": "#7C4DDB" }, "dark": { "bg": "#2D273D", "bar": "#4D3C78", "text": "#EDE6FA", "accent": "#A98BFF" } },
+    "blue":     { "name": "Blue",     "swatch": "#6DB5FF", "light": { "bg": "#E2F1FF", "bar": "#C4E2FF", "text": "#16222E", "accent": "#2F6FDB" }, "dark": { "bg": "#1F2C3B", "bar": "#24496E", "text": "#E3EEF9", "accent": "#5EA2FF" } },
+    "teal":     { "name": "Teal",     "swatch": "#4CC9B0", "light": { "bg": "#DCF7F1", "bar": "#B8EDE3", "text": "#142824", "accent": "#0F8F7E" }, "dark": { "bg": "#1D3431", "bar": "#1F5950", "text": "#DFF5F1", "accent": "#3FD1B5" } },
+    "green":    { "name": "Green",    "swatch": "#7ED46A", "light": { "bg": "#E6F8DF", "bar": "#C9F0BD", "text": "#1A2916", "accent": "#2E9E44" }, "dark": { "bg": "#233322", "bar": "#335A2C", "text": "#E5F4E1", "accent": "#6FD35D" } },
+    "gray":     { "name": "Gray",     "swatch": "#B5B3B0", "light": { "bg": "#F3F2F0", "bar": "#E0DFDC", "text": "#232323", "accent": "#6B6B6B" }, "dark": { "bg": "#2B2B2B", "bar": "#454545", "text": "#ECECEC", "accent": "#B0B0B0" } },
+    "charcoal": { "name": "Charcoal", "swatch": "#4A4A4D", "light": { "bg": "#3A3A3C", "bar": "#2C2C2E", "text": "#F2F2F2", "accent": "#C9C9CF" }, "dark": { "bg": "#1F1F20", "bar": "#141415", "text": "#ECECEC", "accent": "#A8A8B0" } }
+  },
+  "text": [
+    { "name": "Red",    "value": "#E5484D" },
+    { "name": "Orange", "value": "#EE8420" },
+    { "name": "Gold",   "value": "#CC9A06" },
+    { "name": "Green",  "value": "#2F9E4F" },
+    { "name": "Teal",   "value": "#12A594" },
+    { "name": "Blue",   "value": "#3B7FF0" },
+    { "name": "Purple", "value": "#8E6CF0" },
+    { "name": "Pink",   "value": "#E54D91" },
+    { "name": "Gray",   "value": "#8A8A8A" }
+  ],
+  "highlight": [
+    { "name": "Yellow", "value": "#FFE45C" },
+    { "name": "Green",  "value": "#A6F0A0" },
+    { "name": "Blue",   "value": "#A8D8FF" },
+    { "name": "Pink",   "value": "#FFB8D9" },
+    { "name": "Orange", "value": "#FFC98A" },
+    { "name": "Purple", "value": "#D8C6FF" }
+  ],
+  "fonts": [
+    { "id": "default",     "name": "Default",     "css": "\"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif" },
+    { "id": "handwriting", "name": "Handwriting", "css": "\"Ink Free\", \"Segoe Print\", \"Bradley Hand\", \"Comic Sans MS\", cursive" },
+    { "id": "marker",      "name": "Marker",      "css": "\"Segoe Print\", \"Comic Sans MS\", \"Chalkboard SE\", cursive" },
+    { "id": "serif",       "name": "Serif",       "css": "Georgia, Cambria, \"Times New Roman\", serif" },
+    { "id": "rounded",     "name": "Rounded",     "css": "\"Nunito\", \"Varela Round\", \"Trebuchet MS\", \"Segoe UI\", sans-serif" },
+    { "id": "mono",        "name": "Monospace",   "css": "\"Cascadia Code\", \"Cascadia Mono\", Consolas, \"Courier New\", monospace" }
+  ]
+}

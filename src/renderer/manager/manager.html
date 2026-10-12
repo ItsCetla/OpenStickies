@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' sticky-img: data: blob: https: http:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>Stickies</title>
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="manager.css">
+</head>
+<body>
+  <header class="appbar">
+    <button class="icon-btn" id="btn-sidebar" title="Show sidebar"><i data-icon="menu" data-size="18"></i></button>
+    <div class="brand"><span class="logo"><i data-icon="notes" data-size="18"></i></span><span id="appbar-title">Stickies</span></div>
+    <div class="appbar-actions">
+      <button class="icon-btn" id="btn-back" title="Back to notes" hidden><i data-icon="chevronLeft" data-size="18"></i></button>
+      <div class="split">
+        <button class="icon-btn" id="btn-new" title="New note (Ctrl+N)"><i data-icon="plus" data-size="19"></i></button>
+        <button class="icon-btn caret" id="btn-new-menu" title="New from template, snip…"><i data-icon="chevronDown" data-size="14"></i></button>
+      </div>
+      <button class="icon-btn" id="btn-settings" title="Settings (Ctrl+,)"><i data-icon="settings" data-size="18"></i></button>
+    </div>
+  </header>
+
+  <div class="shell" id="shell">
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar" id="sidebar">
+      <nav class="side-group" id="views">
+        <button class="side-item" data-view="all"><i data-icon="notes" data-size="16"></i><span>All notes</span><span class="count" id="count-all"></span></button>
+        <button class="side-item" data-view="open"><i data-icon="eye" data-size="16"></i><span>On desktop</span><span class="count" id="count-open"></span></button>
+        <button class="side-item" data-view="pinned"><i data-icon="pin" data-size="16"></i><span>Kept on top</span><span class="count" id="count-pinned"></span></button>
+        <button class="side-item" data-view="reminders"><i data-icon="bell" data-size="16"></i><span>Reminders</span><span class="count" id="count-reminders"></span></button>
+        <button class="side-item" data-view="tasks"><i data-icon="checklist" data-size="16"></i><span>Tasks</span><span class="count" id="count-tasks"></span></button>
+        <button class="side-item" data-view="trash"><i data-icon="trash" data-size="16"></i><span>Trash</span><span class="count" id="count-trash"></span></button>
+      </nav>
+
+      <section class="side-group">
+        <div class="side-head"><span>Saved searches</span></div>
+        <div id="saved-list"></div>
+        <button class="side-add" id="btn-save-search" hidden><i data-icon="plus" data-size="14"></i>Save this search</button>
+      </section>
+
+      <section class="side-group">
+        <div class="side-head"><span>Tags</span></div>
+        <div id="tag-list"></div>
+        <div class="side-empty" id="tag-empty">Type <b>#something</b> in a note to tag it.</div>
+      </section>
+
+      <section class="side-group" id="workspaces-section">
+        <div class="side-head"><span>Workspaces</span></div>
+        <div id="ws-list"></div>
+        <button class="side-add" id="btn-save-ws"><i data-icon="plus" data-size="14"></i>Save current layout…</button>
+      </section>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+
+    <main class="main">
+      <!-- ===== Notes list ===== -->
+      <section class="view" id="view-list">
+        <div class="filters">
+          <label class="search">
+            <i data-icon="search" data-size="16"></i>
+            <input type="search" id="search" placeholder="Search — try #tag, has:unchecked, edited:week" autocomplete="off" spellcheck="false">
+            <kbd>Ctrl+F</kbd>
+          </label>
+          <div class="subfilters">
+            <span class="view-title" id="view-title">All notes</span>
+            <div class="color-filter" id="color-filter"></div>
+            <label class="sort">
+              <i data-icon="sort" data-size="15"></i>
+              <select id="sort">
+                <option value="updated">Last edited</option>
+                <option value="created">Date created</option>
+                <option value="title">Title</option>
+                <option value="color">Color</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="list" id="list" tabindex="-1"></div>
+        <div class="empty" id="empty" hidden>
+          <div class="empty-art"><i data-icon="notes" data-size="40"></i></div>
+          <div class="empty-title" id="empty-title">No notes yet</div>
+          <div class="empty-sub" id="empty-sub">Create a note and it will show up here.</div>
+          <button class="btn primary" id="empty-action">New note</button>
+        </div>
+
+        <footer class="listbar">
+          <button class="link-btn" id="btn-show-all"><i data-icon="eye" data-size="15"></i>Show all</button>
+          <button class="link-btn" id="btn-hide-all"><i data-icon="eyeOff" data-size="15"></i>Hide all</button>
+          <span class="grow"></span>
+          <button class="link-btn danger" id="btn-empty-trash" hidden><i data-icon="trash" data-size="15"></i>Empty trash</button>
+          <span class="status" id="status"></span>
+        </footer>
+      </section>
+
+      <!-- ===== Tasks ===== -->
+      <section class="view" id="view-tasks" hidden>
+        <div class="filters">
+          <label class="search">
+            <i data-icon="search" data-size="16"></i>
+            <input type="search" id="task-search" placeholder="Filter tasks" autocomplete="off" spellcheck="false">
+          </label>
+          <div class="subfilters">
+            <div class="segmented small" id="task-show">
+              <button data-v="open" class="on">To do</button><button data-v="all">All</button>
+            </div>
+            <span class="grow"></span>
+            <div class="segmented small" id="task-group">
+              <button data-v="note" class="on">By note</button><button data-v="due">By date</button>
+            </div>
+          </div>
+        </div>
+        <div class="tasks" id="tasks"></div>
+        <div class="empty" id="tasks-empty" hidden>
+          <div class="empty-art"><i data-icon="checklist" data-size="40"></i></div>
+          <div class="empty-title" id="tasks-empty-title">Nothing to do</div>
+          <div class="empty-sub">Checklist items from every note show up here. Add <b>@fri</b>, <b>@tomorrow</b> or <b>@10/20</b> to give one a due date.</div>
+        </div>
+      </section>
+
+      <!-- ===== Settings ===== -->
+      <section class="view settings" id="view-settings" hidden>
+        <div class="settings-scroll" id="settings-scroll">
+          <h2>Appearance</h2>
+          <div class="card">
+            <div class="row">
+              <div class="row-label"><i data-icon="sun" data-size="17"></i><div><div>Theme</div><div class="sub">Follows Windows when set to System</div></div></div>
+              <div class="segmented" id="set-theme">
+                <button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button>
+              </div>
+            </div>
+            <div class="row column">
+              <div class="row-label"><i data-icon="palette" data-size="17"></i><div><div>New note color</div></div></div>
+              <div class="color-pick" id="set-color"></div>
+            </div>
+            <div class="row">
+              <div class="row-label"><i data-icon="textSize" data-size="17"></i><div><div>New note font</div></div></div>
+              <select id="set-font"></select>
+            </div>
+            <div class="row">
+              <div class="row-label"><i data-icon="textSize" data-size="17"></i><div><div>Text size</div><div class="sub">Applies to every note</div></div></div>
+              <div class="range-wrap"><input type="range" id="set-size" min="12" max="22" step="1"><span id="set-size-value">15px</span></div>
+            </div>
+          </div>
+
+          <h2>Behavior</h2>
+          <div class="card">
+            <label class="row"><div class="row-label"><i data-icon="external" data-size="17"></i><div><div>Start with Windows</div><div class="sub">Notes reappear when you sign in</div></div></div><input type="checkbox" class="switch" id="set-launchAtLogin"></label>
+            <label class="row"><div class="row-label"><i data-icon="notes" data-size="17"></i><div><div>Show notes in the taskbar</div><div class="sub">Off keeps your taskbar tidy; use the tray icon instead</div></div></div><input type="checkbox" class="switch" id="set-showInTaskbar"></label>
+            <label class="row"><div class="row-label"><i data-icon="check" data-size="17"></i><div><div>Spell check</div></div></div><input type="checkbox" class="switch" id="set-spellcheck"></label>
+            <label class="row"><div class="row-label"><i data-icon="trash" data-size="17"></i><div><div>Ask before deleting a note</div></div></div><input type="checkbox" class="switch" id="set-confirmDelete"></label>
+            <label class="row"><div class="row-label"><i data-icon="table" data-size="17"></i><div><div>Snap to screen edges and other notes</div></div></div><input type="checkbox" class="switch" id="set-snapToEdges"></label>
+            <label class="row"><div class="row-label"><i data-icon="drop" data-size="17"></i><div><div>Solid while hovered</div><div class="sub">Translucent notes become opaque under the mouse</div></div></div><input type="checkbox" class="switch" id="set-opaqueOnHover"></label>
+            <div class="row">
+              <div class="row-label"><i data-icon="bold" data-size="17"></i><div><div>Formatting toolbar</div><div class="sub" id="tb-mode-sub"></div></div></div>
+              <div class="segmented" id="set-toolbarMode"><button data-v="popup">Pop up</button><button data-v="editing">While editing</button><button data-v="always">Always</button></div>
+            </div>
+            <label class="row"><div class="row-label"><i data-icon="checklist" data-size="17"></i><div><div>Move ticked items to the bottom</div><div class="sub">Off keeps every item where you put it</div></div></div><input type="checkbox" class="switch" id="set-sinkTicked"></label>
+          </div>
+
+          <h2>Screen snips &amp; pictures</h2>
+          <div class="card">
+            <div class="row">
+              <div class="row-label"><i data-icon="snip" data-size="17"></i><div><div>Snips go into</div><div class="sub">You can also switch while snipping</div></div></div>
+              <div class="segmented" id="set-snipTarget"><button data-v="new">New note</button><button data-v="last">Last used note</button></div>
+            </div>
+            <label class="row"><div class="row-label"><i data-icon="search" data-size="17"></i><div><div>Find text in pictures</div><div class="sub">Windows reads the words in snips and images so search can find them</div></div></div><input type="checkbox" class="switch" id="set-ocrImages"></label>
+          </div>
+
+          <h2 id="privacy">Private notes</h2>
+          <div class="card" id="privacy-card"></div>
+
+          <h2 id="opencode">OpenCode</h2>
+          <div class="card" id="opencode-card"></div>
+
+          <h2>Workspaces</h2>
+          <div class="card">
+            <label class="row"><div class="row-label"><i data-icon="layers" data-size="17"></i><div><div>Switch when monitors change</div><div class="sub">Plugging into a dock brings back the layout you used there</div></div></div><input type="checkbox" class="switch" id="set-autoWorkspace"></label>
+            <div class="row note-row">Save layouts from the sidebar. Each workspace remembers changes when you switch away from it.</div>
+          </div>
+
+          <h2>Templates</h2>
+          <div class="card" id="templates-card"></div>
+
+          <h2>Global shortcuts</h2>
+          <div class="card">
+            <div class="row"><div class="row-label"><i data-icon="plus" data-size="17"></i><div><div>New note</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="newNote"><span class="hk-status" data-hk-status="newNote"></span></div></div>
+            <div class="row"><div class="row-label"><i data-icon="snip" data-size="17"></i><div><div>Snip the screen into a note</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="snip"><span class="hk-status" data-hk-status="snip"></span></div></div>
+            <div class="row"><div class="row-label"><i data-icon="eye" data-size="17"></i><div><div>Bring all notes to front</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="showAll"><span class="hk-status" data-hk-status="showAll"></span></div></div>
+            <div class="row"><div class="row-label"><i data-icon="eyeOff" data-size="17"></i><div><div>Show / hide all notes</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="toggleAll"><span class="hk-status" data-hk-status="toggleAll"></span></div></div>
+            <div class="row"><div class="row-label"><i data-icon="layers" data-size="17"></i><div><div>Next workspace</div></div></div><div class="hotkey"><input type="text" readonly class="hk" data-hk="nextWorkspace"><span class="hk-status" data-hk-status="nextWorkspace"></span></div></div>
+            <div class="row note-row">Click a box and press a key combination. Backspace clears it.</div>
+          </div>
+
+          <h2>Your notes</h2>
+          <div class="card">
+            <button class="row action" id="act-backup"><div class="row-label"><i data-icon="download" data-size="17"></i><div><div>Back up all notes…</div><div class="sub">One file with every note, image and template</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
+            <button class="row action" id="act-restore"><div class="row-label"><i data-icon="upload" data-size="17"></i><div><div>Restore from backup…</div><div class="sub">Adds the backup's notes alongside your current ones</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
+            <button class="row action" id="act-import"><div class="row-label"><i data-icon="notes" data-size="17"></i><div><div>Import text, Markdown or HTML files…</div></div></div><i data-icon="chevronRight" data-size="16"></i></button>
+            <button class="row action" id="act-folder"><div class="row-label"><i data-icon="folder" data-size="17"></i><div><div>Open data folder</div><div class="sub" id="data-dir"></div></div></div><i data-icon="external" data-size="16"></i></button>
+          </div>
+
+          <h2>Search tips</h2>
+          <div class="card shortcuts" id="search-tips"></div>
+
+          <h2>Keyboard shortcuts in a note</h2>
+          <div class="card shortcuts" id="shortcuts"></div>
+
+          <h2>Typing shortcuts</h2>
+          <div class="card shortcuts" id="md-shortcuts"></div>
+
+          <p class="about" id="about"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="pop card-menu" id="card-menu" hidden></div>
+
+  <div class="modal" id="prompt" hidden>
+    <form class="dialog" id="prompt-form">
+      <div class="dialog-title" id="prompt-title">Name</div>
+      <input type="text" id="prompt-input" maxlength="80">
+      <div class="pop-actions">
+        <span class="grow"></span>
+        <button class="btn ghost" type="button" id="prompt-cancel">Cancel</button>
+        <button class="btn primary" type="submit" id="prompt-ok">Save</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script type="module" src="manager.js"></script>
+</body>
+</html>

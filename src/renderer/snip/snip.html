@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Snip</title>
+  <link rel="stylesheet" href="../shared/base.css">
+  <style>
+    html, body { background: #000; overflow: hidden; cursor: crosshair; user-select: none; }
+    #shot { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; pointer-events: none; }
+    #dim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.42); pointer-events: none; }
+    #sel { position: fixed; border: 1.5px solid #fff; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.42); outline: 1px dashed rgba(0, 0, 0, 0.6); outline-offset: -1px; pointer-events: none; }
+    #size { position: fixed; padding: 2px 7px; border-radius: 5px; background: rgba(20, 20, 20, 0.85); color: #fff; font: 12px var(--ui-font); pointer-events: none; font-variant-numeric: tabular-nums; }
+    .bar {
+      position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 5; cursor: default;
+      display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; border-radius: 12px;
+      background: rgba(30, 30, 32, 0.92); color: #f2f2f2; font: 13px var(--ui-font); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    }
+    .bar .hint { white-space: nowrap; opacity: 0.85; }
+    .seg { display: flex; padding: 2px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); }
+    .seg button { height: 26px; padding: 0 10px; border-radius: 6px; color: #ddd; font-weight: 600; font-size: 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .seg button.on { background: #f7d94c; color: #2b2716; }
+    .bar .act { height: 30px; padding: 0 12px; border-radius: 7px; font-weight: 600; color: #f2f2f2; }
+    .bar .act:hover { background: rgba(255, 255, 255, 0.12); }
+  </style>
+</head>
+<body>
+  <img id="shot" alt="">
+  <div id="dim"></div>
+  <div id="sel" hidden></div>
+  <div id="size" hidden></div>
+  <div class="bar" id="bar">
+    <span class="hint">Drag to snip</span>
+    <div class="seg" id="target"></div>
+    <button class="act" id="full">Whole screen</button>
+    <button class="act" id="cancel">Cancel <span style="opacity:.6">Esc</span></button>
+  </div>
+  <script type="module" src="snip.js"></script>
+</body>
+</html>
