@@ -9,6 +9,7 @@ import { IS_MAC, MOD_KEY, keyLabel, localizeKeys } from '../shared/keys.js';
 import { HoverPreview } from './chips.js';
 import { urgency, relativeLabel, playChime } from '../shared/reminder.js';
 import palette from '../shared/colors.json' with { type: 'json' };
+import { GRADIENT_PRESETS, deriveColors, deriveGradientColors, gradientCss, safeBackground, isHex } from '../shared/backgrounds.js';
 
 const api = window.stickies;
 const $ = (id) => document.getElementById(id);
@@ -103,6 +104,7 @@ function applyAppearance() {
   root.style.setProperty('--bar', c.bar);
   root.style.setProperty('--text', c.text);
   root.style.setProperty('--accent', c.accent);
+  applyBackground(c);
   const font = palette.fonts.find(f => f.id === note.font) || palette.fonts[0];
   root.style.setProperty('--note-font', font.css);
   root.style.setProperty('--note-size', `${settings.fontSize || 15}px`);
@@ -225,6 +227,7 @@ function save() {
 
 async function flush() {
   if (body.classList.contains('source-mode')) exitSource(true);
+  if (bgSaveTimer) await saveBackground(); // so Duplicate / close never miss a just-picked background
   await save();
   await flushTabs();
   return true;
@@ -242,6 +245,7 @@ function buildStaticUi() {
     const n = palette.notes[k];
     return `<button class="swatch" data-color="${k}" title="${n.name}" style="background:${n.light.bg};box-shadow:inset 0 -9px 0 ${n.swatch}"></button>`;
   }).join('');
+  sw.insertAdjacentHTML('beforeend', '<button class="swatch-custom" id="swatch-custom" title="Custom background…" aria-label="Custom background…"></button>');
 
   $('font-select').innerHTML = palette.fonts.map(f => `<option value="${f.id}" style="font-family:${f.css.replace(/"/g, "'")}">${f.name}</option>`).join('');
 
@@ -328,7 +332,7 @@ document.addEventListener('keyup', scheduleToolbarState);
 function openPop(name, anchor, placement) {
   if (openState && openState.name === name) { closePops(); return; }
   closePops();
-  if (note.locked && !['menu', 'reminder'].includes(name)) return;
+  if (note.locked && !['menu', 'reminder', 'bg'].includes(name)) return;
   editor.saveSelection();
   const pop = $(`pop-${name}`);
   preparePop(name);
@@ -376,6 +380,10 @@ function positionPop(pop, anchor, placement) {
 function preparePop(name) {
   if (name === 'menu') {
     for (const s of document.querySelectorAll('.swatch')) s.classList.toggle('on', s.dataset.color === note.color);
+    // A custom colour/gradient replaces the palette colour; a picture still uses it as its tint.
+    const custom = !!note.background && note.background.type !== 'image';
+    if (custom) for (const s of document.querySelectorAll('.swatch')) s.classList.remove('on');
+    $('swatch-custom').classList.toggle('on', custom);
     const pct = Math.round((note.opacity || 1) * 100);
     $('opacity').value = pct;
     $('opacity-value').textContent = `${pct}%`;
@@ -409,6 +417,8 @@ function preparePop(name) {
   } else if (name === 'table') {
     for (const cell of $('table-grid').children) cell.classList.remove('on');
     $('table-label').textContent = 'Insert table';
+  } else if (name === 'bg') {
+    prepareBgPop();
   }
 }
 
@@ -520,16 +530,22 @@ async function menuAction(action) {
     case 'list': closePops(); api.showManager(); break;
     case 'delete': closePops(); deleteNote(); break;
     case 'new-tab': closePops(); newTab(); break;
+    case 'custom-background': openBgPop(); break;
     default: break;
   }
 }
 
 // ---------- note-level actions ----------
 function setColor(color) {
-  if (!palette.notes[color] || color === note.color) return;
-  patchNote({ color });
+  if (!palette.notes[color]) return;
+  // Picking a palette colour replaces a custom colour/gradient; a picture keeps it as its tint.
+  const clearBg = !!note.background && note.background.type !== 'image';
+  if (color === note.color && !clearBg) return;
+  if (clearBg) clearTimeout(bgSaveTimer);
+  patchNote(clearBg ? { color, background: null } : { color });
   applyAppearance();
   for (const s of document.querySelectorAll('.swatch')) s.classList.toggle('on', s.dataset.color === color);
+  $('swatch-custom').classList.remove('on');
 }
 
 function togglePin() {
@@ -923,7 +939,8 @@ window.addEventListener('focus', onFocus);
 window.addEventListener('focus', () => { if (note && !privateLocked) editor.recheckChips(); });
 window.addEventListener('blur', () => {
   body.classList.remove('focused', 'ctrl');
-  closePops();
+  // The native colour picker and file dialog take focus; keep the background popover open.
+  if (!(bgNativeUi && openState && openState.name === 'bg')) closePops();
   if (saveTimer) save();
 });
 
@@ -986,7 +1003,7 @@ api.onChanged((patch) => {
   if (!note) return;
   const { privateLocked: lockedNow, html, ...rest } = patch;
   Object.assign(note, rest);
-  if ('color' in patch || 'font' in patch) applyAppearance();
+  if ('color' in patch || 'font' in patch || 'background' in patch) applyAppearance();
   if (lockedNow === true) {
     privateLocked = true;
     closePops();
@@ -1070,6 +1087,7 @@ api.onCommand(({ cmd, arg }) => {
     case 'file-remove': { const a = target && target.closest && target.closest('a.file-chip'); if (a) editor.removeChip(a); break; }
     case 'file-open': { const a = target && target.closest && target.closest('a.file-chip'); if (a) editor.openChip(a); break; }
     case 'code-lang': { const pre = target && target.closest && target.closest('pre'); if (pre) editor.setCodeLang(pre, arg); break; }
+    case 'custom-background': openBgPop(); break;
     default: break;
   }
 });
@@ -1864,4 +1882,218 @@ api.onChanged((patch) => {
     }
     syncUndoBase();
   }
+});
+
+// ---------- custom backgrounds ----------
+// note.background is { type: 'solid', color } | { type: 'gradient', from, to, angle } |
+// { type: 'image', src, fit, dim } | null. Main validates it again on every save.
+let bgTab = 'solid';
+let bgSaveTimer = null;
+let bgNativeUi = false; // a native colour picker / file dialog is open on top of the popover
+
+// Overrides the palette colours set by applyAppearance() when the note has a custom background.
+function applyBackground(c) {
+  const bg = safeBackground(note.background);
+  const layer = $('bg-layer');
+  body.classList.toggle('has-bg', !!bg);
+  layer.hidden = !bg || bg.type === 'solid';
+  layer.style.backgroundImage = '';
+  layer.style.removeProperty('--dim');
+  delete layer.dataset.fit;
+  root.style.setProperty('--bg-base', c.bg);
+  if (!bg) return;
+  let d;
+  if (bg.type === 'solid') {
+    d = deriveColors(bg.color);
+  } else if (bg.type === 'gradient') {
+    d = deriveGradientColors(bg.from, bg.to);
+    layer.style.backgroundImage = gradientCss(bg);
+  } else {
+    d = imageColors(c);
+    layer.style.backgroundImage = `url("${bg.src}")`;
+    layer.dataset.fit = bg.fit;
+    layer.style.setProperty('--dim', String((bg.dim || 0) / 100));
+  }
+  root.style.setProperty('--bg', d.bg);
+  root.style.setProperty('--bar', d.bar);
+  root.style.setProperty('--text', d.text);
+  root.style.setProperty('--accent', d.accent);
+}
+
+// Text over a picture keeps the palette's colours: the dim overlay is the palette colour, so
+// raising Dim always makes the text readable. (Sampling the picture on a canvas is not possible:
+// sticky-img:// is a different origin from the page, so the canvas would be tainted.)
+function imageColors(c) {
+  const dark = deriveColors(c.bg.toLowerCase()).dark;
+  return { ...c, bar: dark ? 'rgba(0, 0, 0, 0.28)' : 'rgba(255, 255, 255, 0.45)' };
+}
+
+function setBackground(bg) {
+  note.background = bg;
+  applyAppearance();
+  $('swatch-custom').classList.toggle('on', !!bg && bg.type !== 'image');
+  // Colour pickers fire many input events while dragging; save once things settle.
+  clearTimeout(bgSaveTimer);
+  bgSaveTimer = setTimeout(saveBackground, 150);
+}
+
+function saveBackground() {
+  clearTimeout(bgSaveTimer);
+  bgSaveTimer = null;
+  return api.update({ background: note.background || null });
+}
+
+function openBgPop(tab) {
+  closePops();
+  bgTab = tab || (note.background ? note.background.type : 'solid');
+  openPop('bg', $('btn-menu'), 'below');
+  if (bgTab !== 'solid' && openState && openState.name === 'bg') setTimeout(() => $(`bg-tab-${bgTab}`).focus(), 0);
+}
+
+function prepareBgPop() {
+  const bg = note.background;
+  const base = noteColors().bg.toLowerCase();
+  const solid = bg && bg.type === 'solid' ? bg.color : base;
+  $('bg-color').value = solid;
+  $('bg-hex').value = solid;
+  const grad = bg && bg.type === 'gradient' ? bg : GRADIENT_PRESETS[0];
+  $('bg-from').value = grad.from;
+  $('bg-to').value = grad.to;
+  $('bg-angle').value = grad.angle;
+  $('bg-angle-value').textContent = `${grad.angle}°`;
+  const img = bg && bg.type === 'image' ? bg : null;
+  $('bg-thumb').style.backgroundImage = img ? `url("${img.src}")` : '';
+  $('bg-thumb').classList.toggle('empty', !img);
+  $('bg-fit').value = img ? img.fit : 'cover';
+  $('bg-dim').value = img ? img.dim : 0;
+  $('bg-dim-value').textContent = `${img ? img.dim : 0}%`;
+  $('bg-fit').disabled = !img;
+  $('bg-dim').disabled = !img;
+  $('bg-reset').disabled = !bg;
+  for (const p of $('bg-presets').children) {
+    const pr = GRADIENT_PRESETS[Number(p.dataset.preset)];
+    p.classList.toggle('on', !!bg && bg.type === 'gradient' && bg.from === pr.from && bg.to === pr.to);
+  }
+  selectBgTab(bgTab);
+}
+
+function selectBgTab(name) {
+  bgTab = name;
+  for (const t of document.querySelectorAll('.bg-tab')) {
+    const on = t.dataset.bgTab === name;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+    t.classList.toggle('on', on);
+  }
+  for (const k of ['solid', 'gradient', 'image']) $(`bg-panel-${k}`).hidden = k !== name;
+}
+
+function gradientFromInputs() {
+  return { type: 'gradient', from: $('bg-from').value, to: $('bg-to').value, angle: Number($('bg-angle').value) || 0 };
+}
+
+function updateImageBg(changes) {
+  const bg = note.background;
+  if (!bg || bg.type !== 'image') return;
+  setBackground({ ...bg, ...changes });
+}
+
+$('bg-presets').innerHTML = GRADIENT_PRESETS.map((p, i) =>
+  `<button type="button" class="bg-preset" data-preset="${i}" title="${p.name}" aria-label="${p.name} gradient" style="background:${gradientCss(p)}"></button>`).join('');
+
+// The custom swatch is added by buildStaticUi(), which runs after this module has loaded.
+$('note-swatches').addEventListener('click', (e) => {
+  if (e.target.closest('.swatch-custom')) openBgPop('solid');
+});
+
+$('pop-bg').querySelector('.bg-tabs').addEventListener('click', (e) => {
+  const t = e.target.closest('.bg-tab');
+  if (t) selectBgTab(t.dataset.bgTab);
+});
+$('pop-bg').querySelector('.bg-tabs').addEventListener('keydown', (e) => {
+  const order = ['solid', 'gradient', 'image'];
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  let next = null;
+  if (step) next = order[(order.indexOf(bgTab) + step + order.length) % order.length];
+  else if (e.key === 'Home') next = order[0];
+  else if (e.key === 'End') next = order[order.length - 1];
+  if (!next) return;
+  e.preventDefault();
+  selectBgTab(next);
+  $(`bg-tab-${next}`).focus();
+});
+
+for (const id of ['bg-color', 'bg-from', 'bg-to']) {
+  $(id).addEventListener('click', () => { bgNativeUi = true; });
+  $(id).addEventListener('change', () => { bgNativeUi = false; });
+}
+window.addEventListener('focus', () => { bgNativeUi = false; });
+
+$('bg-color').addEventListener('input', (e) => {
+  $('bg-hex').value = e.target.value;
+  setBackground({ type: 'solid', color: e.target.value.toLowerCase() });
+});
+$('bg-hex').addEventListener('input', (e) => {
+  let v = e.target.value.trim();
+  if (!v.startsWith('#')) v = `#${v}`;
+  if (/^#[0-9a-f]{3}$/i.test(v)) v = `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`;
+  if (!isHex(v)) return;
+  $('bg-color').value = v.toLowerCase();
+  setBackground({ type: 'solid', color: v.toLowerCase() });
+});
+$('bg-hex').addEventListener('change', (e) => {
+  // Snap an unfinished entry back to the colour actually in use.
+  if (!isHex(e.target.value.trim())) e.target.value = $('bg-color').value;
+});
+$('bg-hex').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); closePops(); editor.restoreSelection(); }
+});
+
+$('bg-presets').addEventListener('click', (e) => {
+  const b = e.target.closest('.bg-preset');
+  if (!b) return;
+  const p = GRADIENT_PRESETS[Number(b.dataset.preset)];
+  $('bg-from').value = p.from;
+  $('bg-to').value = p.to;
+  $('bg-angle').value = p.angle;
+  $('bg-angle-value').textContent = `${p.angle}°`;
+  for (const x of $('bg-presets').children) x.classList.toggle('on', x === b);
+  setBackground(gradientFromInputs());
+});
+for (const id of ['bg-from', 'bg-to', 'bg-angle']) {
+  $(id).addEventListener('input', () => {
+    $('bg-angle-value').textContent = `${$('bg-angle').value}°`;
+    for (const x of $('bg-presets').children) x.classList.remove('on');
+    setBackground(gradientFromInputs());
+  });
+}
+
+$('bg-pick').addEventListener('click', async () => {
+  bgNativeUi = true;
+  let items = null;
+  try { items = await api.pickImages(); } finally { bgNativeUi = false; }
+  const pic = items && items[0];
+  if (!pic || typeof pic.url !== 'string') return;
+  const prev = note.background && note.background.type === 'image' ? note.background : null;
+  setBackground({ type: 'image', src: pic.url, fit: prev ? prev.fit : 'cover', dim: prev ? prev.dim : 0 });
+  if (openState && openState.name === 'bg') prepareBgPop();
+  else openBgPop('image');
+});
+$('bg-fit').addEventListener('change', (e) => updateImageBg({ fit: e.target.value }));
+$('bg-dim').addEventListener('input', (e) => {
+  $('bg-dim-value').textContent = `${e.target.value}%`;
+  updateImageBg({ dim: Number(e.target.value) || 0 });
+});
+
+$('bg-reset').addEventListener('click', () => {
+  setBackground(null);
+  saveBackground();
+  prepareBgPop();
+  $('bg-done').focus();
+  toast('Back to the note color');
+});
+$('bg-done').addEventListener('click', () => {
+  if (bgSaveTimer) saveBackground();
+  closePops();
+  editor.restoreSelection();
 });

@@ -293,6 +293,8 @@ async function importBackup({ parent, store, vault }) {
     } catch { /* skip unreadable image */ }
   }
   const fixRefs = (html) => (renamed.size ? html.replace(IMG_URL_RE, (m, n) => (renamed.has(n) ? `sticky-img://img/${renamed.get(n)}` : m)) : html);
+  // Background pictures point at attachments too; store.create drops them if the file is missing.
+  const fixBackground = (bg) => (bg && bg.type === 'image' && typeof bg.src === 'string' ? { ...bg, src: fixRefs(bg.src) } : bg);
 
   // Private notes can only be restored into the same private-notes setup (same key).
   if (vault && data.vault && !vault.configured) vault.adoptConfig(data.vault);
@@ -313,7 +315,7 @@ async function importBackup({ parent, store, vault }) {
     if (raw.private) {
       if (!sameVault || !raw.cipher) { skippedPrivate++; continue; }
       if (existingCipher.has(raw.cipher.data)) continue;
-      store.create({ ...raw, open: false, bounds: raw.bounds || null });
+      store.create({ ...raw, background: fixBackground(raw.background), open: false, bounds: raw.bounds || null });
       added++;
       continue;
     }
@@ -322,7 +324,7 @@ async function importBackup({ parent, store, vault }) {
     if (existingHtml.has(html)) continue; // skip exact duplicates
     // Tabs carry their own copy of the page HTML, so their image links need the same renaming.
     const tabs = Array.isArray(raw.tabs) ? raw.tabs.map(t => (t && typeof t.html === 'string' ? { ...t, html: fixRefs(t.html) } : t)) : null;
-    store.create({ ...raw, html, tabs, open: false, trashed: !!raw.trashed, bounds: raw.bounds || null });
+    store.create({ ...raw, html, tabs, background: fixBackground(raw.background), open: false, trashed: !!raw.trashed, bounds: raw.bounds || null });
     added++;
   }
   for (const t of Array.isArray(data.templates) ? data.templates : []) {

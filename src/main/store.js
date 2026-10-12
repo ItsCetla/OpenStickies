@@ -20,13 +20,15 @@ const NOTE_FIELDS = [
   // up to MAX_TABS tabs: [{ id, title, renamed, html, text, scroll }], or null for the usual single page.
   // html/text/title above always mirror tabs[activeTab] so everything that reads them keeps working.
   'tabs',
-  'activeTab'
+  'activeTab',
+  // custom note background (solid / gradient / image); null = the palette color
+  'background'
 ];
 
 const MAX_TABS = 3;
 
 // Fields whose change counts as a content edit (bumps updatedAt).
-const CONTENT_FIELDS = new Set(['html', 'color', 'font']);
+const CONTENT_FIELDS = new Set(['html', 'color', 'font', 'background']);
 
 const DEFAULT_SETTINGS = {
   theme: 'system',            // 'system' | 'light' | 'dark'
@@ -156,6 +158,7 @@ function writeFileAtomic(file, data) {
 
 // Attachment files are always "<24 hex chars of sha256>.<image extension>".
 const ATTACHMENT_NAME_RE = /^[a-f0-9]{24}\.(png|jpg|gif|webp|bmp|svg|avif|ico)$/;
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 // SVGs can carry scripts when opened in a browser, so only raster images are handed to the OS.
 const OPENABLE_RE = /\.(png|jpg|gif|webp|bmp|avif|ico)$/i;
 
@@ -273,6 +276,7 @@ class Store extends EventEmitter {
       title: String(raw.agent.title || ''),
       tags: Array.isArray(raw.agent.tags) ? raw.agent.tags.map(String).slice(0, 10) : []
     } : null;
+    n.background = this.normalizeBackground(raw.background);
     n.private = !!raw.private;
     n.cipher = raw.cipher && typeof raw.cipher.data === 'string' ? raw.cipher : null;
     n.refs = Array.isArray(raw.refs) ? raw.refs.filter(r => ATTACHMENT_NAME_RE.test(r)) : [];
@@ -498,10 +502,38 @@ class Store extends EventEmitter {
     return m ? this.attachmentPath(m[1]) : null;
   }
 
+  // Validates a note background. Anything malformed becomes null (the palette color), so a
+  // hand-edited or older notes.json can never inject arbitrary CSS into the renderer.
+  normalizeBackground(bg) {
+    if (!bg || typeof bg !== 'object') return null;
+    const hex = (c) => (typeof c === 'string' && HEX_COLOR_RE.test(c) ? c.toLowerCase() : null);
+    const num = (v, lo, hi, def) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Math.round(Number(v)))) : def);
+    if (bg.type === 'solid') {
+      const color = hex(bg.color);
+      return color ? { type: 'solid', color } : null;
+    }
+    if (bg.type === 'gradient') {
+      const from = hex(bg.from);
+      const to = hex(bg.to);
+      return from && to ? { type: 'gradient', from, to, angle: num(bg.angle, 0, 360, 135) } : null;
+    }
+    if (bg.type === 'image') {
+      const file = this.attachmentFromUrl(bg.src);
+      // Only images we actually hold; a dangling reference would just render an empty note.
+      if (!file || !fs.existsSync(file)) return null;
+      const fit = ['cover', 'contain', 'tile'].includes(bg.fit) ? bg.fit : 'cover';
+      return { type: 'image', src: `sticky-img://img/${path.basename(file)}`, fit, dim: num(bg.dim, 0, 80, 0) };
+    }
+    return null;
+  }
+
   referencedAttachments({ publicOnly = false } = {}) {
     const refs = new Set();
     const add = (html) => { for (const m of String(html || '').matchAll(ATTACHMENT_RE)) refs.add(m[1]); };
     for (const n of this.notes.values()) {
+      // Background images are stored unencrypted (even on private notes) and must survive GC.
+      const bgName = n.background && n.background.type === 'image' ? this.attachmentFromUrl(n.background.src) : null;
+      if (bgName) refs.add(path.basename(bgName));
       if (n.private) { if (!publicOnly) n.refs.forEach(r => refs.add(r)); continue; }
       add(n.html);
       if (n.tabs) n.tabs.forEach(t => add(t.html));

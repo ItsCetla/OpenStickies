@@ -637,7 +637,8 @@ function noteSummary(n) {
     // search looks at every tab, not just the one on screen
     searchText: n.private ? '' : store.searchText(n).slice(0, 20000),
     tabCount: n.tabs ? n.tabs.length : 1,
-    hasImage: n.tabs ? n.tabs.some(t => /<img\b/.test(t.html)) : /<img\b/.test(n.html)
+    hasImage: n.tabs ? n.tabs.some(t => /<img\b/.test(t.html)) : /<img\b/.test(n.html),
+    background: n.background || null
   };
   if (n.private) {
     const p = privatePlain(n);
@@ -661,7 +662,7 @@ function wireEvents() {
 
 // ---------- IPC ----------
 const NOTE_PATCH_KEYS = ['html', 'text', 'title', 'color', 'font', 'pinned', 'opacity', 'zoom', 'locked', 'reminder', 'tasks', 'imageText'];
-NOTE_PATCH_KEYS.push('tabs', 'activeTab');
+NOTE_PATCH_KEYS.push('tabs', 'activeTab', 'background');
 
 // Shape check only; the store does the full normalization (ids, titles, the 2..MAX_TABS rule).
 function cleanTabs(list) {
@@ -705,6 +706,8 @@ function cleanPatch(patch) {
   }
   if ('tabs' in out) out.tabs = cleanTabs(out.tabs);
   if ('activeTab' in out) out.activeTab = Number.isInteger(out.activeTab) ? Math.min(MAX_TABS - 1, Math.max(0, out.activeTab)) : 0;
+  // null resets to the palette color; anything invalid also normalizes to null.
+  if ('background' in out) out.background = store.normalizeBackground(out.background);
   return out;
 }
 

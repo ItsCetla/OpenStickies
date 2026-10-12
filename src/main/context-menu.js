@@ -193,6 +193,7 @@ function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
     if (ctx.editor) {
       t.push({ type: 'separator' });
       t.push({ label: locked ? 'Unlock note' : 'Lock note (no edits, no moving)', click: cmd('toggle-lock') });
+      t.push({ label: 'Custom background…', click: cmd('custom-background') });
     }
 
     // Window-level toggles, so right-clicking anywhere (including a locked title bar, which no
@@ -225,7 +226,9 @@ function buildNoteMenu({ note, windows, noteId }) {
     { label: 'Duplicate', click: () => windows.duplicateNote(noteId) },
     { label: 'Close', accelerator: 'CmdOrCtrl+W', click: () => windows.closeNote(noteId) },
     { label: 'Delete note', accelerator: 'CmdOrCtrl+D', click: emit('delete') },
-    { label: 'New tab', accelerator: 'CommandOrControl+Shift+T', visible: !note.private, enabled: !note.locked && (!note.tabs || note.tabs.length < MAX_TABS), click: emit('new-tab') }
+    { label: 'New tab', accelerator: 'CommandOrControl+Shift+T', visible: !note.private, enabled: !note.locked && (!note.tabs || note.tabs.length < MAX_TABS), click: emit('new-tab') },
+    { type: 'separator' },
+    { label: 'Custom background…', click: emit('custom-background') }
   ]);
 }
 

@@ -163,6 +163,7 @@ kbd {
 .note-card:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.05); }
 .note-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .note-card.closed { opacity: 0.86; }
+.note-card.has-bgimg { background-image: var(--n-bgimg); }
 .note-card.trashed { filter: saturate(0.6); }
 
 .card-body { padding: 8px 12px 6px; flex: 1; min-height: 0; }
