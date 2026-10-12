@@ -565,6 +565,9 @@ async function lockVault() {
 
 function onVaultLocked() {
   plain.clear();
+  // The lightbox already holds the decrypted image, so it must not outlive the unlock.
+  const lb = windows.lightboxNoteId && store.get(windows.lightboxNoteId);
+  if (lb && lb.private) windows.closeLightbox();
   for (const n of store.all().filter(x => x.private)) windows.sendToNote(n.id, 'note:changed', { privateLocked: true });
   windows.notifyManager('notes:changed');
   windows.broadcast('vault:changed', vault.status());
@@ -1183,10 +1186,10 @@ function registerIpc() {
 
   // ----- image lightbox -----
   ipcMain.handle('img:lightbox', (e, url) => {
-    noteOf(e);
+    const id = noteOf(e);
     const s = String(url || '');
     if (!store.attachmentFromUrl(s) && !/^https?:\/\//i.test(s)) return false;
-    windows.openLightbox(s, parentOf(e));
+    windows.openLightbox(s, parentOf(e), id);
     return true;
   });
   ipcMain.handle('lightbox:close', (e) => {

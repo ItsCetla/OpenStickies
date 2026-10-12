@@ -191,6 +191,8 @@ class WindowManager {
       if (this.notes.get(note.id) === win) this.notes.delete(note.id);
       clearTimeout(this._boundsTimers.get(note.id));
       this._boundsTimers.delete(note.id);
+      // Close, trash and purge all end here, so the note's lightbox goes with it.
+      this.closeLightboxFor(note.id);
     });
 
     win.webContents.on('will-navigate', (e) => e.preventDefault());
@@ -636,13 +638,15 @@ class WindowManager {
 
   // ---------- image lightbox ----------
   // One borderless window that covers the screen the note is on. It's reused, so opening another
-  // image only swaps the URL in its hash.
-  openLightbox(url, parentWin) {
+  // image only swaps the URL in its hash. noteId ties it to the note that opened it, so it closes
+  // with that note (and on vault lock when the note is private).
+  openLightbox(url, parentWin, noteId) {
     const target = 'app://stickies/lightbox/lightbox.html#' + encodeURIComponent(url);
     const parent = parentWin && !parentWin.isDestroyed() ? parentWin : null;
     const wa = (parent ? screen.getDisplayMatching(parent.getBounds()) : screen.getPrimaryDisplay()).workArea;
     let win = this.lightbox && !this.lightbox.isDestroyed() ? this.lightbox : null;
     this.lightboxParent = parent;
+    this.lightboxNoteId = noteId || null;
     if (win) {
       win.setBounds(wa);
       win.loadURL(target);
@@ -672,7 +676,10 @@ class WindowManager {
     win.loadURL(target);
     win.once('ready-to-show', () => { win.show(); win.focus(); });
     win.on('closed', () => {
-      if (this.lightbox === win) this.lightbox = null;
+      if (this.lightbox === win) {
+        this.lightbox = null;
+        this.lightboxNoteId = null;
+      }
       const back = this.lightboxParent;
       this.lightboxParent = null;
       if (back && !back.isDestroyed() && !this.quitting) back.focus();
@@ -688,6 +695,10 @@ class WindowManager {
 
   closeLightbox() {
     if (this.lightbox && !this.lightbox.isDestroyed()) this.lightbox.close();
+  }
+
+  closeLightboxFor(noteId) {
+    if (noteId && this.lightboxNoteId === noteId) this.closeLightbox();
   }
 }
 
