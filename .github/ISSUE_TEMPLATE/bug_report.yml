@@ -1,0 +1,89 @@
+name: Bug report
+description: Something in Stickies doesn't work the way it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please check the [open issues](https://github.com/ItsCetla/OpenStickies/issues) first in case it's already known.
+
+        **Keep your notes private.** Don't paste the text of personal or private notes, your `notes.json`, or anything from `api.json` (it holds the token for Stickies' local API). A small made-up note that shows the problem works best.
+
+        Found a security problem? Please report it privately instead. See the [security policy](https://github.com/ItsCetla/OpenStickies/security/policy).
+
+  - type: input
+    id: version
+    attributes:
+      label: Stickies version
+      description: Shown at the bottom of Settings, e.g. "Stickies 3.0.0".
+      placeholder: "3.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows version
+      options:
+        - Windows 11
+        - Windows 10
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Stickies?
+      options:
+        - Installer (Stickies-Setup)
+        - Portable (Stickies-Portable)
+        - From source (npm start)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do, step by step?
+      placeholder: |
+        1. Create a new note (Ctrl+Alt+N)
+        2. Type "[] " to start a checklist
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Include the exact wording of any error message.
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or recordings
+      description: Drag images or videos here. Crop or blur anything personal first.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output
+      description: |
+        Stickies doesn't write a log file. If you can run it from source, `npm run dev` prints errors in the terminal and lets you press Ctrl+Shift+I in a note to open DevTools, whose Console tab shows that note's errors. Your notes folder opens from Settings → Open data folder; please don't attach files from it.
+      render: text
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: For example, multiple monitors, display scaling, whether OpenCode is connected, or whether it started after an update.

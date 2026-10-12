@@ -3,6 +3,28 @@
   "productName": "Stickies",
   "version": "3.0.0",
   "description": "Desktop sticky notes with rich HTML formatting, images, checklists, reminders and more.",
+  "keywords": [
+    "sticky notes",
+    "stickies",
+    "notes",
+    "windows",
+    "desktop",
+    "electron",
+    "checklist",
+    "todo",
+    "reminders",
+    "screen snip",
+    "ocr",
+    "opencode"
+  ],
+  "homepage": "https://itscetla.github.io/OpenStickies/",
+  "bugs": {
+    "url": "https://github.com/ItsCetla/OpenStickies/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ItsCetla/OpenStickies.git"
+  },
   "main": "src/main/main.js",
   "author": "Stickies",
   "license": "MIT",
@@ -12,6 +34,7 @@
     "dev": "electron . --dev",
     "postinstall": "node node_modules/electron/install.js",
     "icons": "node scripts/make-icons.js",
+    "screenshots": "node scripts/screenshots/capture.js",
     "dist": "electron-builder --win nsis portable",
     "dist:portable": "electron-builder --win portable"
   },
@@ -21,6 +44,7 @@
     "directories": {
       "output": "dist"
     },
+    "publish": null,
     "files": [
       "src/**/*",
       "assets/**/*",
@@ -38,7 +62,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Stickies"
+      "shortcutName": "Stickies",
+      "artifactName": "Stickies-Setup-${version}.${ext}"
     },
     "portable": {
       "artifactName": "Stickies-Portable-${version}.exe"
