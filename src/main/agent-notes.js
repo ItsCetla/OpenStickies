@@ -57,16 +57,41 @@ function renderAgentNote(body, now = new Date()) {
   return html;
 }
 
-function upsertAgentNote({ store, windows, key, body }) {
+// On a tabbed note the agent owns the first tab; note.html only mirrors whichever tab the
+// user has open, so reading or writing it would clobber a tab the user added for themselves.
+function agentHtml(note) {
+  return note.tabs && note.tabs.length > 1 ? note.tabs[0].html : note.html;
+}
+
+// Let an open window save its last keystrokes first, or a pending tabs save could undo the
+// write (or a tab added a moment ago would be missed). Re-read the note afterwards.
+async function flushNote(windows, id) {
+  await windows.flushRenderer(windows.windowFor(id), 600);
+}
+
+function writeAgentHtml(store, windows, note, html, extra = {}) {
+  if (note.tabs && note.tabs.length > 1) {
+    // Only the agent's page (tab 0) changes; text '' makes the store recompute it from html.
+    const tabs = note.tabs.map((t, i) => (i === 0 ? { ...t, html, text: '' } : { ...t }));
+    store.update(note.id, { ...extra, tabs, activeTab: note.activeTab });
+    const n = store.get(note.id);
+    windows.sendToNote(note.id, 'note:changed', { tabs: n.tabs, activeTab: n.activeTab, html: n.html });
+    windows.applyNoteProps(note.id, ['title']);
+  } else {
+    store.update(note.id, { ...extra, html });
+    windows.sendToNote(note.id, 'note:changed', { html });
+  }
+}
+
+async function upsertAgentNote({ store, windows, key, body }) {
   if (!/^[\w.:\-]{1,200}$/.test(key)) throw new Error('Bad key');
   const html = renderAgentNote(body);
-  const existing = store.all().find(n => n.agent && n.agent.key === key);
+  let existing = store.all().find(n => n.agent && n.agent.key === key);
   if (existing) {
     if (existing.trashed) return { id: existing.id, skipped: 'deleted' }; // the user threw it away; leave it
-    if (existing.html !== html) {
-      store.update(existing.id, { html });
-      windows.sendToNote(existing.id, 'note:changed', { html });
-    }
+    await flushNote(windows, existing.id);
+    existing = store.get(existing.id) || existing;
+    if (agentHtml(existing) !== html) writeAgentHtml(store, windows, existing, html);
     return { id: existing.id, updated: true };
   }
   const note = store.create({
@@ -138,8 +163,10 @@ function createNoteFromApi({ store, windows, body }) {
   return { id: note.id, title, items: itemsOf(html) };
 }
 
-function updateApiNote({ store, windows, history, id, body }) {
+async function updateApiNote({ store, windows, history, id, body }) {
+  await flushNote(windows, ownedNote(store, id).id);
   const note = ownedNote(store, id);
+  const before = agentHtml(note);
   const agent = { ...note.agent };
   if (typeof body.title === 'string' && body.title.trim()) agent.title = body.title.replace(/\s+/g, ' ').trim().slice(0, 120);
   if (Array.isArray(body.tags)) agent.tags = cleanTags(body.tags, agent.source, agent.project);
@@ -147,7 +174,7 @@ function updateApiNote({ store, windows, history, id, body }) {
   if (typeof body.content === 'string' || typeof body.markdown === 'string' || typeof body.html === 'string') {
     html = apiNoteHtml(agent.title, contentHtml(body), agent.tags || []);
   } else {
-    html = note.html;
+    html = before;
     if (typeof body.title === 'string' && body.title.trim()) {
       html = /^<h2>[\s\S]*?<\/h2>/.test(html) ? html.replace(/^<h2>[\s\S]*?<\/h2>/, `<h2>${esc(agent.title)}</h2>`) : `<h2>${esc(agent.title)}</h2>` + html;
     }
@@ -162,28 +189,26 @@ function updateApiNote({ store, windows, history, id, body }) {
     windows.applyNoteProps(note.id, ['color']);
     windows.sendToNote(note.id, 'note:changed', { color: store.get(note.id).color });
   }
-  if (html !== note.html) {
-    if (history) history.beforeChange(note.id, note.html, note.updatedAt); // the user's own edits stay recoverable
-    store.update(note.id, { html, agent });
-    windows.sendToNote(note.id, 'note:changed', { html });
+  if (html !== before) {
+    if (history) history.beforeChange(note.id, before, note.updatedAt); // the user's own edits stay recoverable
+    writeAgentHtml(store, windows, store.get(note.id) || note, html, { agent });
   } else {
     store.update(note.id, { agent });
   }
   return { id: note.id, title: agent.title, items: itemsOf(html) };
 }
 
-function checkApiNote({ store, windows, id, body }) {
+async function checkApiNote({ store, windows, id, body }) {
+  await flushNote(windows, ownedNote(store, id).id);
   const note = ownedNote(store, id);
-  const entries = scan.checklistEntries(note.html);
+  const before = agentHtml(note);
+  const entries = scan.checklistEntries(before);
   if (!entries.length) throw new Error('That note has no checklist. Add "- [ ] item" lines with stickies_update first.');
   const entry = scan.findChecklistEntry(entries, body.item);
   if (!entry) throw new Error(`No checklist item matches "${body.item}". Items: ${entries.map((e, i) => `${i + 1}. ${e.text}`).join('; ')}`);
   const done = body.done !== false;
-  const html = scan.setEntryChecked(note.html, entry, done);
-  if (html !== note.html) {
-    store.update(note.id, { html });
-    windows.sendToNote(note.id, 'note:changed', { html });
-  }
+  const html = scan.setEntryChecked(before, entry, done);
+  if (html !== before) writeAgentHtml(store, windows, note, html);
   return { id: note.id, item: entry.text, done, items: itemsOf(html) };
 }
 
@@ -194,7 +219,7 @@ function listApiNotes({ store, query = {} }) {
     .filter(n => !project || String(n.agent.project).toLowerCase() === project)
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, 50)
-    .map(n => ({ id: n.id, title: n.agent.title || n.title, project: n.agent.project, open: n.open, updatedAt: n.updatedAt, items: itemsOf(n.html) }));
+    .map(n => ({ id: n.id, title: n.agent.title || n.title, project: n.agent.project, open: n.open, updatedAt: n.updatedAt, items: itemsOf(agentHtml(n)) }));
 }
 
 module.exports = { renderAgentNote, upsertAgentNote, createNoteFromApi, updateApiNote, checkApiNote, listApiNotes };
