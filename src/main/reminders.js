@@ -80,7 +80,9 @@ class Reminders {
 
     if (Notification.isSupported()) {
       const body = (note.text || '').replace(/\s+/g, ' ').trim().slice(0, 180) || tr('reminder.notifyBody');
-      const n = new Notification({ title: `⏰ ${title}`, body, icon: this.icon, silent: false });
+      // Silent: the note window plays the sound chosen in Settings, so 'none' stays
+      // silent and the chime doesn't overlap the OS sound.
+      const n = new Notification({ title: `⏰ ${title}`, body, icon: this.icon, silent: true });
       this.live.add(n);
       n.on('click', () => { this.live.delete(n); this.windows.openNote(note.id, { focus: true }); });
       n.on('close', () => this.live.delete(n));

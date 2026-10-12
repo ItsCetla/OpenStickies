@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- Reminder notifications no longer play the system sound: Reminder sound set to None is now really silent, and Chime or Soft no longer overlaps the system sound.
 - When the custom notes folder can't be found at startup, a new "Always use the default folder" button switches back to the default folder for good, so the warning no longer returns on every start for a folder that is gone.
 - A reminder with an unsupported repeat value (from a hand-edited notes.json, a restored backup or another version) no longer fires its notification again every 10 seconds; the repeat is reset to none when notes are loaded or restored.
 - On Linux (X11), snapping to screen edges, other notes and the grid now also applies when a note is moved, not only when it is resized.
