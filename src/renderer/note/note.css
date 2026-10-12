@@ -673,3 +673,92 @@ body.tb-popup .toolbar {
 body.tb-popup.show-toolbar .toolbar { opacity: 1; transform: none; pointer-events: auto; }
 body.tb-popup.source-mode .toolbar { opacity: 1; transform: none; pointer-events: auto; position: static; border-radius: 0; box-shadow: none; border-width: 1px 0 0; }
 body.tb-always .toolbar { display: flex; }
+
+/* ---------- tabs ---------- */
+/* Sits on the title bar's colour; the active tab takes the page colour so it reads as the
+   page below it, with an accent edge so it stays obvious in both themes. */
+.tabbar {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 28px;
+  padding: 0 4px;
+  background: var(--bar);
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+  -webkit-app-region: no-drag;
+  user-select: none;
+  overflow: hidden;
+}
+.tabbar[hidden] { display: none; }
+.tab {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 44px;
+  max-width: 150px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 0 10px;
+  border-radius: 6px 6px 0 0;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.68;
+  cursor: default;
+  transition: opacity 0.12s, background-color 0.12s;
+}
+.tab:hover { opacity: 0.9; background: var(--hover); }
+.tab.active {
+  opacity: 1;
+  font-weight: 600;
+  background: var(--bg);
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tab-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tab-close {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--text);
+  opacity: 0;
+}
+.tab:hover .tab-close, .tab.active .tab-close { opacity: 0.6; }
+.tab-close:hover { opacity: 1 !important; background: var(--press); }
+.tab-add {
+  flex: none;
+  align-self: center;
+  width: 24px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--text);
+  opacity: 0.6;
+}
+.tab-add:hover { opacity: 1; background: var(--hover); }
+.tab-add[hidden] { display: none; }
+.tab-rename {
+  flex: 1;
+  min-width: 0;
+  height: 19px;
+  padding: 0 4px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+.tab.dragging { opacity: 0.35; }
+.tab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
+.tab.drop-after { box-shadow: inset -2px 0 0 var(--accent); }
+.tab.active.drop-before { box-shadow: inset 0 2px 0 var(--accent), inset 2px 0 0 var(--accent); }
+.tab.active.drop-after { box-shadow: inset 0 2px 0 var(--accent), inset -2px 0 0 var(--accent); }
+body.rolled .tabbar, body.private-locked .tabbar { display: none !important; }
+.menu-pop .menu-item:disabled { opacity: 0.45; pointer-events: none; }

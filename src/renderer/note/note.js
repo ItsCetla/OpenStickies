@@ -23,6 +23,8 @@ let linkCtx = null;
 let toastTimer = null;
 let privateLocked = false;
 let vaultState = { configured: false, unlocked: false, hello: false, helloAvailable: false, hint: '' };
+let tabs = null; // null for a one-page note, else [{ id, title, renamed, html, text, scroll }]
+let activeTab = 0;
 
 // Toolbar buttons collapse into the "more" popover in this order as the note gets narrower.
 const COLLAPSE_ORDER = ['table', 'strikeThrough', 'underline', 'link', 'insertOrderedList', 'style', 'image', 'color', 'checklist', 'insertUnorderedList', 'italic'];
@@ -58,6 +60,7 @@ async function init() {
   setupSmarts();
   applyAppearance();
   applyState();
+  initTabs();
   editor.setHTML(privateLocked ? '' : note.html);
   if (!privateLocked && applyResets(editor.el)) editor.changed();
   lastSaved = editor.getHTML();
@@ -68,6 +71,7 @@ async function init() {
   if (document.hasFocus()) onFocus();
   if (privateLocked) setTimeout(() => $('lock-password').focus(), 50);
   else if (editor.isEmpty() && !note.locked) editor.focus(true);
+  if (tabs) afterTabLoad(tabs[activeTab]);
   window.__stickiesFlush = flush;
 }
 
@@ -139,12 +143,15 @@ function applyState() {
     $('lock-hello').hidden = !(vaultState.hello && vaultState.helloAvailable);
     $('lock-hint').textContent = vaultState.hint ? `Hint: ${vaultState.hint}` : '';
   }
+  renderTabs(); // locking hides the close and + buttons
 }
 
 function updateTitle(text) {
   const line = (text || '').split('\n').map(s => s.trim()).find(Boolean) || '';
   const title = line.length > 80 ? line.slice(0, 77) + '…' : line;
-  const shown = note && note.private && privateLocked ? 'Private note' : title || 'Sticky note';
+  const tab = tabs && tabs[activeTab];
+  const named = tab && tab.renamed ? tab.title : title;
+  const shown = note && note.private && privateLocked ? 'Private note' : named || 'Sticky note';
   document.title = shown;
   $('title-text').textContent = shown;
   return title;
@@ -165,13 +172,18 @@ function updateProgress() {
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(save, 350);
+  recordUndo();
 }
 
 function save() {
   clearTimeout(saveTimer);
   saveTimer = null;
+  const forTab = tabs && tabs[activeTab] ? tabs[activeTab].id : null;
   savePromise = savePromise.then(async () => {
     if (privateLocked) return; // never save the empty editor of a locked private note
+    // A save queued before a tab switch would otherwise write the new tab's page into the old one;
+    // the switch already saved the old page, and typing in the new one schedules its own save.
+    if (forTab !== (tabs && tabs[activeTab] ? tabs[activeTab].id : null)) return;
     const html = editor.getHTML();
     if (html === lastSaved) return;
     lastSaved = html;
@@ -180,6 +192,11 @@ function save() {
     const tasks = updateProgress();
     note.html = html;
     note.text = text;
+    // The main process writes this into the active tab too; keep our copy and its label in step.
+    if (tabs && tabs[activeTab]) {
+      Object.assign(tabs[activeTab], { html, text }, tabs[activeTab].renamed ? {} : { title });
+      renderTabs();
+    }
     try {
       const ok = await api.update({ html, text, title, tasks });
       if (ok === false) lastSaved = null;
@@ -191,6 +208,7 @@ function save() {
 async function flush() {
   if (body.classList.contains('source-mode')) exitSource(true);
   await save();
+  await flushTabs();
   return true;
 }
 
@@ -356,6 +374,8 @@ function preparePop(name) {
     const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
     const d = (t) => new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
     $('menu-stats').innerHTML = `${words.toLocaleString()} word${words === 1 ? '' : 's'} · ${text.length.toLocaleString()} characters<br>Created ${d(note.createdAt)}<br>Edited ${d(note.updatedAt)}`;
+    $('menu-new-tab').hidden = !!note.private;
+    $('menu-new-tab').disabled = !!(tabs && tabs.length >= MAX_TABS);
   } else if (name === 'link') {
     linkCtx = linkCtx || editor.linkContext();
     $('link-text').value = linkCtx.text || '';
@@ -478,6 +498,7 @@ async function menuAction(action) {
     case 'save-template': saveAsTemplate(); break;
     case 'list': closePops(); api.showManager(); break;
     case 'delete': closePops(); deleteNote(); break;
+    case 'new-tab': closePops(); newTab(); break;
     default: break;
   }
 }
@@ -920,7 +941,7 @@ api.onCommand(({ cmd, arg }) => {
       if (li) { li.scrollIntoView({ block: 'center' }); li.classList.add('flash'); setTimeout(() => li.classList.remove('flash'), 1500); }
       break;
     }
-    case 'checklist-reset': if (applyResets(editor.el)) editor.changed(); break;
+    case 'checklist-reset': if (applyResets(editor.el)) editor.changed(); resetOtherTabs(); break;
     case 'checklist': {
       const list = topChecklist(target, editor.el);
       if (arg === 'daily' || arg === 'weekly' || arg === 'never') {
@@ -939,6 +960,8 @@ api.onCommand(({ cmd, arg }) => {
       if (target && target.alt) { navigator.clipboard.writeText(target.alt); toast('Copied the text in the picture'); }
       break;
     case 'format': if (arg === 'clear') editor.command('removeFormat'); break;
+    case 'new-tab': newTab(); break;
+    case 'close-tab': if (tabs) closeTab(Number.isInteger(arg) ? arg : activeTab); break;
     default: break;
   }
 });
@@ -1123,6 +1146,7 @@ async function togglePrivate() {
     await flush();
     const r = await api.setPrivate(true);
     if (r && r.ok) toast('Private: encrypted, and hidden from search until unlocked');
+    else if (r && r.reason === 'tabs') toast('Close the other tabs first — a private note keeps to one page');
   } else {
     if (!vaultState.unlocked) { toast('Unlock private notes first'); return; }
     await flush();
@@ -1160,3 +1184,571 @@ function findTask({ index, text }) {
   if (!at || text == null || ownText(at).trim() === text) return at;
   return items.find(li => ownText(li).trim() === text) || at;
 }
+
+// ---------- tabs ----------
+// One editor shows the active tab; the others live in `tabs` as saved HTML. Every change to the
+// tab list goes to the main process as the whole list (`persistTabs`), queued on savePromise so
+// it can never overtake, or be overtaken by, an autosave of the page being edited.
+const MAX_TABS = 3;
+const TAB_LABEL_MAX = 18;
+const UNDO_LIMIT = 100;
+const TAB_DRAG_TYPE = 'application/x-stickies-tab';
+
+// Undo per tab. Chromium keeps one undo stack per editable element and swapping the editor's
+// HTML on a tab switch would leave it pointing at nodes that are gone, so once a note has had
+// tabs this window keeps its own history: snapshots taken after each burst of typing.
+const undoBooks = new Map(); // tab id ('_' for a one-page note) -> { undo, redo, base, burst, timer, caret }
+let customUndo = false;
+let undoApplying = false;
+let renaming = null; // { input, id } while a tab name is being edited
+let tabBusy = false; // a close is waiting on the main process
+let dragTabId = null;
+
+function initTabs() {
+  const list = !note.private && Array.isArray(note.tabs) && note.tabs.length > 1 ? note.tabs : null;
+  tabs = list ? list.slice(0, MAX_TABS).map(t => ({ ...t })) : null;
+  activeTab = tabs ? Math.min(tabs.length - 1, Math.max(0, note.activeTab | 0)) : 0;
+  if (tabs) customUndo = true;
+  renderTabs();
+}
+
+function afterTabLoad(tab) {
+  syncUndoBase();
+  restoreScroll(tab && tab.scroll);
+}
+
+function autoTitle(text) {
+  const line = (text || '').split('\n').map(s => s.trim()).find(Boolean) || '';
+  return line.length > 80 ? line.slice(0, 77) + '…' : line;
+}
+
+function tabName(tab) {
+  return tab.renamed && tab.title ? tab.title : autoTitle(tab.text);
+}
+
+function tabLabel(tab) {
+  const name = tabName(tab);
+  if (tab.renamed) return name;
+  return name.length > TAB_LABEL_MAX ? name.slice(0, TAB_LABEL_MAX - 1).trimEnd() + '…' : name;
+}
+
+function newTabId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(4));
+  return 'b' + Date.now().toString(36) + [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function undoKey() {
+  return tabs && tabs[activeTab] ? tabs[activeTab].id : '_';
+}
+
+function renderTabs() {
+  const nav = $('tabbar');
+  if (!nav || renaming) return;
+  nav.hidden = !tabs;
+  body.classList.toggle('has-tabs', !!tabs);
+  if (!tabs) { nav.textContent = ''; return; }
+  const editable = !(note && note.locked);
+  let html = '';
+  tabs.forEach((t, i) => {
+    const on = i === activeTab;
+    const name = tabName(t) || 'New tab';
+    html += `<div class="tab${on ? ' active' : ''}" role="tab" aria-selected="${on}" tabindex="${on ? 0 : -1}"`
+      + ` draggable="${editable}" data-tab-index="${i}" title="${escapeHtml(name)}">`
+      + `<span class="tab-label">${escapeHtml(tabLabel(t) || 'New tab')}</span>`
+      + (editable ? `<button class="tab-close" data-tab-close="${i}" tabindex="-1" title="Close tab" aria-label="Close tab">${icon('close', { size: 12 })}</button>` : '')
+      + '</div>';
+  });
+  if (editable && tabs.length < MAX_TABS) {
+    html += `<button class="tab-add" data-tab-add title="New tab (Ctrl+Shift+T)" aria-label="New tab">${icon('plus', { size: 14 })}</button>`;
+  }
+  nav.innerHTML = html;
+}
+
+function restoreScroll(y) {
+  const top = Number(y) || 0;
+  // After layout, so the page is tall enough to scroll that far.
+  requestAnimationFrame(() => { $('content').scrollTop = top; });
+}
+
+// Copy what the editor shows back into the active tab (text, caret, scroll).
+function stashActiveTab() {
+  if (!tabs || privateLocked) return;
+  const tab = tabs[activeTab];
+  if (!tab) return;
+  const book = undoBooks.get(tab.id);
+  if (book) { sealUndo(book); book.caret = caretOffset(); }
+  const html = editor.getHTML();
+  if (html !== tab.html) {
+    tab.html = html;
+    tab.text = editor.getText();
+    if (!tab.renamed) tab.title = autoTitle(tab.text);
+  }
+  tab.scroll = Math.round($('content').scrollTop);
+  note.html = tab.html;
+  note.text = tab.text;
+}
+
+// Stash, and drop the pending autosave: the next persistTabs carries those keystrokes.
+function syncActive() {
+  stashActiveTab();
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  if (tabs && tabs[activeTab]) lastSaved = tabs[activeTab].html;
+}
+
+function persistTabs() {
+  if (!tabs) return savePromise;
+  const list = tabs.map(t => ({ ...t }));
+  const active = activeTab;
+  note.tabs = list;
+  note.activeTab = active;
+  savePromise = savePromise.then(async () => {
+    try {
+      const ok = await api.update({ tabs: list, activeTab: active });
+      if (ok === false) lastSaved = null;
+    } catch (err) { console.error('saving tabs failed', err); }
+  });
+  return savePromise;
+}
+
+async function flushTabs() {
+  if (!tabs || privateLocked || !tabs[activeTab]) return;
+  // Only the scroll position can be unsaved here; skip the write when it hasn't moved.
+  if (tabs[activeTab].scroll === Math.round($('content').scrollTop)) return;
+  syncActive();
+  await persistTabs();
+}
+
+function loadTab(tab, { focus = true } = {}) {
+  editor.setHTML(tab.html);
+  const reset = !note.locked && applyResets(editor.el);
+  lastSaved = reset ? null : editor.getHTML();
+  note.html = tab.html;
+  note.text = editor.getText();
+  updateTitle(editor.getText());
+  updateProgress();
+  renderTabs();
+  syncUndoBase();
+  if (reset) saveTimer = setTimeout(save, 350);
+  if (focus && !note.locked) {
+    const book = undoBooks.get(undoKey());
+    editor.focus();
+    if (!placeCaret(book && book.caret)) editor.focus(true);
+  }
+  restoreScroll(tab.scroll);
+}
+
+function leaveEditingModes() {
+  if (renaming) finishRename(true);
+  if (body.classList.contains('source-mode')) exitSource(true);
+  closePops();
+  closeFind(false);
+}
+
+function switchTab(i) {
+  if (!tabs || privateLocked || tabBusy || !Number.isInteger(i) || i < 0 || i >= tabs.length || i === activeTab) return;
+  leaveEditingModes();
+  syncActive();
+  activeTab = i;
+  loadTab(tabs[i]);
+  persistTabs();
+}
+
+function newTab() {
+  if (!note || privateLocked || tabBusy) return;
+  if (note.private) { toast('Private notes keep to one page'); return; }
+  if (note.locked) { toast('Unlock the note to add a tab'); return; }
+  if (tabs && tabs.length >= MAX_TABS) { toast(`A note can have up to ${MAX_TABS} tabs`); return; }
+  leaveEditingModes();
+  if (!tabs) {
+    // The page so far becomes the first tab, keeping its undo history.
+    const first = { id: newTabId(), title: '', renamed: false, html: '', text: '', scroll: 0 };
+    const book = undoBooks.get('_');
+    if (book) { undoBooks.delete('_'); undoBooks.set(first.id, book); }
+    tabs = [first];
+    activeTab = 0;
+    customUndo = true;
+    first.html = null; // forces stashActiveTab to take the editor's text and title
+  }
+  syncActive();
+  if (!undoBooks.has(tabs[activeTab].id)) undoBooks.set(tabs[activeTab].id, newUndoBook(tabs[activeTab].html));
+  tabs.push({ id: newTabId(), title: '', renamed: false, html: '', text: '', scroll: 0 });
+  activeTab = tabs.length - 1;
+  loadTab(tabs[activeTab], { focus: false });
+  persistTabs();
+  editor.focus(true);
+}
+
+async function closeTab(i) {
+  if (!tabs || privateLocked || tabBusy || !tabs[i] || tabs.length < 2) return;
+  if (note.locked) { toast('Unlock the note to close a tab'); return; }
+  leaveEditingModes();
+  const wasActive = i === activeTab;
+  syncActive();
+  const tab = tabs[i];
+  const blank = !tab.text.trim() && !/<(img|hr|table)\b/i.test(tab.html);
+  const survivor = tabs.length === 2 ? tabs[1 - i] : null;
+  persistTabs();
+  tabBusy = true;
+  const pending = savePromise.then(() => api.closeTab(tab.id)).catch((err) => { console.error('closing tab failed', err); return null; });
+  savePromise = pending.then(() => {});
+  const r = await pending;
+  tabBusy = false;
+  if (!r) { toast('Couldn’t close that tab'); return; }
+  undoBooks.delete(tab.id);
+  if (survivor && !(Array.isArray(r.tabs) && r.tabs.length > 1)) {
+    const book = undoBooks.get(survivor.id);
+    undoBooks.delete(survivor.id);
+    if (book) undoBooks.set('_', book);
+  }
+  adoptTabs(r, !wasActive, survivor);
+  toast(blank ? 'Tab closed' : 'Tab moved to the Trash');
+}
+
+// Take the tab list the main process settled on after a close.
+function adoptTabs(r, keepEditor, survivor) {
+  const list = Array.isArray(r.tabs) && r.tabs.length > 1 ? r.tabs.map(t => ({ ...t })) : null;
+  const html = typeof r.html === 'string' ? r.html : '';
+  tabs = list;
+  activeTab = list ? Math.min(list.length - 1, Math.max(0, r.activeTab | 0)) : 0;
+  note.tabs = list ? list.map(t => ({ ...t })) : null;
+  note.activeTab = activeTab;
+  if (keepEditor) {
+    // The editor already shows this page; anything typed while the close was in flight still saves.
+    note.html = html;
+    lastSaved = html;
+    if (editor.getHTML() !== html) scheduleSave();
+    renderTabs();
+    updateTitle(editor.getText());
+    return;
+  }
+  const page = list ? list[activeTab] : { html, text: '', scroll: survivor ? survivor.scroll : 0 };
+  loadTab({ ...page, html });
+}
+
+// ----- rename -----
+function startRename(i) {
+  if (!tabs || !tabs[i] || renaming || privateLocked) return;
+  if (note.locked) { toast('Unlock the note to rename a tab'); return; }
+  const el = $('tabbar').querySelector(`.tab[data-tab-index="${i}"]`);
+  const label = el && el.querySelector('.tab-label');
+  if (!label) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'tab-rename';
+  input.maxLength = 80;
+  input.spellcheck = false;
+  input.value = tabName(tabs[i]);
+  input.setAttribute('aria-label', 'Tab name');
+  el.draggable = false;
+  label.replaceWith(input);
+  renaming = { input, id: tabs[i].id };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); finishRename(true, true); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishRename(false, true); }
+  });
+  input.addEventListener('blur', () => finishRename(true));
+  input.addEventListener('click', (e) => e.stopPropagation());
+  input.addEventListener('dblclick', (e) => e.stopPropagation());
+  input.focus();
+  input.select();
+}
+
+function finishRename(commit, refocus = false) {
+  if (!renaming) return;
+  const { input, id } = renaming;
+  renaming = null;
+  const tab = tabs && tabs.find(t => t.id === id);
+  if (commit && tab) {
+    const name = input.value.replace(/\s+/g, ' ').trim().slice(0, 80);
+    const auto = autoTitle(tab.text);
+    const next = name && (tab.renamed || name !== auto) ? { title: name, renamed: true } : { title: auto, renamed: false };
+    if (next.title !== tab.title || next.renamed !== !!tab.renamed) {
+      syncActive();
+      Object.assign(tab, next);
+      persistTabs();
+    }
+  }
+  renderTabs();
+  updateTitle(editor.getText());
+  if (refocus && !note.locked) editor.focus();
+}
+
+// ----- drag to reorder -----
+function tabAt(e) {
+  const el = e.target.closest && e.target.closest('.tab');
+  return el && $('tabbar').contains(el) ? el : null;
+}
+
+function clearDropMarks() {
+  for (const el of $('tabbar').querySelectorAll('.drop-before, .drop-after')) el.classList.remove('drop-before', 'drop-after');
+}
+
+function dropSide(el, e) {
+  const r = el.getBoundingClientRect();
+  return e.clientX < r.left + r.width / 2 ? 'before' : 'after';
+}
+
+function moveTab(fromId, toIndex, side) {
+  if (!tabs) return;
+  const from = tabs.findIndex(t => t.id === fromId);
+  if (from < 0 || !tabs[toIndex]) return;
+  syncActive();
+  const activeId = tabs[activeTab].id;
+  const targetId = tabs[toIndex].id;
+  if (targetId === fromId) return;
+  const [moved] = tabs.splice(from, 1);
+  const at = tabs.findIndex(t => t.id === targetId) + (side === 'after' ? 1 : 0);
+  tabs.splice(at, 0, moved);
+  activeTab = tabs.findIndex(t => t.id === activeId);
+  renderTabs();
+  persistTabs();
+}
+
+// ----- undo -----
+function newUndoBook(html) {
+  return { undo: [], redo: [], base: { html: html == null ? editor.getHTML() : html, caret: null }, burst: false, timer: null, caret: null };
+}
+
+// Make the active tab's undo base match the editor, keeping an outside change (a restored
+// version, a tab put back from the Trash) as one step that Ctrl+Z can take back.
+function syncUndoBase() {
+  if (!customUndo || privateLocked) return;
+  const key = undoKey();
+  const html = editor.getHTML();
+  const book = undoBooks.get(key);
+  if (!book) { undoBooks.set(key, newUndoBook(html)); return; }
+  clearTimeout(book.timer);
+  book.timer = null;
+  book.burst = false;
+  if (book.base.html !== html) {
+    book.undo.push(book.base);
+    if (book.undo.length > UNDO_LIMIT) book.undo.shift();
+    book.redo = [];
+    book.base = { html, caret: null };
+  }
+}
+
+function recordUndo() {
+  if (!customUndo || undoApplying || privateLocked) return;
+  const key = undoKey();
+  let book = undoBooks.get(key);
+  if (!book) { book = newUndoBook(lastSaved); undoBooks.set(key, book); }
+  if (!book.burst) { book.burst = true; book.base.caret = book.caret; }
+  clearTimeout(book.timer);
+  book.timer = setTimeout(() => { if (undoBooks.get(undoKey()) === book) sealUndo(book); }, 600);
+}
+
+function sealUndo(book) {
+  clearTimeout(book.timer);
+  book.timer = null;
+  if (!book.burst) return;
+  book.burst = false;
+  const html = editor.getHTML();
+  book.caret = caretOffset();
+  if (html === book.base.html) return;
+  book.undo.push(book.base);
+  if (book.undo.length > UNDO_LIMIT) book.undo.shift();
+  book.redo = [];
+  book.base = { html, caret: book.caret };
+}
+
+function undoStep(dir) {
+  if (!customUndo || privateLocked || note.locked || body.classList.contains('source-mode')) return;
+  const book = undoBooks.get(undoKey());
+  if (!book) return;
+  sealUndo(book);
+  const from = dir < 0 ? book.undo : book.redo;
+  const to = dir < 0 ? book.redo : book.undo;
+  const state = from.pop();
+  if (!state) return;
+  to.push(book.base);
+  const top = $('content').scrollTop;
+  undoApplying = true;
+  try {
+    editor.setHTML(state.html);
+    editor.changed();
+  } finally { undoApplying = false; }
+  book.base = { html: editor.getHTML(), caret: state.caret };
+  editor.focus();
+  if (!placeCaret(state.caret)) editor.focus(true);
+  $('content').scrollTop = top;
+  updateProgress();
+}
+
+// Caret positions are kept as a count of characters from the start, which survives the
+// editor's HTML being replaced.
+function caretOffset() {
+  const r = editor.range();
+  if (!r) return null;
+  const pre = document.createRange();
+  pre.selectNodeContents(editor.el);
+  try { pre.setEnd(r.startContainer, r.startOffset); } catch { return null; }
+  return pre.toString().length;
+}
+
+function placeCaret(offset) {
+  if (!Number.isInteger(offset)) return false;
+  const walker = document.createTreeWalker(editor.el, NodeFilter.SHOW_TEXT);
+  let left = offset;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (left <= node.length) {
+      const r = document.createRange();
+      r.setStart(node, left);
+      r.collapse(true);
+      const sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      return true;
+    }
+    left -= node.length;
+  }
+  return false;
+}
+
+// The daily/weekly checklist reset for the tabs that aren't showing.
+function resetOtherTabs() {
+  if (!tabs || privateLocked) return;
+  const doc = document.implementation.createHTMLDocument('');
+  let changed = false;
+  tabs.forEach((tab, i) => {
+    if (i === activeTab || !tab.html.includes('data-reset')) return;
+    const div = doc.createElement('div');
+    div.innerHTML = sanitizeHtml(tab.html, { mode: 'stored' });
+    if (applyResets(div)) { tab.html = div.innerHTML; changed = true; }
+  });
+  if (changed) { syncActive(); persistTabs(); }
+}
+
+const tabbar = $('tabbar');
+tabbar.addEventListener('click', (e) => {
+  if (renaming && renaming.input.contains(e.target)) return;
+  const close = e.target.closest('[data-tab-close]');
+  if (close) { e.stopPropagation(); closeTab(Number(close.dataset.tabClose)); return; }
+  if (e.target.closest('[data-tab-add]')) { newTab(); return; }
+  const el = tabAt(e);
+  if (!el) return;
+  const i = Number(el.dataset.tabIndex);
+  if (i === activeTab) { if (!note.locked) editor.focus(); } else switchTab(i);
+});
+tabbar.addEventListener('auxclick', (e) => {
+  const el = e.button === 1 && tabAt(e);
+  if (el) { e.preventDefault(); closeTab(Number(el.dataset.tabIndex)); }
+});
+tabbar.addEventListener('dblclick', (e) => {
+  if (e.target.closest('[data-tab-close], [data-tab-add]')) return;
+  const el = tabAt(e);
+  if (el) { e.preventDefault(); startRename(Number(el.dataset.tabIndex)); }
+});
+tabbar.addEventListener('keydown', (e) => {
+  const el = tabAt(e);
+  if (!el || !tabs || (renaming && renaming.input === e.target)) return;
+  const i = Number(el.dataset.tabIndex);
+  let next = null;
+  if (e.key === 'ArrowRight') next = (i + 1) % tabs.length;
+  else if (e.key === 'ArrowLeft') next = (i - 1 + tabs.length) % tabs.length;
+  else if (e.key === 'F2') { e.preventDefault(); startRename(i); return; }
+  else if (e.key === 'Delete') { e.preventDefault(); closeTab(i); return; }
+  if (next === null) return;
+  e.preventDefault();
+  switchTab(next);
+  const target = tabbar.querySelector(`.tab[data-tab-index="${activeTab}"]`);
+  if (target) target.focus();
+});
+tabbar.addEventListener('dragstart', (e) => {
+  const el = tabAt(e);
+  if (!el || !tabs || renaming || note.locked) { e.preventDefault(); return; }
+  dragTabId = tabs[Number(el.dataset.tabIndex)].id;
+  e.dataTransfer.setData(TAB_DRAG_TYPE, dragTabId);
+  e.dataTransfer.effectAllowed = 'move';
+  el.classList.add('dragging');
+});
+tabbar.addEventListener('dragover', (e) => {
+  if (!dragTabId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  clearDropMarks();
+  const el = tabAt(e);
+  if (el && tabs[Number(el.dataset.tabIndex)].id !== dragTabId) el.classList.add(`drop-${dropSide(el, e)}`);
+});
+tabbar.addEventListener('dragleave', (e) => {
+  if (!e.relatedTarget || !tabbar.contains(e.relatedTarget)) clearDropMarks();
+});
+tabbar.addEventListener('drop', (e) => {
+  if (!dragTabId) return;
+  e.preventDefault();
+  const el = tabAt(e);
+  const id = dragTabId;
+  clearDropMarks();
+  if (!el) {
+    // Dropped on the empty end of the row: move it last.
+    if (tabs && tabs.length) moveTab(id, tabs.length - 1, 'after');
+    return;
+  }
+  moveTab(id, Number(el.dataset.tabIndex), dropSide(el, e));
+});
+tabbar.addEventListener('dragend', () => {
+  dragTabId = null;
+  clearDropMarks();
+  for (const el of tabbar.querySelectorAll('.dragging')) el.classList.remove('dragging');
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.defaultPrevented || !note || e.getModifierState('AltGraph')) return;
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  if (e.target.closest && e.target.closest('input, textarea, select')) return;
+  const k = e.key.toLowerCase();
+  const digit = /^Digit[1-9]$/.test(e.code) ? Number(e.code.slice(5)) : 0;
+  let handled = true;
+  if (e.shiftKey && k === 't') newTab();
+  else if (e.ctrlKey && e.key === 'Tab') {
+    if (tabs) switchTab((activeTab + (e.shiftKey ? -1 : 1) + tabs.length) % tabs.length);
+    else handled = false;
+  } else if (!e.shiftKey && digit >= 1 && digit <= MAX_TABS) {
+    if (tabs && digit <= tabs.length) switchTab(digit - 1);
+    else handled = false;
+  } else if (customUndo && !e.shiftKey && k === 'z') undoStep(-1);
+  else if (customUndo && ((e.shiftKey && k === 'z') || (!e.shiftKey && k === 'y'))) undoStep(1);
+  else handled = false;
+  if (handled) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+
+// Undo/Redo from the right-click menu reach the editor as history input events.
+editor.el.addEventListener('beforeinput', (e) => {
+  if (!customUndo || (e.inputType !== 'historyUndo' && e.inputType !== 'historyRedo')) return;
+  e.preventDefault();
+  undoStep(e.inputType === 'historyUndo' ? -1 : 1);
+});
+
+// Runs after the listener above that already put any new html into the editor.
+api.onChanged((patch) => {
+  if (!note) return;
+  if ('tabs' in patch) {
+    if (renaming) finishRename(false);
+    const list = !note.private && Array.isArray(patch.tabs) && patch.tabs.length > 1 ? patch.tabs.slice(0, MAX_TABS).map(t => ({ ...t })) : null;
+    if (list && !tabs) {
+      customUndo = true;
+      const book = undoBooks.get('_');
+      undoBooks.delete('_');
+      if (book && list[0]) undoBooks.set(list[0].id, book);
+    }
+    tabs = list;
+    activeTab = list ? Math.min(list.length - 1, Math.max(0, patch.activeTab | 0)) : 0;
+    note.tabs = list ? list.map(t => ({ ...t })) : null;
+    note.activeTab = activeTab;
+    renderTabs();
+    updateTitle(editor.getText());
+    syncUndoBase();
+    if (tabs) restoreScroll(tabs[activeTab].scroll);
+  } else if (typeof patch.html === 'string') {
+    if (tabs && tabs[activeTab]) {
+      const tab = tabs[activeTab];
+      tab.html = editor.getHTML();
+      tab.text = editor.getText();
+      if (!tab.renamed) tab.title = autoTitle(tab.text);
+      renderTabs();
+      updateTitle(editor.getText());
+    }
+    syncUndoBase();
+  }
+});
