@@ -1652,12 +1652,26 @@ export class Editor {
       const pre = this.closest('pre');
       if (pre) {
         const r = this.range();
-        const tail = document.createRange();
-        tail.setStart(r.endContainer, r.endOffset);
-        tail.setEnd(pre, pre.childNodes.length);
-        if (!tail.toString().length && /\n$/.test(pre.textContent)) {
+        // Lines typed here are split by <br>, pasted code by '\n'; codeText reads both.
+        const head = document.createRange();
+        head.setStart(pre, 0);
+        head.setEnd(r.startContainer, r.startOffset);
+        const box = document.createElement('div');
+        box.appendChild(head.cloneContents());
+        const before = codeText(box).text;
+        // Chromium never renders the block's final break (its placeholder <br> or a
+        // trailing '\n'), so the visible last line ends before it.
+        const shown = codeText(pre).text.replace(/\n$/, '');
+        if (r.collapsed && before.length >= shown.length && /\n$/.test(shown)) {
           e.preventDefault();
-          pre.textContent = pre.textContent.replace(/\n$/, '');
+          // Delete only the trailing break(s) through execCommand, so the rest of the
+          // block's markup survives and Ctrl+Z can bring them back.
+          const trim = document.createRange();
+          const [node, offset] = codeBreakAt(pre, shown.length - 1);
+          trim.setStart(node, offset);
+          trim.setEnd(pre, pre.childNodes.length);
+          this.selectRange(trim);
+          this.exec('delete');
           const p = document.createElement('p');
           p.innerHTML = '<br>';
           pre.after(p);
@@ -1876,6 +1890,26 @@ function codeText(pre) {
   };
   walk(pre);
   return { text, pieces };
+}
+
+// The DOM point just before the newline at `at` in codeText(pre).text: before its <br>,
+// or inside the text node that holds the '\n'.
+function codeBreakAt(pre, at) {
+  let pos = 0;
+  let found = null;
+  const walk = (n) => {
+    for (let c = n.firstChild; c && !found; c = c.nextSibling) {
+      if (c.nodeType === 3) {
+        if (at < pos + c.data.length) found = [c, at - pos];
+        pos += c.data.length;
+      } else if (c.nodeName === 'BR') {
+        if (pos === at) found = [n, [...n.childNodes].indexOf(c)];
+        pos++;
+      } else if (c.nodeType === 1) walk(c);
+    }
+  };
+  walk(pre);
+  return found || [pre, pre.childNodes.length];
 }
 
 // A Range covering [start, end) of codeText's text. Tokens come in order, so the search
