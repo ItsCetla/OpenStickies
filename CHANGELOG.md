@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+### Fixed
+
+- Opening a search result whose match is in another tab of the note now switches to that tab and highlights the match, and the scroll to the match is no longer undone by the saved scroll position.
+
 ## [3.1.0] - 2026-10-12
 
 ### Changed

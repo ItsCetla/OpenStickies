@@ -85,12 +85,13 @@ async function init() {
   updateTitle(editor.getText());
   updateProgress();
   updateReminderUi();
-  if (pendingHighlight) { showSearchHighlight(pendingHighlight); pendingHighlight = null; }
   if (pendingReminderFired) { pendingReminderFired = false; onReminderFired(); }
   if (document.hasFocus()) onFocus();
   if (privateLocked) setTimeout(() => $('lock-password').focus(), 50);
   else if (editor.isEmpty() && !note.locked) editor.focus(true);
   if (tabs) afterTabLoad(tabs[activeTab]);
+  // After afterTabLoad, so its scroll restore doesn't undo the scroll to the match.
+  if (pendingHighlight) { showSearchHighlight(pendingHighlight); pendingHighlight = null; }
   window.__stickiesFlush = flush;
 }
 
@@ -837,6 +838,15 @@ function showSearchHighlight(terms) {
   if (privateLocked || typeof Highlight === 'undefined' || !CSS.highlights) return;
   const needles = [...new Set(terms.map(t => String(t).toLowerCase().trim()).filter(Boolean))];
   if (!needles.length) return;
+  // The notes list searches every tab, so the hit may be in another one: open that tab first.
+  if (tabs && tabs.length > 1) {
+    const has = s => needles.some(q => (s || '').toLowerCase().includes(q));
+    if (!has(editor.getText())) {
+      let i = tabs.findIndex((t, k) => k !== activeTab && has(t.text));
+      if (i < 0) i = tabs.findIndex((t, k) => k !== activeTab && has(t.title));
+      if (i >= 0) switchTab(i);
+    }
+  }
   const ranges = [];
   const walker = document.createTreeWalker(editor.el, NodeFilter.SHOW_TEXT);
   while (walker.nextNode()) {
@@ -855,9 +865,12 @@ function showSearchHighlight(terms) {
   CSS.highlights.set('search-match', new Highlight(...ranges));
   searchHighlightOn = true;
   const first = ranges.reduce((a, b) => (a.compareBoundaryPoints(Range.START_TO_START, b) <= 0 ? a : b));
-  const rect = first.getBoundingClientRect();
-  const cr = $('content').getBoundingClientRect();
-  if (rect.top < cr.top || rect.bottom > cr.bottom) $('content').scrollTop += rect.top - cr.top - cr.height / 3;
+  // Two frames, so this lands after restoreScroll's frame from loading the tab.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const rect = first.getBoundingClientRect();
+    const cr = $('content').getBoundingClientRect();
+    if (rect.top < cr.top || rect.bottom > cr.bottom) $('content').scrollTop += rect.top - cr.top - cr.height / 3;
+  }));
 }
 
 function clearSearchHighlight() {
