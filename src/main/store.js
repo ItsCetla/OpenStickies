@@ -59,7 +59,9 @@ const DEFAULT_SETTINGS = {
   autoLockMinutes: 5,           // lock private notes after this much inactivity (0 = never)
   managerBounds: null,
   welcomed: false,
-  trayHintShown: false
+  trayHintShown: false,
+  snapToGrid: false,
+  gridSize: 24
 };
 
 const DEFAULT_TEMPLATES = [

@@ -488,3 +488,7 @@ input.switch:checked::after { transform: translateX(18px); }
 .dialog-title { font-weight: 700; font-size: 14px; }
 .dialog input { width: 100%; }
 .pop-actions { display: flex; align-items: center; gap: 6px; }
+
+/* data folder location */
+.path-sub { overflow-wrap: anywhere; }
+.inline-btns { display: flex; gap: 8px; flex: none; }

@@ -118,5 +118,9 @@ contextBridge.exposeInMainWorld('stickies', {
   exportBackup: () => invoke('data:export-backup'),
   importBackup: () => invoke('data:import-backup'),
   importFiles: () => invoke('data:import-files'),
-  openDataFolder: () => invoke('data:open-folder')
+  openDataFolder: () => invoke('data:open-folder'),
+  exportAll: (format, items) => invoke('data:export-all', format, items),
+  dataLocation: () => invoke('data:location'),
+  chooseDataFolder: () => invoke('data:change-location'),
+  resetDataFolder: () => invoke('data:reset-location')
 });

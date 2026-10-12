@@ -23,10 +23,15 @@ const scan = require('./html-scan');
 const { htmlToText, titleFromText } = require('./store-text');
 const exporter = require('./exporter');
 const { migrateLegacyData, LEGACY_LOGIN_ITEM } = require('./migrate');
+const dataLocation = require('./data-location');
 const palette = require('../renderer/shared/colors.json');
 
 const isDev = process.argv.includes('--dev');
+// Where the data-location pointer lives: the userData folder before any override.
+const DEFAULT_USER_DATA = app.getPath('userData');
 if (process.env.STICKIES_USER_DATA) app.setPath('userData', process.env.STICKIES_USER_DATA);
+// A data folder picked in Settings. Read before the store exists; STICKIES_USER_DATA (tests) wins.
+const CUSTOM_DATA_DIR = process.env.STICKIES_USER_DATA ? null : dataLocation.readDataLocation(DEFAULT_USER_DATA);
 
 const SRC = path.join(__dirname, '..');
 const RENDERER = path.join(SRC, 'renderer');
@@ -107,7 +112,26 @@ function init() {
     if (choice === 0) { app.quit(); return; }
   }
 
-  const dataDir = path.join(app.getPath('userData'), 'data');
+  const defaultDataDir = path.join(app.getPath('userData'), 'data');
+  let dataDir = CUSTOM_DATA_DIR || defaultDataDir;
+  // A chosen folder on a drive that isn't plugged in (or a sync folder that was removed) must not
+  // silently become a fresh, empty notes folder.
+  if (CUSTOM_DATA_DIR && !fs.existsSync(CUSTOM_DATA_DIR)) {
+    const choice = dialog.showMessageBoxSync({
+      type: 'warning',
+      title: 'OpenStickies',
+      message: 'Your notes folder can’t be found',
+      detail: `OpenStickies is set to keep notes in ${CUSTOM_DATA_DIR}, but that folder isn’t there right now. ` +
+        'If it’s on a removable or network drive, connect it and start OpenStickies again.\n\n' +
+        `You can also start with the default folder (${defaultDataDir}) just this once.`,
+      buttons: ['Quit', 'Use the default folder this time'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true
+    });
+    if (choice === 0) { app.quit(); return; }
+    dataDir = defaultDataDir;
+  }
   fs.mkdirSync(dataDir, { recursive: true });
   history = new History(dataDir);
   store = new Store(dataDir);
@@ -155,7 +179,9 @@ function init() {
   workspaces.watchDisplays();
 
   apiServer = new ApiServer({
-    dataDir,
+    // Always the default folder: the OpenCode plugin looks for api.json there, and its token
+    // shouldn't travel to a synced notes folder.
+    dataDir: defaultDataDir,
     // A copy outside AppData, where Windows never redirects it (see api-server.js). Skipped for
     // runs with their own data folder (tests), so they can't hijack the real app's connection.
     extraFiles: process.env.STICKIES_USER_DATA ? [] : [path.join(app.getPath('home'), '.stickies', 'api.json')],
@@ -548,7 +574,7 @@ function registerIpc() {
 
   ipcMain.handle('note:export', async (e, format, payload) => {
     const id = noteOf(e);
-    if (!['html', 'md', 'txt', 'pdf', 'print'].includes(format)) throw new Error('Unknown format');
+    if (!['html', 'md', 'txt', 'pdf', 'print', 'json'].includes(format)) throw new Error('Unknown format');
     const p = payload || {};
     const note = store.get(id);
     const forExport = note.private ? { ...note, title: (plain.get(id) || {}).title || 'Private note' } : note;
@@ -773,6 +799,8 @@ function registerIpc() {
     if (['new', 'last'].includes(p.snipTarget)) clean.snipTarget = p.snipTarget;
     if (['popup', 'editing', 'always'].includes(p.toolbarMode)) clean.toolbarMode = p.toolbarMode;
     if (Number.isFinite(p.autoLockMinutes)) clean.autoLockMinutes = Math.min(240, Math.max(0, Math.round(p.autoLockMinutes)));
+    bool('snapToGrid');
+    if (Number.isFinite(p.gridSize)) clean.gridSize = Math.min(64, Math.max(8, Math.round(p.gridSize)));
     if (Array.isArray(p.savedSearches)) {
       clean.savedSearches = p.savedSearches.filter(s => s && typeof s.query === 'string').slice(0, 50)
         .map(s => ({ id: String(s.id || 's' + Date.now().toString(36)).slice(0, 40), name: String(s.name || s.query).slice(0, 60), query: s.query.slice(0, 300) }));
@@ -891,6 +919,139 @@ function registerIpc() {
     return { ok: true, added: items.length };
   });
   ipcMain.handle('data:open-folder', (e) => { managerOnly(e); return shell.openPath(store.dir); });
+
+  // Every note as separate Markdown/text files, or one plain JSON file. The manager converts the
+  // HTML to Markdown (the converter needs a DOM) and sends it as [{ id, markdown }]; everything
+  // else comes from the store, so the renderer can't add or alter notes in the export.
+  ipcMain.handle('data:export-all', async (e, format, mdItems) => {
+    managerOnly(e);
+    if (!['md', 'txt', 'json'].includes(format)) throw new Error('Unknown format');
+    await Promise.all([...windows.notes.values()].map(w => windows.flushRenderer(w, 600)));
+    const markdown = new Map();
+    if (Array.isArray(mdItems)) {
+      for (const it of mdItems) if (it && typeof it.id === 'string' && typeof it.markdown === 'string') markdown.set(it.id, it.markdown);
+    }
+    const items = [];
+    let skippedPrivate = 0;
+    for (const n of store.all()) {
+      if (n.trashed) continue;
+      // Same rule as the backup: a private note only leaves the app readable while it's unlocked.
+      const content = n.private ? privatePlain(n) : { html: n.html, text: n.text, title: n.title };
+      if (!content) { skippedPrivate++; continue; }
+      items.push({ note: n, title: content.title, text: content.text, html: content.html, markdown: markdown.has(n.id) ? markdown.get(n.id) : content.text });
+    }
+    const readImage = (name) => {
+      const file = store.attachmentPath(name);
+      if (!file) return null;
+      try {
+        if (fs.existsSync(file)) return fs.readFileSync(file);
+        if (fs.existsSync(file + '.enc') && vault.unlocked) return vault.readEncryptedFile(file);
+      } catch (err) { console.warn('[export] image skipped', name, err.message); }
+      return null;
+    };
+    const res = await exporter.exportAllNotes({ parent: parentOf(e), format, items, readImage });
+    return { ...res, skippedPrivate };
+  });
+
+  // ----- where the data folder lives -----
+  const defaultDataDir = path.join(app.getPath('userData'), 'data');
+  const locationInfo = () => ({
+    path: store.dir,
+    defaultPath: defaultDataDir,
+    custom: !dataLocation.samePath(store.dir, defaultDataDir),
+    fixed: !!process.env.STICKIES_USER_DATA // a test run's folder can't be moved from the UI
+  });
+  // Copy everything into `dest`, point the next start at it and restart. The old folder is left as
+  // it was, so nothing is lost if the copy turns out to be incomplete.
+  const switchDataFolder = async (dest) => {
+    await Promise.all([...windows.notes.values()].map(w => windows.flushRenderer(w, 700)));
+    store.flush();
+    history.flush();
+    dataLocation.copyDataFolder(store.dir, dest);
+    dataLocation.writeDataLocation(DEFAULT_USER_DATA, dataLocation.samePath(dest, defaultDataDir) ? null : dest);
+    app.relaunch();
+    app.quit();
+  };
+
+  ipcMain.handle('data:location', (e) => { managerOnly(e); return locationInfo(); });
+
+  ipcMain.handle('data:change-location', async (e) => {
+    managerOnly(e);
+    if (process.env.STICKIES_USER_DATA) return { ok: false, error: 'The data folder is set by STICKIES_USER_DATA for this run.' };
+    const parent = parentOf(e);
+    const { canceled, filePaths } = await dialog.showOpenDialog(parent, {
+      title: 'Choose where to keep your notes',
+      buttonLabel: 'Keep notes here',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (canceled || !filePaths || !filePaths[0]) return { ok: false, canceled: true };
+    const dest = path.resolve(filePaths[0]);
+    if (dataLocation.samePath(dest, store.dir)) return { ok: false, error: 'Your notes are already in that folder.' };
+    if (dataLocation.isInside(dest, store.dir)) return { ok: false, error: 'Choose a folder outside the current notes folder.' };
+    // Merging two sets of notes could silently drop one side's changes, so an existing notes
+    // folder (say, one synced from another computer) is never written over.
+    if (dataLocation.hasNotes(dest)) {
+      return { ok: false, error: 'That folder already has OpenStickies notes in it (notes.json). Choose an empty folder — OpenStickies won’t merge or replace them.' };
+    }
+    const { response } = await dialog.showMessageBox(parent, {
+      type: 'question',
+      title: 'OpenStickies',
+      message: 'Move your notes to this folder?',
+      detail: `${dest}\n\nOpenStickies copies your notes, pictures, templates and history there, then restarts. ` +
+        `The current folder is left as it was.\n\nOnly run OpenStickies on one computer at a time against a synced folder.`,
+      buttons: ['Copy and restart', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true
+    });
+    if (response !== 0) return { ok: false, canceled: true };
+    try {
+      await switchDataFolder(dest);
+      return { ok: true };
+    } catch (err) {
+      console.error('[data] move failed:', err);
+      return { ok: false, error: `Couldn’t copy your notes: ${err.message}` };
+    }
+  });
+
+  ipcMain.handle('data:reset-location', async (e) => {
+    managerOnly(e);
+    if (process.env.STICKIES_USER_DATA) return { ok: false, error: 'The data folder is set by STICKIES_USER_DATA for this run.' };
+    if (!locationInfo().custom) return { ok: false, error: 'Your notes are already in the default folder.' };
+    const parent = parentOf(e);
+    // The default folder usually still holds the notes as they were when they were moved away.
+    // Bringing the current notes back is the safe default; keeping the old copy is the other choice.
+    const stale = dataLocation.hasNotes(defaultDataDir);
+    const { response } = await dialog.showMessageBox(parent, {
+      type: 'question',
+      title: 'OpenStickies',
+      message: 'Go back to the default notes folder?',
+      detail: stale
+        ? `${defaultDataDir}\n\nThat folder still has an older copy of your notes. Bring your current notes back (the older copy is replaced), or go back to the older copy as it is. Either way the notes in ${store.dir} stay where they are. OpenStickies restarts afterwards.`
+        : `${defaultDataDir}\n\nOpenStickies copies your notes back there and restarts. The notes in ${store.dir} stay where they are.`,
+      buttons: stale ? ['Bring current notes back', 'Use the older copy', 'Cancel'] : ['Copy and restart', 'Cancel'],
+      defaultId: 0,
+      cancelId: stale ? 2 : 1,
+      noLink: true
+    });
+    if (response === (stale ? 2 : 1)) return { ok: false, canceled: true };
+    try {
+      if (stale && response === 1) {
+        await Promise.all([...windows.notes.values()].map(w => windows.flushRenderer(w, 700)));
+        store.flush();
+        history.flush();
+        dataLocation.writeDataLocation(DEFAULT_USER_DATA, null);
+        app.relaunch();
+        app.quit();
+      } else {
+        await switchDataFolder(defaultDataDir);
+      }
+      return { ok: true };
+    } catch (err) {
+      console.error('[data] reset failed:', err);
+      return { ok: false, error: `Couldn’t switch folders: ${err.message}` };
+    }
+  });
 }
 
 // ---------- lifecycle ----------
