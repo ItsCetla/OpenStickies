@@ -1,5 +1,5 @@
 import { sanitizeHtml, escapeHtml, BLOCK_TAGS } from '../shared/sanitize.js';
-import { decorate, syncDueDates, tagAt, sinkItem, moveItem, nudgeItem, topChecklist, cascadeCheck, refreshFolds } from './smart.js';
+import { decorate, syncDueDates, tagAt, sinkItem, moveItem, nudgeItem, topChecklist, cascadeCheck, refreshFolds, foldGroups } from './smart.js';
 import { keyLabel } from '../shared/keys.js';
 import { t as tr, tp, lang as uiLang } from '../shared/i18n.js';
 import { chipHtml, refreshChips, forgetChipInfo } from './chips.js';
@@ -86,7 +86,7 @@ export class Editor {
 
   getHTML() {
     const clone = this.el.cloneNode(true);
-    clone.querySelectorAll('img.selected, img.loading, img.dragging, li.pop, li.sinking, li.flash, .dragging-item, ul.fold-open').forEach(n => n.classList.remove('selected', 'loading', 'dragging', 'pop', 'sinking', 'flash', 'dragging-item', 'fold-open'));
+    clone.querySelectorAll('img.selected, img.loading, img.dragging, li.pop, li.sinking, li.flash, .dragging-item, ul.fold-open, ul.fold-dragging, .fold-after').forEach(n => n.classList.remove('selected', 'loading', 'dragging', 'pop', 'sinking', 'flash', 'dragging-item', 'fold-open', 'fold-dragging', 'fold-after'));
     // File chips get their icon, drag handle and "missing" look on display; none of it is saved.
     clone.querySelectorAll('a.file-chip').forEach(a => {
       a.classList.remove('missing');
@@ -152,6 +152,38 @@ export class Editor {
       else bottom = Math.min(bottom, r.top);
     }
     return y >= top - 1 && y <= bottom + 1;
+  }
+
+  // A click on the "N done" row opens or closes it; dragging it moves it among the items still
+  // to do, and where it's dropped is saved in data-fold-at.
+  _startFoldDrag(e, list) {
+    const y0 = e.clientY;
+    let mids = null;
+    let at = null;
+    const place = (k) => foldGroups(list).forEach((group, i) => group.forEach(c => c.classList.toggle('fold-after', i >= k)));
+    const move = (ev) => {
+      if (!mids) {
+        if (Math.abs(ev.clientY - y0) < 4) return;
+        // Measure the items once with the row at the bottom, so moving it can't shift the targets.
+        list.classList.remove('fold-open');
+        list.classList.add('fold-dragging');
+        place(Infinity);
+        mids = foldGroups(list).map(group => { const r = group[0].getBoundingClientRect(); return (r.top + r.bottom) / 2; });
+      }
+      at = mids.filter(m => m < ev.clientY).length;
+      place(at);
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move, true);
+      window.removeEventListener('mouseup', up, true);
+      if (!mids) { list.classList.toggle('fold-open'); return; }
+      list.classList.remove('fold-dragging');
+      if (at >= mids.length) delete list.dataset.foldAt;
+      else list.dataset.foldAt = String(at);
+      this.changed();
+    };
+    window.addEventListener('mousemove', move, true);
+    window.addEventListener('mouseup', up, true);
   }
 
   // ---------- file shortcuts ----------
@@ -1565,7 +1597,7 @@ export class Editor {
       const fold = e.target.nodeName === 'UL' && e.target.hasAttribute('data-fold-label') && el.contains(e.target) ? e.target : null;
       if (fold && e.button === 0 && this._onFoldRow(fold, e.clientY)) {
         e.preventDefault();
-        fold.classList.toggle('fold-open');
+        this._startFoldDrag(e, fold);
         return;
       }
       const li = e.target.closest && e.target.closest('ul.checklist > li');

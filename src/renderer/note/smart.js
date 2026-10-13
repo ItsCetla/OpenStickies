@@ -279,20 +279,39 @@ export function setReset(list, mode) {
 export function setFold(list, on) {
   if (!list) return;
   if (on) list.dataset.fold = '1';
-  else { delete list.dataset.fold; list.classList.remove('fold-open'); }
+  else { delete list.dataset.fold; delete list.dataset.foldAt; list.classList.remove('fold-open'); }
+}
+
+// Top-level items still to do in a folded list, each with the sub-list that follows it. The
+// "N done" row sits before group number data-fold-at (after all of them when it isn't set).
+export function foldGroups(list) {
+  const groups = [];
+  let ticked = false;
+  for (const c of list.children) {
+    if (c.nodeName === 'LI') { ticked = c.classList.contains('checked'); if (!ticked) groups.push([c]); }
+    else if (!ticked && groups.length && (c.nodeName === 'UL' || c.nodeName === 'OL')) groups[groups.length - 1].push(c);
+  }
+  return groups;
 }
 
 // Folded lists show a "▸ N done" row in place of their ticked items. The count is kept in
 // data-fold-label for CSS to draw and is never saved.
 export function refreshFolds(editorEl, label) {
   for (const list of editorEl.querySelectorAll('ul[data-fold-label]')) {
-    if (!list.hasAttribute('data-fold')) { list.removeAttribute('data-fold-label'); list.classList.remove('fold-open'); }
+    if (!list.hasAttribute('data-fold')) {
+      list.removeAttribute('data-fold-label');
+      list.classList.remove('fold-open');
+      list.querySelectorAll(':scope > .fold-after').forEach(c => c.classList.remove('fold-after'));
+    }
   }
   for (const list of editorEl.querySelectorAll('ul.checklist[data-fold]')) {
     const n = list.querySelectorAll('li.checked').length;
     if (!n) { list.removeAttribute('data-fold-label'); list.classList.remove('fold-open'); continue; }
     const text = label(n);
     if (list.getAttribute('data-fold-label') !== text) list.setAttribute('data-fold-label', text);
+    const at = list.dataset.foldAt == null ? Infinity : Number(list.dataset.foldAt);
+    list.querySelectorAll(':scope > .fold-after').forEach(c => c.classList.remove('fold-after'));
+    foldGroups(list).forEach((group, i) => { if (i >= at) group.forEach(c => c.classList.add('fold-after')); });
   }
 }
 

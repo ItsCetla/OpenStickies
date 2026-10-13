@@ -584,12 +584,17 @@ body.rolled #btn-roll { opacity: 0.72; }
 .editor ul.checklist[data-reset="daily"]::before { content: "↻ Unticks every day"; }
 .editor ul.checklist[data-reset="weekly"]::before { content: "↻ Unticks every Monday"; }
 /* "Collapse ticked items": the ticked items (and their sub-lists) fold into a "▸ N done" row
-   that opens like a dropdown, below the items still to do. */
+   that opens like a dropdown. The row sits below the items still to do unless it was dragged
+   elsewhere (items after it get .fold-after). Folded items shrink to nothing rather than
+   display: none, so images placed freely on the note that happen to live in them stay put. */
 .editor ul.checklist[data-fold-label] { display: flex; flex-direction: column; }
 .editor ul.checklist[data-fold-label] > li.checked,
 .editor ul.checklist[data-fold-label] > li.checked + :is(ul, ol) { order: 2; }
-.editor ul.checklist[data-fold-label]:not(.fold-open) li.checked,
-.editor ul.checklist[data-fold-label]:not(.fold-open) li.checked + :is(ul, ol) { display: none; }
+.editor ul.checklist[data-fold-label] > .fold-after { order: 3; }
+.editor ul.checklist[data-fold-label]:not(.fold-open) :is(li.checked, li.checked + ul, li.checked + ol) {
+  height: 0; margin-block: 0; padding-block: 0; overflow: hidden; visibility: hidden;
+}
+.editor ul.checklist[data-fold-label]:not(.fold-open) li.checked img:is([data-wrap="behind"], [data-wrap="front"]) { visibility: visible; }
 .editor ul.checklist[data-fold-label]::after {
   content: "▸\2002" attr(data-fold-label);
   order: 1;
@@ -606,6 +611,7 @@ body.rolled #btn-roll { opacity: 0.72; }
 }
 .editor ul.checklist[data-fold-label]:dir(rtl)::after { content: "◂\2002" attr(data-fold-label); }
 .editor ul.checklist.fold-open[data-fold-label]::after { content: "▾\2002" attr(data-fold-label); }
+.editor ul.checklist.fold-dragging[data-fold-label]::after { cursor: grabbing; outline: 1.5px dashed var(--accent); outline-offset: 1px; }
 .editor ul.checklist > li.sinking { animation: sink 0.3s ease-out; }
 @keyframes sink { from { opacity: 0.35; transform: translateY(-4px); } }
 .editor li.flash { animation: flash 1.4s ease-out; border-radius: 4px; }

@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+### Changed
+
+- The "▸ N done" row of a collapsed checklist can be dragged anywhere among the items still to do, including above them. Where you drop it is saved with the note.
+
+### Fixed
+
+- Collapsing a checklist no longer hides pictures placed behind or in front of the text that belong to a ticked item.
+
 ## [4.1.1] - 2026-10-13
 
 ### Added
