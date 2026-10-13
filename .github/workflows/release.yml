@@ -103,9 +103,21 @@ jobs:
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           MAC_CERTIFICATE: ${{ secrets.MAC_CERTIFICATE }}
+          MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        # The signing variables are exported only when the secrets exist: electron-builder treats
+        # an empty CSC_LINK as a certificate path and fails with "not a file".
         run: |
           if [ -n "$APPLE_TEAM_ID" ] && [ -n "$MAC_CERTIFICATE" ]; then
-            echo "MAC_IDENTITY=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
+            {
+              echo "MAC_IDENTITY=$APPLE_TEAM_ID"
+              echo "CSC_LINK=$MAC_CERTIFICATE"
+              echo "CSC_KEY_PASSWORD=$MAC_CERTIFICATE_PASSWORD"
+              echo "APPLE_ID=$APPLE_ID"
+              echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_SPECIFIC_PASSWORD"
+              echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+            } >> "$GITHUB_ENV"
             echo "Signing with the Developer ID of team $APPLE_TEAM_ID and notarizing."
           else
             echo "MAC_IDENTITY=-" >> "$GITHUB_ENV"
@@ -117,11 +129,6 @@ jobs:
         run: npx electron-builder ${{ matrix.args }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          CSC_LINK: ${{ secrets.MAC_CERTIFICATE }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload the build
         uses: actions/upload-artifact@v4
