@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+### Added
+
+- **Exact text size.** The Text style & size menu now has a size box in points next to the S/M/L/XL/2X buttons: type any size from 6 to 200 pt, pick a preset, or step through the presets with − and +. Exact sizes survive a restart and paste.
+
 ## [4.0.1] - 2026-10-13
 
 ### Added

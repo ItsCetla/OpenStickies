@@ -176,6 +176,13 @@
       <button data-size="5" title="Extra large" data-i18n-title="note.extraLarge" data-i18n="note.xl">XL</button>
       <button data-size="6" title="Huge" data-i18n-title="note.huge">2X</button>
     </div>
+    <div class="size-exact" id="size-exact">
+      <button id="size-down" title="Smaller" data-i18n-title="note.smaller"><i data-icon="minus" data-size="14"></i></button>
+      <input type="number" id="size-pt" min="6" max="200" step="1" list="size-presets" title="Exact size in points" data-i18n-title="note.exactSize">
+      <span class="unit">pt</span>
+      <button id="size-up" title="Bigger" data-i18n-title="note.bigger"><i data-icon="plus" data-size="14"></i></button>
+      <datalist id="size-presets"></datalist>
+    </div>
   </div>
 
   <div class="pop" id="pop-color" hidden>

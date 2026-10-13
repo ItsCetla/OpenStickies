@@ -458,6 +458,16 @@ body.rolled #btn-roll { opacity: 0.72; }
 .seg button { flex: 1; height: 28px; border-radius: 6px; font-weight: 600; font-size: 12px; border: 1px solid var(--pop-border); }
 .seg button:hover { background: var(--pop-hover); }
 
+.size-exact { display: flex; align-items: center; gap: 4px; padding: 0 6px 6px; }
+.size-exact button { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--pop-border); display: grid; place-items: center; }
+.size-exact button:hover { background: var(--pop-hover); }
+.size-exact input {
+  flex: 1; min-width: 0; height: 28px; min-height: 0; padding: 0 6px; text-align: end;
+  font: inherit; font-size: 12px; font-variant-numeric: tabular-nums;
+  color: var(--pop-text); background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 6px;
+}
+.size-exact .unit { font-size: 11px; color: var(--pop-muted); }
+
 .color-grid { display: grid; grid-template-columns: repeat(5, 28px); gap: 6px; padding: 4px 8px 8px; }
 .color-chip {
   width: 28px;

@@ -498,6 +498,7 @@ export class Editor {
       case 'date': return this.exec('insertText', new Date().toLocaleString(uiLang(), { dateStyle: 'medium', timeStyle: 'short' }));
       case 'block': return this.formatBlock(arg);
       case 'size': return this.setFontSize(arg);
+      case 'sizePt': return this.setFontSizePt(arg);
       case 'color': return this.setColor(arg);
       case 'highlight': return this.setHighlight(arg);
       default: return undefined;
@@ -550,6 +551,58 @@ export class Editor {
       for (const f of this.el.querySelectorAll('font[size="3"]')) f.replaceWith(...f.childNodes);
     }
     this.changed();
+  }
+
+  // An exact size, in points. Points rather than pixels because Chromium's paste path stamps
+  // px sizes on everything, which _stripLeakedStyles has to throw away; a pt size can only
+  // have come from this control, so it survives.
+  setFontSizePt(pt) {
+    if (this.locked) return;
+    const n = Math.min(200, Math.max(6, Math.round(Number(pt) * 2) / 2));
+    if (!n) return;
+    const r = this.range();
+    if (!r) return;
+    this.el.focus({ preventScroll: true });
+    const size = `${n}pt`;
+    if (r.collapsed) {
+      // Nothing to wrap: open a sized span and leave the caret in it so what is typed next picks it up.
+      document.execCommand('insertHTML', false, `<span style="font-size: ${size}" data-caret>${ZWSP}</span>`);
+      const span = this.el.querySelector('span[data-caret]');
+      if (span) {
+        span.removeAttribute('data-caret');
+        const at = document.createRange();
+        at.setStart(span.firstChild || span, span.firstChild ? 1 : 0);
+        at.collapse(true);
+        this.selectRange(at);
+      }
+    } else {
+      // Size 7 is the one the S/M/L/XL/2X buttons never use, so whatever comes back xxx-large
+      // is exactly the text this call touched (pasted xxx-large text is remembered and kept).
+      const isHuge = (el) => /^(-webkit-)?xxx-large$/.test(el.style.fontSize);
+      const before = new Set([...this.el.querySelectorAll('[style*="font-size"]')].filter(isHuge));
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand('fontSize', false, '7');
+      document.execCommand('styleWithCSS', false, false);
+      for (const el of this.el.querySelectorAll('[style*="font-size"]')) if (isHuge(el) && !before.has(el)) el.style.fontSize = size;
+      for (const f of this.el.querySelectorAll('font[size="7"]')) {
+        const span = document.createElement('span');
+        span.style.fontSize = size;
+        span.append(...f.childNodes);
+        f.replaceWith(span);
+      }
+    }
+    this.changed();
+  }
+
+  // Size of the text at the caret, in points, as the exact-size box should show it. Measured
+  // against the note's base size so zoom cancels out.
+  fontSizePt(basePx) {
+    const el = this.anchorElement();
+    if (!el || !this.el.contains(el)) return null;
+    const own = parseFloat(getComputedStyle(el).fontSize);
+    const base = parseFloat(getComputedStyle(this.el).fontSize);
+    if (!own || !base) return null;
+    return Math.round((own / base) * basePx * 0.75);
   }
 
   setColor(color) {

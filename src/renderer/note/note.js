@@ -381,7 +381,14 @@ function positionPop(pop, anchor, placement) {
   pop.style.top = `${Math.round(y)}px`;
 }
 
+// Font sizes a word processor offers; the −/+ buttons step through them.
+const SIZE_PRESETS = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72];
+
 function preparePop(name) {
+  if (name === 'style') {
+    const pt = editor.fontSizePt(settings.fontSize || 15);
+    $('size-pt').value = pt == null ? '' : String(pt);
+  }
   if (name === 'menu') {
     for (const s of document.querySelectorAll('.swatch')) s.classList.toggle('on', s.dataset.color === note.color);
     // A custom colour/gradient replaces the palette colour; a picture still uses it as its tint.
@@ -459,6 +466,15 @@ document.addEventListener('click', async (e) => {
 
   const sizeBtn = t.closest('#size-seg [data-size]');
   if (sizeBtn) { editor.restoreSelection(); editor.command('size', sizeBtn.dataset.size); closePops(); return; }
+
+  const stepBtn = t.closest('#size-down, #size-up');
+  if (stepBtn) {
+    const cur = Number($('size-pt').value) || editor.fontSizePt(settings.fontSize || 15) || 12;
+    const up = stepBtn.id === 'size-up';
+    const next = up ? SIZE_PRESETS.find(p => p > cur) : [...SIZE_PRESETS].reverse().find(p => p < cur);
+    applyExactSize(next == null ? cur + (up ? 1 : -1) : next, false);
+    return;
+  }
 
   const tpl = t.closest('[data-template]');
   if (tpl) {
@@ -965,6 +981,22 @@ if (api.platform !== 'win32') {
     api.titlebarMenu();
   });
 }
+
+// The pop stays open after −/+ so the size can be nudged repeatedly; Enter in the box closes it.
+function applyExactSize(pt, close) {
+  const n = Math.min(200, Math.max(6, Math.round(Number(pt) * 2) / 2));
+  if (!n) return;
+  editor.restoreSelection();
+  editor.command('sizePt', n);
+  editor.saveSelection();
+  $('size-pt').value = String(n);
+  if (close) closePops();
+}
+$('size-presets').innerHTML = SIZE_PRESETS.map(p => `<option value="${p}"></option>`).join('');
+$('size-pt').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); applyExactSize(e.target.value, true); }
+});
+$('size-pt').addEventListener('change', (e) => { if (e.target.value) applyExactSize(e.target.value, false); });
 
 $('opacity').addEventListener('input', (e) => {
   const v = Number(e.target.value) / 100;

@@ -87,7 +87,7 @@ function cleanStyle(tag, style, mode) {
     const bg = style['background-color'] || style.background;
     if (bg && COLOR_RE.test(bg) && !isTransparent(bg)) keep.push(`background-color: ${bg}`);
     const fs = style['font-size'];
-    if (fs && (SIZE_KEYWORDS.has(fs.toLowerCase()) || /^\d{1,3}(\.\d+)?(em|%)$/.test(fs))) keep.push(`font-size: ${fs.toLowerCase()}`);
+    if (fs && (SIZE_KEYWORDS.has(fs.toLowerCase()) || /^\d{1,3}(\.\d+)?(em|%|pt)$/.test(fs))) keep.push(`font-size: ${fs.toLowerCase()}`);
     if ((tag === 'IMG' || tag === 'TABLE' || tag === 'TD' || tag === 'TH') && style.width && LENGTH_RE.test(style.width)) keep.push(`width: ${style.width}`);
     // Position of "behind text" / "in front of text" images.
     if (tag === 'IMG') for (const side of ['left', 'top']) if (/^-?\d{1,5}(\.\d+)?px$/.test(style[side] || '')) keep.push(`${side}: ${style[side]}`);
