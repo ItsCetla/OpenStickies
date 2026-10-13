@@ -224,6 +224,8 @@ jobs:
             mac_note="The Mac builds are signed with a Developer ID and notarized by Apple."
           fi
           download="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$TAG"
+          # Bash 5.2 otherwise turns "&" in a replacement into the matched text.
+          shopt -u patsub_replacement 2>/dev/null || true
           footer=${footer//\{MAC_NOTE\}/$mac_note}
           footer=${footer//\{VERSION\}/$VERSION}
           footer=${footer//\{DOWNLOAD\}/$download}
