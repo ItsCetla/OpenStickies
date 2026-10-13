@@ -3,7 +3,7 @@ import { htmlToMarkdown, fileUrl } from '../shared/html-to-md.js';
 import { sanitizeHtml } from '../shared/sanitize.js';
 import { Editor, normalizeUrl } from './editor.js';
 import { Suggest, rank } from './suggest.js';
-import { progress, checklistItems, applyResets, setReset, clearTicked, topChecklist, sinkItem, TAG_RE, ownText } from './smart.js';
+import { progress, checklistItems, applyResets, setReset, setFold, clearTicked, topChecklist, sinkItem, TAG_RE, ownText } from './smart.js';
 import { escapeHtml } from '../shared/sanitize.js';
 import { IS_MAC, MOD_KEY, keyLabel, localizeKeys } from '../shared/keys.js';
 import { HoverPreview } from './chips.js';
@@ -1157,6 +1157,8 @@ api.onCommand(({ cmd, arg }) => {
         toast(n ? tp('note.removedTicked', n) : tr('note.nothingTicked'));
       } else if (arg === 'sink') {
         for (const li of [...(list || editor.el).querySelectorAll('ul.checklist > li.checked')]) sinkItem(li);
+      } else if (arg === 'fold') {
+        setFold(list, !(list && list.hasAttribute('data-fold')));
       }
       editor.changed();
       break;

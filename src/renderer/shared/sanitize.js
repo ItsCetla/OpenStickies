@@ -14,7 +14,7 @@ const DROP = new Set([
 
 const ATTRS = {
   P: [], DIV: [], BR: [], SPAN: [], B: [], STRONG: [], I: [], EM: [], U: [], S: [], MARK: [], SUB: [], SUP: [],
-  SMALL: [], CODE: [], KBD: [], PRE: ['data-lang'], BLOCKQUOTE: [], H1: [], H2: [], H3: [], UL: ['data-reset', 'data-reset-at'], OL: ['start'], LI: ['data-due', 'data-due-src'],
+  SMALL: [], CODE: [], KBD: [], PRE: ['data-lang'], BLOCKQUOTE: [], H1: [], H2: [], H3: [], UL: ['data-reset', 'data-reset-at', 'data-fold'], OL: ['start'], LI: ['data-due', 'data-due-src'],
   A: ['href', 'title'], IMG: ['src', 'alt', 'title', 'width', 'data-wrap'], HR: [], TABLE: [], THEAD: [], TBODY: [], TFOOT: [],
   TR: [], TD: ['colspan', 'rowspan'], TH: ['colspan', 'rowspan'], CAPTION: [], DETAILS: ['open'], SUMMARY: [],
   FIGURE: [], FIGCAPTION: []
@@ -174,6 +174,7 @@ export function sanitizeHtml(html, { mode = 'stored', normalize = mode === 'past
       else if (name === 'width' || name === 'colspan' || name === 'rowspan' || name === 'start') v = /^\d{1,4}$/.test(v) ? v : null;
       else if (name === 'data-wrap') v = mode === 'stored' && /^(left|right|block|behind|front)$/.test(v) ? v : null;
       else if (name === 'data-reset') v = mode === 'stored' && /^(daily|weekly)$/.test(v) ? v : null;
+      else if (name === 'data-fold') v = mode === 'stored' && v === '1' ? v : null;
       else if (name === 'data-reset-at') v = mode === 'stored' && /^\d{1,15}$/.test(v) ? v : null;
       else if (name === 'data-due') v = mode === 'stored' && /^\d{4}-\d\d-\d\d$/.test(v) ? v : null;
       else if (name === 'data-due-src') v = mode === 'stored' ? String(v).slice(0, 40) : null;

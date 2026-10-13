@@ -583,6 +583,29 @@ body.rolled #btn-roll { opacity: 0.72; }
 }
 .editor ul.checklist[data-reset="daily"]::before { content: "↻ Unticks every day"; }
 .editor ul.checklist[data-reset="weekly"]::before { content: "↻ Unticks every Monday"; }
+/* "Collapse ticked items": the ticked items (and their sub-lists) fold into a "▸ N done" row
+   that opens like a dropdown, below the items still to do. */
+.editor ul.checklist[data-fold-label] { display: flex; flex-direction: column; }
+.editor ul.checklist[data-fold-label] > li.checked,
+.editor ul.checklist[data-fold-label] > li.checked + :is(ul, ol) { order: 2; }
+.editor ul.checklist[data-fold-label]:not(.fold-open) li.checked,
+.editor ul.checklist[data-fold-label]:not(.fold-open) li.checked + :is(ul, ol) { display: none; }
+.editor ul.checklist[data-fold-label]::after {
+  content: "▸\2002" attr(data-fold-label);
+  order: 1;
+  align-self: flex-start;
+  margin: 0.2em 0 0.1em;
+  padding: 0.05em 0.55em;
+  border-radius: 999px;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--text) 60%, transparent);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  cursor: pointer;
+  user-select: none;
+}
+.editor ul.checklist[data-fold-label]:dir(rtl)::after { content: "◂\2002" attr(data-fold-label); }
+.editor ul.checklist.fold-open[data-fold-label]::after { content: "▾\2002" attr(data-fold-label); }
 .editor ul.checklist > li.sinking { animation: sink 0.3s ease-out; }
 @keyframes sink { from { opacity: 0.35; transform: translateY(-4px); } }
 .editor li.flash { animation: flash 1.4s ease-out; border-radius: 4px; }

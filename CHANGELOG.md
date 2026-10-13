@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+### Added
+
+- **Collapse ticked items.** Right-click a checklist and choose Checklist → Collapse ticked items. Its finished items fold into a "▸ N done" row below the items still to do, and clicking the row opens or closes them like a dropdown. It is a choice you make for each list. Nothing collapses on its own, and the setting is saved with the note.
+
 ## [4.1.0] - 2026-10-13
 
 4.0.1 was never published as a release of its own, so its changes, including the Claude Code and Codex integrations, also arrive with this version.

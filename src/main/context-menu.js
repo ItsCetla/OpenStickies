@@ -137,6 +137,7 @@ function attachNoteContextMenu({ win, noteId, store, windows, openExternal }) {
           { label: tr('menu.untickNever'), type: 'radio', checked: reset === 'never', click: cmd('checklist', 'never') },
           { type: 'separator' },
           { label: tr('menu.sinkTicked'), click: cmd('checklist', 'sink') },
+        { label: tr('menu.foldTicked'), type: 'checkbox', checked: !!ctx.checklistFolded, click: cmd('checklist', 'fold') },
           { label: tr('menu.removeTicked'), click: cmd('checklist', 'clear') }
         ]
       });

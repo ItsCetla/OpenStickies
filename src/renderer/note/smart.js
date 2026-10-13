@@ -275,6 +275,27 @@ export function setReset(list, mode) {
   }
 }
 
+// "Collapse ticked items" is a choice saved on the list (data-fold), never made automatically.
+export function setFold(list, on) {
+  if (!list) return;
+  if (on) list.dataset.fold = '1';
+  else { delete list.dataset.fold; list.classList.remove('fold-open'); }
+}
+
+// Folded lists show a "▸ N done" row in place of their ticked items. The count is kept in
+// data-fold-label for CSS to draw and is never saved.
+export function refreshFolds(editorEl, label) {
+  for (const list of editorEl.querySelectorAll('ul[data-fold-label]')) {
+    if (!list.hasAttribute('data-fold')) { list.removeAttribute('data-fold-label'); list.classList.remove('fold-open'); }
+  }
+  for (const list of editorEl.querySelectorAll('ul.checklist[data-fold]')) {
+    const n = list.querySelectorAll('li.checked').length;
+    if (!n) { list.removeAttribute('data-fold-label'); list.classList.remove('fold-open'); continue; }
+    const text = label(n);
+    if (list.getAttribute('data-fold-label') !== text) list.setAttribute('data-fold-label', text);
+  }
+}
+
 function isResetDue(mode, last, now) {
   const d = new Date(last || 0);
   d.setHours(0, 0, 0, 0);

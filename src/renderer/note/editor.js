@@ -1,7 +1,7 @@
 import { sanitizeHtml, escapeHtml, BLOCK_TAGS } from '../shared/sanitize.js';
-import { decorate, syncDueDates, tagAt, sinkItem, moveItem, nudgeItem, topChecklist, cascadeCheck } from './smart.js';
+import { decorate, syncDueDates, tagAt, sinkItem, moveItem, nudgeItem, topChecklist, cascadeCheck, refreshFolds } from './smart.js';
 import { keyLabel } from '../shared/keys.js';
-import { t as tr, lang as uiLang } from '../shared/i18n.js';
+import { t as tr, tp, lang as uiLang } from '../shared/i18n.js';
 import { chipHtml, refreshChips, forgetChipInfo } from './chips.js';
 import { fileUrl } from '../shared/html-to-md.js';
 import { tokenize, detectLanguage, normalizeLang, langLabel, TOKEN_KINDS } from './highlight.js';
@@ -78,6 +78,7 @@ export class Editor {
     this.updateEmpty();
     this.localizeImages();
     this.refreshChips();
+    this.refreshFolds();
     this._decorateSoon(0);
     this._highlightSoon(0);
     this.ocrImages();
@@ -85,7 +86,7 @@ export class Editor {
 
   getHTML() {
     const clone = this.el.cloneNode(true);
-    clone.querySelectorAll('img.selected, img.loading, img.dragging, li.pop, li.sinking, li.flash, .dragging-item').forEach(n => n.classList.remove('selected', 'loading', 'dragging', 'pop', 'sinking', 'flash', 'dragging-item'));
+    clone.querySelectorAll('img.selected, img.loading, img.dragging, li.pop, li.sinking, li.flash, .dragging-item, ul.fold-open').forEach(n => n.classList.remove('selected', 'loading', 'dragging', 'pop', 'sinking', 'flash', 'dragging-item', 'fold-open'));
     // File chips get their icon, drag handle and "missing" look on display; none of it is saved.
     clone.querySelectorAll('a.file-chip').forEach(a => {
       a.classList.remove('missing');
@@ -97,6 +98,7 @@ export class Editor {
     clone.querySelectorAll('a[title]').forEach(a => a.removeAttribute('title'));
     // The guessed language and chip label are recomputed on load, so they aren't saved.
     clone.querySelectorAll('pre[data-lang-auto], pre[data-lang-label]').forEach(pre => { pre.removeAttribute('data-lang-auto'); pre.removeAttribute('data-lang-label'); });
+    clone.querySelectorAll('ul[data-fold-label]').forEach(ul => ul.removeAttribute('data-fold-label'));
     let html = clone.innerHTML.replace(/​/g, '');
     if (/^<p><br><\/p>$/.test(html) || html === '<br>') html = '';
     return html;
@@ -117,6 +119,7 @@ export class Editor {
 
   changed() {
     this.updateEmpty();
+    this.refreshFolds();
     this.onChange();
     this._decorateSoon();
     this._highlightSoon();
@@ -131,6 +134,24 @@ export class Editor {
       this.ocrImages(); // pictures added by paste, drop or the image button
       this.refreshChips(); // file chips added by paste, drop or undo
     }, delay);
+  }
+
+  refreshFolds() {
+    refreshFolds(this.el, (n) => tp('note.foldDone', n));
+  }
+
+  // True when a click at y on a folded list lands on its "▸ N done" row, which CSS draws as
+  // the list's ::after between the open items and the ticked ones.
+  _onFoldRow(list, y) {
+    let top = list.getBoundingClientRect().top;
+    let bottom = list.getBoundingClientRect().bottom;
+    for (const c of list.children) {
+      const r = c.getBoundingClientRect();
+      if (!r.height) continue;
+      if (getComputedStyle(c).order === '0') top = Math.max(top, r.bottom);
+      else bottom = Math.min(bottom, r.top);
+    }
+    return y >= top - 1 && y <= bottom + 1;
   }
 
   // ---------- file shortcuts ----------
@@ -1541,6 +1562,12 @@ export class Editor {
     this.content.addEventListener('drop', (e) => this._onDrop(e));
 
     el.addEventListener('mousedown', (e) => {
+      const fold = e.target.nodeName === 'UL' && e.target.hasAttribute('data-fold-label') && el.contains(e.target) ? e.target : null;
+      if (fold && e.button === 0 && this._onFoldRow(fold, e.clientY)) {
+        e.preventDefault();
+        fold.classList.toggle('fold-open');
+        return;
+      }
       const li = e.target.closest && e.target.closest('ul.checklist > li');
       if (li && el.contains(li)) {
         const r = li.getBoundingClientRect();
@@ -1640,6 +1667,7 @@ export class Editor {
         imageText: isImg ? (t.getAttribute('alt') || '') : '',
         inChecklist: !!(t.closest && t.closest('ul.checklist') && el.contains(t)),
         checklistReset: ((topChecklist(t, el) || {}).dataset || {}).reset || 'never',
+        checklistFolded: !!((topChecklist(t, el) || {}).dataset || {}).fold,
         onLink: !!(t.closest && t.closest('a[href]')),
         onFile: !!onChip,
         filePath: onChip ? onChip.getAttribute('data-path') : null,
