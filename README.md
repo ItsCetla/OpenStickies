@@ -21,7 +21,8 @@
   &nbsp;·&nbsp;
   <a href="#highlights">Features</a>
   &nbsp;·&nbsp;
-  <a href="#opencode-integration">OpenCode</a>
+  <a href="#opencode-integration">OpenCode</a> ·
+  <a href="#claude-code-and-codex">Claude Code & Codex</a>
   &nbsp;·&nbsp;
   <a href="#keyboard-shortcuts">Shortcuts</a>
   &nbsp;·&nbsp;
@@ -34,7 +35,7 @@
 
 <br>
 
-**OpenStickies** is sticky notes for Windows, macOS and Linux, rebuilt with rich formatting, tabs, code blocks, images, file shortcuts, checklists, reminders, tags, links between notes, workspaces, custom backgrounds, version history, private notes, screen snips with searchable text, and an OpenCode integration. Every note is its own small floating window, like classic Stickies.
+**OpenStickies** is sticky notes for Windows, macOS and Linux, rebuilt with rich formatting, tabs, code blocks, images, file shortcuts, checklists, reminders, tags, links between notes, workspaces, custom backgrounds, version history, private notes, screen snips with searchable text, and integrations for OpenCode, Claude Code and Codex. Every note is its own small floating window, like classic Stickies.
 
 ## Download
 
@@ -277,6 +278,28 @@ The plugin also gives the agent four tools, so you can just ask, e.g. *"put the 
 
 The agent can only change stickies **it** created. It can't read, change or tick your own notes, and a sticky you delete can't be edited back. If OpenStickies isn't running, the tools tell the agent to ask you to start it.
 
+## Claude Code and Codex
+
+The same task notes work with [Claude Code](https://claude.com/claude-code) and [Codex](https://openai.com/codex). Connect each one from Settings; the task-note color and the planning rule are the ones set under **Settings → OpenCode**, and apply to every connected agent.
+
+### Connect Claude Code
+
+1. In OpenStickies: **Settings → Claude Code → Connect**.
+2. Restart Claude Code.
+
+Connecting copies two small scripts to `~/.stickies/agents/` and registers them: an MCP server with the `stickies_*` tools (in `~/.claude.json`) and a hook (in `~/.claude/settings.json`, for the UserPromptSubmit, PostToolUse, Stop and SessionEnd events) that mirrors Claude Code's own to-do list to a sticky: the first thing you asked becomes the title, done steps are ticked and the current one is marked ▶. The hook never blocks the agent, and it leaves your other hooks alone. Task notes are tagged `#claude-code` plus the project name. **Disconnect** removes the hook and the server.
+
+### Connect Codex
+
+1. In OpenStickies: **Settings → Codex → Connect**.
+2. Restart Codex.
+
+Connecting adds a block to `~/.codex/config.toml` (between `# BEGIN OpenStickies` and `# END OpenStickies`) with the same MCP server, plus a `stickies_plan` tool, since Codex's to-do list isn't visible from outside: the agent is asked to put its plan on a sticky before any multi-part task and to keep it current as it works. Task notes are tagged `#codex` plus the project name. **Disconnect** removes the block.
+
+The scripts need Node (18 or later) on your PATH. Without it, OpenStickies registers its own runtime to run them.
+
+Both agents get the same four tools as OpenCode (`stickies_create`, `stickies_update`, `stickies_check` and `stickies_list`), with the same rule: they can only change stickies they created.
+
 ### Local API
 
 Under the hood, OpenStickies runs a small local API on `127.0.0.1` with a random port and a token stored in `~/.stickies/api.json` (`%USERPROFILE%\.stickies\api.json` on Windows), with a copy as `api.json` in the [data folder](#where-your-notes-live). Requests from web pages are refused. Scripts can use it too.
@@ -420,12 +443,16 @@ src/
     files.js             file shortcuts: opening, revealing, dragging out, previews
     data-location.js     the custom data folder
     migrate.js           one-time copy from the old Stickies folder
-    api-server.js        local API for OpenCode and scripts
-    agent-notes.js       AI task notes (OpenCode)
+    api-server.js        local API for the AI agents and scripts
+    agent-notes.js       AI task notes (OpenCode, Claude Code, Codex)
     opencode.js          installs/removes the OpenCode plugin
+    agents.js            connects Claude Code (hook + MCP server) and Codex (MCP server)
     i18n.js              loads the interface language for the main process
     reminders.js, exporter.js, markdown.js, context-menu.js, tray.js
-  integrations/opencode-plugin.js   the plugin that runs inside OpenCode
+  integrations/
+    opencode-plugin.js   the plugin that runs inside OpenCode
+    stickies-mcp.mjs     the MCP server Claude Code and Codex talk to
+    claude-hook.mjs      the hook that mirrors Claude Code's to-do list
   locales/               interface strings, one JSON file per language (en.json is the reference)
   preload.js             the safe API the windows are allowed to use
   renderer/

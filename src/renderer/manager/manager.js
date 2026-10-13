@@ -98,7 +98,7 @@ function relocalize() {
   renderWorkspaces();
   renderTemplates();
   renderPrivacy();
-  if (!$('view-settings').hidden) { $('appbar-title').textContent = tr('manager.settings'); refreshHotkeyStatus(); renderOpenCode(); }
+  if (!$('view-settings').hidden) { $('appbar-title').textContent = tr('manager.settings'); refreshHotkeyStatus(); renderOpenCode(); renderAgents(); }
   renderSidebar();
   render();
   return true;
@@ -124,7 +124,7 @@ async function loadTemplates() {
 function route(v) {
   if (v === 'settings') return showSettings();
   if (v === 'privacy') { showSettings(); $('privacy').scrollIntoView({ block: 'start' }); return; }
-  if (v === 'opencode') { showSettings(); $('opencode').scrollIntoView({ block: 'start' }); return; }
+  if (v === 'opencode' || v === 'claude' || v === 'codex') { showSettings(); $(v).scrollIntoView({ block: 'start' }); return; }
   if (v === 'workspaces') { setView('all'); openDrawer(); $('workspaces-section').scrollIntoView({ block: 'nearest' }); return; }
   if (v.startsWith('tag:')) { setView('all'); setQuery(`#${v.slice(4)}`); return; }
   setView(VIEW_TITLES[v] ? v : 'all');
@@ -182,6 +182,38 @@ async function renderOpenCode() {
   $('oc-nudge').addEventListener('change', (e) => update({ agentPlanNudge: e.target.checked }).then(() => toast(tr(e.target.checked ? 'manager.ocPlanOn' : 'manager.ocPlanOff'))));
 }
 
+// The Claude Code and Codex cards. They share the task-note color and the planning rule with
+// the OpenCode card above them (agentColor / agentPlanNudge), so those controls aren't repeated.
+async function renderAgents() {
+  const all = await api.agentsStatus();
+  for (const which of ['claude', 'codex']) {
+    const st = all[which];
+    const agent = tr(which === 'claude' ? 'manager.claudeCode' : 'manager.codex');
+    const pill = tr(st.connected ? (st.outdated ? 'manager.ocUpdateReady' : 'manager.ocConnected') : 'manager.ocNotConnected');
+    const sub = st.found ? tx('manager.agentFoundSub', { agent }) : tx('manager.agentMissingSub', { agent, site: which === 'claude' ? 'claude.com/claude-code' : 'openai.com/codex' });
+    const buttons = st.connected
+      ? `${st.outdated ? `<button class="btn primary" data-connect="${which}">${tx('manager.ocUpdate')}</button>` : ''}<button class="btn" data-disconnect="${which}">${tx('manager.ocDisconnect')}</button>`
+      : `<button class="btn primary" data-connect="${which}">${tx(st.partial ? 'manager.agentRepair' : 'manager.ocConnect')}</button>`;
+    const foot = st.connected
+      ? tx(which === 'claude' ? 'manager.claudeFootConnected' : 'manager.codexFootConnected', { agent })
+      : tx(which === 'claude' ? 'manager.claudeFoot' : 'manager.codexFoot');
+    const card = $(`${which}-card`);
+    card.innerHTML = `
+      <div class="row">
+        <div class="row-label">${icon('checklist', { size: 17 })}<div>
+          <div>${tx('manager.agentTaskNotes', { agent })} <span class="status-pill${st.connected ? ' ok' : ''}">${pill}</span></div>
+          <div class="sub">${sub}</div>
+        </div></div>
+        ${buttons}
+      </div>
+      <div class="row note-row">${foot}</div>`;
+    const connectBtn = card.querySelector('[data-connect]');
+    if (connectBtn) connectBtn.addEventListener('click', async () => { await api.agentsConnect(which); toast(tr('manager.agentConnectedToast', { agent })); renderAgents(); });
+    const disc = card.querySelector('[data-disconnect]');
+    if (disc) disc.addEventListener('click', async () => { await api.agentsDisconnect(which); toast(tr('manager.agentDisconnected', { agent })); renderAgents(); });
+  }
+}
+
 function showSettings() {
   $('view-list').hidden = true;
   $('view-tasks').hidden = true;
@@ -194,6 +226,7 @@ function showSettings() {
   refreshHotkeyStatus();
   renderPrivacy();
   renderOpenCode();
+  renderAgents();
 }
 
 function setQuery(q) {

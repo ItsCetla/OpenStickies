@@ -116,6 +116,11 @@ contextBridge.exposeInMainWorld('stickies', {
   opencodeConnect: () => invoke('opencode:connect'),
   opencodeDisconnect: () => invoke('opencode:disconnect'),
 
+  // Claude Code and Codex integrations ('claude' | 'codex')
+  agentsStatus: () => invoke('agents:status'),
+  agentsConnect: (which) => invoke('agents:connect', which),
+  agentsDisconnect: (which) => invoke('agents:disconnect', which),
+
   // data
   exportBackup: () => invoke('data:export-backup'),
   importBackup: () => invoke('data:import-backup'),

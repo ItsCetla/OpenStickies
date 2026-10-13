@@ -53,9 +53,9 @@ const DEFAULT_SETTINGS = {
   ocrImages: true,              // recognize text in images so search finds it
   sinkTicked: false,            // off: ticked checklist items stay where they are; on: they move below the unticked ones
   toolbarMode: 'popup',         // 'popup' | 'editing' | 'always'
-  apiEnabled: true,             // local API for OpenCode and scripts (127.0.0.1 + token)
+  apiEnabled: true,             // local API for the AI agents and scripts (127.0.0.1 + token)
   agentColor: 'blue',           // color of notes written by AI agents
-  agentPlanNudge: true,         // ask OpenCode to plan every multi-part task as a to-do list (→ a sticky)
+  agentPlanNudge: true,         // ask every connected agent to plan multi-part tasks as a to-do list (→ a sticky)
   savedSearches: [
     { id: 's-unchecked', name: 'Unfinished tasks', query: 'has:unchecked' },
     { id: 's-week', name: 'Edited this week', query: 'edited:week' },

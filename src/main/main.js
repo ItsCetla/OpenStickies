@@ -18,6 +18,7 @@ const { Snipper } = require('./snip');
 const { ApiServer } = require('./api-server');
 const { upsertAgentNote, createNoteFromApi, updateApiNote, checkApiNote, listApiNotes } = require('./agent-notes');
 const opencode = require('./opencode');
+const agents = require('./agents');
 const ocr = require('./ocr');
 const scan = require('./html-scan');
 const { htmlToText, titleFromText } = require('./store-text');
@@ -1153,6 +1154,15 @@ function registerIpc() {
     return { ...opencode.connect(), api: true };
   });
   ipcMain.handle('opencode:disconnect', () => ({ ...opencode.disconnect(), api: apiServer.running }));
+
+  // ----- Claude Code and Codex -----
+  const agentOf = (which) => { if (!agents[which] || which === 'runtime') throw new Error(`Unknown agent: ${which}`); return agents[which]; };
+  ipcMain.handle('agents:status', () => ({ claude: agents.claude.status(), codex: agents.codex.status(), api: apiServer.running }));
+  ipcMain.handle('agents:connect', (_e, which) => {
+    if (!apiServer.running) { store.updateSettings({ apiEnabled: true }); apiServer.start(); }
+    return { ...agentOf(which).connect(), api: true };
+  });
+  ipcMain.handle('agents:disconnect', (_e, which) => ({ ...agentOf(which).disconnect(), api: apiServer.running }));
 
   ipcMain.handle('settings:hotkey-status', () => {
     const out = {};

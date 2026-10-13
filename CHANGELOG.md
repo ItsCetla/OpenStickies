@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Claude Code and Codex integrations.** Settings → Claude Code → Connect gives Claude Code the `stickies_*` tools through an MCP server and mirrors its to-do list to a locked task sticky through a hook, the way the OpenCode plugin does. Settings → Codex → Connect adds the same MCP server to Codex, plus a `stickies_plan` tool it uses to show its plan. Both share the task-note color and the planning rule from the OpenCode section.
 - Private notes can have tabs. The tabs are encrypted with the rest of the note, and closing a tab of a private note asks first and deletes it for good, since the trash can't hold encrypted text.
 - Exported HTML and PDF keep the syntax colors of code blocks.
 - Hover previews of PDFs, documents, videos and other files on Linux, using the desktop's thumbnail cache and thumbnailers. A file previews in OpenStickies wherever the file manager shows a thumbnail for it.
