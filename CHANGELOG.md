@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+## [4.1.1] - 2026-10-13
+
 ### Added
 
 - **Collapse ticked items.** Right-click a checklist and choose Checklist → Collapse ticked items. Its finished items fold into a "▸ N done" row below the items still to do, and clicking the row opens or closes them like a dropdown. It is a choice you make for each list. Nothing collapses on its own, and the setting is saved with the note.
@@ -159,7 +161,8 @@ First public release of OpenStickies: sticky notes for the Windows desktop, wher
 - Notes can be kept on top, rolled up, zoomed and printed.
 - `Stickies.exe --quit` closes a running copy cleanly, saving first.
 
-[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.1.0...HEAD
+[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.1.1...HEAD
+[4.1.1]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.1
 [4.1.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.0
 [4.0.1]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.0.1
 [4.0.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.0.0
