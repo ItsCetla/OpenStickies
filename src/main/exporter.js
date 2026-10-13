@@ -7,6 +7,7 @@ const { t: tr } = require('./i18n');
 const palette = require('../renderer/shared/colors.json');
 const { mdToHtml, textToHtml, esc } = require('./markdown');
 const { IMAGE_EXT, sniffImageExt, ATTACHMENT_NAME_RE, writeFileAtomic } = require('./store');
+const { colorCode, codeColorCss } = require('./code-colors');
 
 const MIME_BY_EXT = Object.fromEntries(Object.entries(IMAGE_EXT).map(([m, e]) => [e, m]));
 const IMG_URL_RE = /sticky-img:\/\/img\/([A-Za-z0-9._-]+)/g;
@@ -56,7 +57,7 @@ function exportCss(note) {
   blockquote { margin: .4em 0; padding: .1em 0 .1em .9em; border-left: 3px solid ${c.accent}; opacity: .85; }
   code { font-family: "Cascadia Code", Consolas, monospace; font-size: .9em; background: rgba(0,0,0,.07); padding: .1em .35em; border-radius: 4px; }
   pre { background: rgba(0,0,0,.07); padding: .7em .9em; border-radius: 6px; white-space: pre-wrap; }
-  pre code { background: none; padding: 0; }
+  pre code { background: none; padding: 0; }${codeColorCss(c.text)}
   hr { border: 0; border-top: 1.5px solid currentColor; opacity: .25; margin: .8em 0; }
   table { border-collapse: collapse; margin: .4em 0; width: 100%; }
   td, th { border: 1px solid rgba(0,0,0,.2); padding: .3em .5em; text-align: left; vertical-align: top; }
@@ -64,7 +65,10 @@ function exportCss(note) {
   @media print { body { background: #fff; padding: 0; } .note { box-shadow: none; max-width: none; } }`;
 }
 
-function documentHtml(note, bodyHtml) {
+// The complete web page for a note: the HTML and PDF exports and printing all go through here.
+// Code blocks get their syntax colors on the way (the editor's highlights don't survive innerHTML).
+async function documentHtml(note, bodyHtml) {
+  bodyHtml = await colorCode(bodyHtml);
   const title = esc(note.title || 'Sticky note');
   const when = new Date(note.updatedAt || Date.now()).toLocaleString();
   return `<!doctype html>
@@ -99,7 +103,7 @@ async function renderOffscreen(html, fn) {
 async function exportNote({ parent, store, note, format, payload }) {
   const base = safeFileName(note.title);
   if (format === 'print') {
-    const html = documentHtml(note, inlineImages(payload.html, store));
+    const html = await documentHtml(note, inlineImages(payload.html, store));
     return renderOffscreen(html, (win) => new Promise((resolve) => {
       win.webContents.print({ printBackground: true }, (ok, reason) => resolve({ ok, reason }));
     }));
@@ -113,7 +117,7 @@ async function exportNote({ parent, store, note, format, payload }) {
   if (canceled || !filePath) return { ok: false, canceled: true };
 
   if (format === 'html') {
-    fs.writeFileSync(filePath, documentHtml(note, inlineImages(payload.html, store)));
+    fs.writeFileSync(filePath, await documentHtml(note, inlineImages(payload.html, store)));
   } else if (format === 'txt') {
     fs.writeFileSync(filePath, payload.text.replace(/\n/g, '\r\n'));
   } else if (format === 'md') {
@@ -134,7 +138,7 @@ async function exportNote({ parent, store, note, format, payload }) {
     const doc = { exportedAt: new Date().toISOString(), app: 'OpenStickies', version: app.getVersion(), notes: [noteJson(note, payload)] };
     writeFileAtomic(filePath, JSON.stringify(doc, null, 2));
   } else if (format === 'pdf') {
-    const html = documentHtml(note, inlineImages(payload.html, store));
+    const html = await documentHtml(note, inlineImages(payload.html, store));
     const pdf = await renderOffscreen(html, (win) => win.webContents.printToPDF({ printBackground: true, pageSize: 'Letter' }));
     fs.writeFileSync(filePath, pdf);
   }

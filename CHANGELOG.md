@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+### Added
+
+- Private notes can have tabs. The tabs are encrypted with the rest of the note, and closing a tab of a private note asks first and deletes it for good, since the trash can't hold encrypted text.
+- Exported HTML and PDF keep the syntax colors of code blocks.
+- Hover previews of PDFs, documents, videos and other files on Linux, using the desktop's thumbnail cache and thumbnailers. A file previews in OpenStickies wherever the file manager shows a thumbnail for it.
+- The release workflow signs the Mac builds with a Developer ID and has Apple notarize them when the repository secrets are set (see CONTRIBUTING.md, "Signing the Mac builds"). Without them it signs ad hoc as before. The app now runs with the hardened runtime either way.
+
+### Security
+
+- Background images on private notes are encrypted like the note's other pictures. Existing ones are encrypted the next time the note is unlocked.
+
 ## [4.0.0] - 2026-10-12
 
 OpenStickies now runs on Windows, macOS and Linux, and notes gained tabs, code blocks, file shortcuts, custom backgrounds, a reminder strip and a UI in 12 languages.

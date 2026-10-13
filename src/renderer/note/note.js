@@ -406,7 +406,6 @@ function preparePop(name) {
     const d = (t) => new Date(t).toLocaleString(uiLang(), { dateStyle: 'medium', timeStyle: 'short' });
     $('menu-stats').innerHTML = escapeHtml(`${tp('note.words', words)} · ${tr('note.characters', { count: text.length.toLocaleString(uiLang()) })}`)
       + '<br>' + escapeHtml(tr('note.created', { date: d(note.createdAt) })) + '<br>' + escapeHtml(tr('note.edited', { date: d(note.updatedAt) }));
-    $('menu-new-tab').hidden = !!note.private;
     $('menu-new-tab').disabled = !!(tabs && tabs.length >= MAX_TABS);
   } else if (name === 'link') {
     linkCtx = linkCtx || editor.linkContext();
@@ -911,9 +910,15 @@ api.onHighlight((terms) => {
 });
 
 // ---------- confirm dialog ----------
-function confirmDialog() {
+// The delete-note confirmation by default; pass title/body/ok (and check: false to hide the
+// "don't ask again" box) to ask something else. Resolves { ok, check }.
+function confirmDialog({ title, body: text, ok: okLabel, check = true } = {}) {
   return new Promise((resolve) => {
     const modal = $('confirm');
+    $('confirm-title').textContent = title || tr('note.deleteThisNote');
+    $('confirm-body').textContent = text || tr('note.deleteConfirmBody');
+    $('confirm-ok').textContent = okLabel || tr('common.delete');
+    $('confirm-check-wrap').hidden = !check;
     $('confirm-check').checked = false;
     modal.hidden = false;
     $('confirm-ok').focus();
@@ -1323,7 +1328,6 @@ async function togglePrivate() {
     await flush();
     const r = await api.setPrivate(true);
     if (r && r.ok) toast(tr('note.privateOn'));
-    else if (r && r.reason === 'tabs') toast(tr('note.privateTabs'));
   } else {
     if (!vaultState.unlocked) { toast(tr('note.unlockPrivateFirst')); return; }
     await flush();
@@ -1382,7 +1386,7 @@ let tabBusy = false; // a close is waiting on the main process
 let dragTabId = null;
 
 function initTabs() {
-  const list = !note.private && Array.isArray(note.tabs) && note.tabs.length > 1 ? note.tabs : null;
+  const list = Array.isArray(note.tabs) && note.tabs.length > 1 ? note.tabs : null;
   tabs = list ? list.slice(0, MAX_TABS).map(t => ({ ...t })) : null;
   activeTab = tabs ? Math.min(tabs.length - 1, Math.max(0, note.activeTab | 0)) : 0;
   if (tabs) customUndo = true;
@@ -1533,7 +1537,6 @@ function switchTab(i) {
 
 function newTab() {
   if (!note || privateLocked || tabBusy) return;
-  if (note.private) { toast(tr('note.privateOnePage')); return; }
   if (note.locked) { toast(tr('note.unlockToAddTab')); return; }
   if (tabs && tabs.length >= MAX_TABS) { toast(tr('note.maxTabs', { max: MAX_TABS })); return; }
   leaveEditingModes();
@@ -1564,6 +1567,8 @@ async function closeTab(i) {
   syncActive();
   const tab = tabs[i];
   const blank = !tab.text.trim() && !/<(img|hr|table)\b/i.test(tab.html);
+  // A private note's tabs can't go to the Trash (it keeps closed tabs readable), so ask first.
+  if (note.private && !blank && !(await confirmDialog({ title: tr('note.closePrivateTab'), body: tr('note.closePrivateTabBody'), ok: tr('common.close'), check: false })).ok) return;
   const survivor = tabs.length === 2 ? tabs[1 - i] : null;
   persistTabs();
   tabBusy = true;
@@ -1579,7 +1584,7 @@ async function closeTab(i) {
     if (book) undoBooks.set('_', book);
   }
   adoptTabs(r, !wasActive, survivor);
-  toast(tr(blank ? 'note.tabClosed' : 'note.tabTrashed'));
+  toast(tr(blank || note.private ? 'note.tabClosed' : 'note.tabTrashed'));
 }
 
 // Take the tab list the main process settled on after a close.
@@ -1902,7 +1907,9 @@ api.onChanged((patch) => {
   if (!note) return;
   if ('tabs' in patch) {
     if (renaming) finishRename(false);
-    const list = !note.private && Array.isArray(patch.tabs) && patch.tabs.length > 1 ? patch.tabs.slice(0, MAX_TABS).map(t => ({ ...t })) : null;
+    // Locking a private note empties the window, its undo history included; unlocking sends the tabs back.
+    if (patch.privateLocked === true) undoBooks.clear();
+    const list = Array.isArray(patch.tabs) && patch.tabs.length > 1 ? patch.tabs.slice(0, MAX_TABS).map(t => ({ ...t })) : null;
     if (list && !tabs) {
       customUndo = true;
       const book = undoBooks.get('_');

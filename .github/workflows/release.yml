@@ -66,7 +66,8 @@ jobs:
               dist/OpenStickies-Portable-*.exe
           - name: macOS
             os: macos-latest
-            args: --mac dmg zip --arm64 --x64
+            # MAC_IDENTITY comes from the "Pick how to sign the Mac build" step below.
+            args: --mac dmg zip --arm64 --x64 -c.mac.identity="$MAC_IDENTITY"
             files: |
               dist/OpenStickies-*-mac-*.dmg
               dist/OpenStickies-*-mac-*.zip
@@ -92,12 +93,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # The Windows builds aren't signed. The macOS app is signed ad hoc (identity "-" in
-      # package.json) so Apple silicon will run it, but it isn't notarized.
+      # With the repository secrets described in CONTRIBUTING.md ("Signing the Mac builds") the
+      # Mac app is signed with that Developer ID and notarized by Apple, so it opens without a
+      # warning. Without them it's signed ad hoc (identity "-", as in package.json) so Apple
+      # silicon will run it, and macOS asks before the first launch. The Team ID doubles as the
+      # identity to sign with: electron-builder picks the certificate whose name contains it.
+      - name: Pick how to sign the Mac build
+        if: runner.os == 'macOS'
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          MAC_CERTIFICATE: ${{ secrets.MAC_CERTIFICATE }}
+        run: |
+          if [ -n "$APPLE_TEAM_ID" ] && [ -n "$MAC_CERTIFICATE" ]; then
+            echo "MAC_IDENTITY=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
+            echo "Signing with the Developer ID of team $APPLE_TEAM_ID and notarizing."
+          else
+            echo "MAC_IDENTITY=-" >> "$GITHUB_ENV"
+            echo "::notice title=Mac build signed ad hoc::Set the MAC_CERTIFICATE, MAC_CERTIFICATE_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID secrets to sign and notarize it (see CONTRIBUTING.md)."
+          fi
+
+      # The Windows builds aren't signed.
       - name: Build
         run: npx electron-builder ${{ matrix.args }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ${{ secrets.MAC_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       - name: Upload the build
         uses: actions/upload-artifact@v4
@@ -143,6 +167,10 @@ jobs:
 
       - name: Write release notes
         id: notes
+        env:
+          # The same test as the "Pick how to sign the Mac build" step: notarized builds need no
+          # first-launch note.
+          MAC_NOTARIZED: ${{ secrets.APPLE_TEAM_ID != '' && secrets.MAC_CERTIFICATE != '' }}
         run: |
           # This version's section of CHANGELOG.md: everything after "## [x.y.z]" up to the next
           # "## " heading or the link definitions at the bottom of the file.
@@ -177,14 +205,19 @@ jobs:
 
           > **Windows protected your PC?** The Windows builds aren't code-signed, so SmartScreen may warn you the first time. Click **More info → Run anyway**.
 
-          > **macOS says OpenStickies can't be opened?** The Mac builds aren't notarized by Apple. Control-click (or right-click) OpenStickies in Applications and choose **Open**, then **Open** again. On macOS 15 and later, try to open it once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. You only need to do this the first time.
+          {MAC_NOTE}
 
           > **Running the AppImage:** make it executable first, then start it: `chmod +x OpenStickies-{VERSION}-linux-x86_64.AppImage && ./OpenStickies-{VERSION}-linux-x86_64.AppImage`. Some distributions need `libfuse2` installed to run AppImages. On GNOME, the tray icon needs the AppIndicator extension; without it, OpenStickies opens its notes list instead.
 
           To check a download, compare its SHA-256 hash with [`SHA256SUMS.txt`]({DOWNLOAD}/SHA256SUMS.txt). On macOS and Linux: `shasum -a 256 -c SHA256SUMS.txt --ignore-missing`. In PowerShell: `Get-FileHash .\OpenStickies-Setup-{VERSION}.exe`
           EOF
           )
+          mac_note="> **macOS says OpenStickies can't be opened?** The Mac builds aren't notarized by Apple. Control-click (or right-click) OpenStickies in Applications and choose **Open**, then **Open** again. On macOS 15 and later, try to open it once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. You only need to do this the first time."
+          if [ "$MAC_NOTARIZED" = true ]; then
+            mac_note="The Mac builds are signed with a Developer ID and notarized by Apple."
+          fi
           download="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$TAG"
+          footer=${footer//\{MAC_NOTE\}/$mac_note}
           footer=${footer//\{VERSION\}/$VERSION}
           footer=${footer//\{DOWNLOAD\}/$download}
 

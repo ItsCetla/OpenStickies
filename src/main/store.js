@@ -299,7 +299,7 @@ class Store extends EventEmitter {
     n.private = !!raw.private;
     n.cipher = raw.cipher && typeof raw.cipher.data === 'string' ? raw.cipher : null;
     n.refs = Array.isArray(raw.refs) ? raw.refs.filter(r => ATTACHMENT_NAME_RE.test(r)) : [];
-    // Private notes keep a single page: extra tabs would sit outside the encrypted `cipher`.
+    // A private note's tabs live inside `cipher` (see main.js savePrivate); the record keeps none.
     const tabbed = n.private ? null : normalizeTabs(raw.tabs, raw.activeTab);
     n.tabs = tabbed ? tabbed.tabs : null;
     n.activeTab = tabbed ? tabbed.activeTab : 0;
@@ -546,8 +546,9 @@ class Store extends EventEmitter {
     }
     if (bg.type === 'image') {
       const file = this.attachmentFromUrl(bg.src);
-      // Only images we actually hold; a dangling reference would just render an empty note.
-      if (!file || !fs.existsSync(file)) return null;
+      // Only images we actually hold (plain, or encrypted for a private note); a dangling
+      // reference would just render an empty note.
+      if (!file || !(fs.existsSync(file) || fs.existsSync(file + '.enc'))) return null;
       const fit = ['cover', 'contain', 'tile'].includes(bg.fit) ? bg.fit : 'cover';
       return { type: 'image', src: `sticky-img://img/${path.basename(file)}`, fit, dim: num(bg.dim, 0, 80, 0) };
     }
@@ -558,10 +559,15 @@ class Store extends EventEmitter {
     const refs = new Set();
     const add = (html) => { for (const m of String(html || '').matchAll(ATTACHMENT_RE)) refs.add(m[1]); };
     for (const n of this.notes.values()) {
-      // Background images are stored unencrypted (even on private notes) and must survive GC.
-      const bgName = n.background && n.background.type === 'image' ? this.attachmentFromUrl(n.background.src) : null;
-      if (bgName) refs.add(path.basename(bgName));
-      if (n.private) { if (!publicOnly) n.refs.forEach(r => refs.add(r)); continue; }
+      const bgFile = n.background && n.background.type === 'image' ? this.attachmentFromUrl(n.background.src) : null;
+      const bgName = bgFile ? path.basename(bgFile) : null;
+      if (n.private) {
+        // A private note's background is encrypted along with its other pictures (it's in
+        // `refs` once the note was saved while unlocked), so it never counts as a public use.
+        if (!publicOnly) { n.refs.forEach(r => refs.add(r)); if (bgName) refs.add(bgName); }
+        continue;
+      }
+      if (bgName) refs.add(bgName);
       add(n.html);
       if (n.tabs) n.tabs.forEach(t => add(t.html));
     }
@@ -757,4 +763,4 @@ function sniffImageExt(buf) {
   return null;
 }
 
-module.exports = { Store, cleanReminder, htmlToText, titleFromText, isBlankNote, writeFileAtomic, DEFAULT_SETTINGS, DEFAULT_TEMPLATES, IMAGE_EXT, ATTACHMENT_RE, ATTACHMENT_NAME_RE, OPENABLE_RE, sniffImageExt, MAX_TABS };
+module.exports = { Store, cleanReminder, htmlToText, titleFromText, isBlankNote, writeFileAtomic, DEFAULT_SETTINGS, DEFAULT_TEMPLATES, IMAGE_EXT, ATTACHMENT_RE, ATTACHMENT_NAME_RE, OPENABLE_RE, sniffImageExt, MAX_TABS, normalizeTabs };

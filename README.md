@@ -63,7 +63,7 @@ OpenStickies runs on **Windows 10 and 11**, **macOS** (Apple silicon and Intel) 
 Both are also attached as `.zip` files (`OpenStickies-<version>-mac-arm64.zip` and `OpenStickies-<version>-mac-x64.zip`).
 
 > [!NOTE]
-> The Mac builds aren't notarized by Apple, so the first time macOS may say OpenStickies can't be opened. Control-click (or right-click) OpenStickies in Applications and choose **Open**, then **Open** again. On macOS 15 and later, try to open it once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. You only need to do this once.
+> Unless a release says its Mac builds are notarized by Apple, the first time macOS may say OpenStickies can't be opened. Control-click (or right-click) OpenStickies in Applications and choose **Open**, then **Open** again. On macOS 15 and later, try to open it once, then go to **System Settings → Privacy & Security** and click **Open Anyway**. You only need to do this once.
 
 On a Mac, OpenStickies has an icon in the menu bar, and clicking its Dock icon opens the notes list. Snipping the screen needs the **Screen Recording** permission: allow it in **System Settings → Privacy & Security → Screen & System Audio Recording**, then quit and reopen OpenStickies.
 
@@ -189,7 +189,7 @@ Prefer to build it yourself? See [Build from source](#build-from-source).
 ### Files
 
 - Drop a file or folder into a note to add a **file shortcut**. Right-click it to **Open**, **Show in folder** or **Copy path**, or drag it back out into another app.
-- Hover over a shortcut for a preview. Shortcuts to files that have moved or been deleted are dimmed.
+- Hover over a shortcut for a preview. On Linux the previews come from the desktop's thumbnailers, so a file previews wherever the file manager shows a thumbnail for it. Shortcuts to files that have moved or been deleted are dimmed.
 
 ## Organizing
 
@@ -238,7 +238,7 @@ Click **Save this search** to keep a search in the sidebar. Matches are highligh
 
 Set a password in Settings, then use ⋯ → **Make private…** on any note.
 
-- Its words and pictures are encrypted on disk (AES-256-GCM, with the key protected by your password via scrypt).
+- Its words, pictures and background image are encrypted on disk (AES-256-GCM, with the key protected by your password via scrypt).
 - While locked, private notes are hidden from search, previews and exports.
 - They lock automatically after a set idle time, and when your computer locks or sleeps.
 - Windows Hello (Windows) or Touch ID (macOS) can unlock them if it's set up. On Linux, you unlock them with the password.

@@ -6,7 +6,7 @@ const {
 const path = require('path');
 const fs = require('fs');
 
-const { Store, cleanReminder, OPENABLE_RE, ATTACHMENT_RE, writeFileAtomic, MAX_TABS } = require('./store');
+const { Store, cleanReminder, OPENABLE_RE, ATTACHMENT_RE, writeFileAtomic, MAX_TABS, normalizeTabs } = require('./store');
 const { WindowManager } = require('./windows');
 const { Reminders } = require('./reminders');
 const { createTray } = require('./tray');
@@ -494,20 +494,47 @@ function registerHotkeys() {
 }
 
 // ---------- private notes ----------
+// A private note's cipher holds the whole note, tabs included: { html, tabs, activeTab }. The
+// plaintext record keeps tabs: null (the store enforces it), so no page ever sits readable on disk.
+// The decrypted entry mirrors the store's shape: html/text/title are a copy of the active tab.
+function plainEntry({ html, tabs, activeTab }) {
+  const tabbed = normalizeTabs(tabs, activeTab);
+  if (tabbed) {
+    const tab = tabbed.tabs[tabbed.activeTab];
+    return { html: tab.html, text: tab.text, title: tab.title, tabs: tabbed.tabs, activeTab: tabbed.activeTab };
+  }
+  html = typeof html === 'string' ? html : '';
+  const text = htmlToText(html);
+  return { html, text, title: titleFromText(text), tabs: null, activeTab: 0 };
+}
+
 function privatePlain(note) {
   if (!note || !note.private) return null;
   if (plain.has(note.id)) return plain.get(note.id);
   if (!vault.unlocked || !note.cipher) return null;
   try {
-    const { html } = JSON.parse(vault.decryptText(note.cipher));
-    const text = htmlToText(html);
-    const entry = { html, text, title: titleFromText(text) };
+    const entry = plainEntry(JSON.parse(vault.decryptText(note.cipher)));
     plain.set(note.id, entry);
     return entry;
   } catch (err) {
     console.error('[vault] could not decrypt note', note.id, err.message);
     return null;
   }
+}
+
+function backgroundName(bg) {
+  const file = bg && bg.type === 'image' ? store.attachmentFromUrl(bg.src) : null;
+  return file ? path.basename(file) : null;
+}
+
+// Every image a private note uses, so they can be encrypted with it: the ones in its text, in
+// each of its tabs, and its background picture.
+function privateRefs(note, entry) {
+  const names = new Set(attachmentNames(entry.html));
+  if (entry.tabs) for (const t of entry.tabs) attachmentNames(t.html).forEach(n => names.add(n));
+  const bg = backgroundName(note.background);
+  if (bg) names.add(bg);
+  return [...names];
 }
 
 function attachmentNames(html) {
@@ -525,29 +552,76 @@ function encryptPrivateImages(names) {
   }
 }
 
-function savePrivate(id, html) {
-  const refs = attachmentNames(html);
-  store.update(id, { cipher: vault.encryptText(JSON.stringify({ html })), refs }, { touch: true });
-  const text = htmlToText(html);
-  plain.set(id, { html, text, title: titleFromText(text) });
+// Apply a window's patch ({ html } and/or { tabs, activeTab }) to a private note, following the
+// store's rules for ordinary notes: a tab list is the source of truth, a plain html save edits the
+// active tab, and a list down to one tab turns the note back into a single page.
+function savePrivate(id, patch) {
+  const note = store.get(id);
+  const cur = privatePlain(note) || { html: '', text: '', title: '', tabs: null, activeTab: 0 };
+  let next;
+  if ('tabs' in patch || 'activeTab' in patch) {
+    const raw = 'tabs' in patch ? patch.tabs : cur.tabs;
+    const active = 'activeTab' in patch ? patch.activeTab : cur.activeTab;
+    const only = Array.isArray(raw) && raw.length < 2 ? raw.find(t => t && typeof t.html === 'string') : null;
+    next = { html: only ? only.html : cur.html, tabs: raw, activeTab: active };
+  } else if (cur.tabs) {
+    const tabs = cur.tabs.map(t => ({ ...t }));
+    const tab = tabs[cur.activeTab];
+    tab.html = typeof patch.html === 'string' ? patch.html : tab.html;
+    tab.text = htmlToText(tab.html);
+    if (!tab.renamed) tab.title = titleFromText(tab.text);
+    next = { tabs, activeTab: cur.activeTab };
+  } else {
+    next = { html: typeof patch.html === 'string' ? patch.html : cur.html, tabs: null, activeTab: 0 };
+  }
+  const entry = plainEntry(next);
+  const refs = privateRefs(note, entry);
+  const cipher = vault.encryptText(JSON.stringify({ html: entry.html, tabs: entry.tabs, activeTab: entry.activeTab }));
+  store.update(id, { cipher, refs }, { touch: true });
+  plain.set(id, entry);
   encryptPrivateImages(refs);
+}
+
+// A background picture chosen for a private note is encrypted like the pictures in its text.
+function encryptPrivateBackground(id) {
+  const n = store.get(id);
+  const bg = n && n.private ? backgroundName(n.background) : null;
+  if (!bg || n.refs.includes(bg) || !vault.unlocked) return;
+  store.update(id, { refs: [...n.refs, bg] });
+  encryptPrivateImages([bg]);
+}
+
+// Closing a tab of a private note: closed tabs are kept readable in the Trash, so a private
+// note's tab can't go there and is gone for good. Returns the note's new page like store.trashTab.
+function closePrivateTab(note, tabId) {
+  const p = vault.unlocked ? privatePlain(note) : null;
+  if (!p || !p.tabs) return null;
+  const i = p.tabs.findIndex(t => t.id === tabId);
+  if (i < 0) return null;
+  const rest = p.tabs.filter((_, j) => j !== i).map(t => ({ ...t }));
+  let active = p.activeTab;
+  if (i < active) active--;
+  else if (i === active) active = Math.min(i, rest.length - 1);
+  savePrivate(note.id, { tabs: rest, activeTab: active });
+  windows.applyNoteProps(note.id, ['title']);
+  const n = plain.get(note.id);
+  return { tabs: n.tabs, activeTab: n.activeTab, html: n.html };
 }
 
 async function setPrivate(id, on) {
   const note = store.get(id);
   if (!note || !!note.private === !!on) return { ok: true };
-  // Only the note's single page is encrypted, so other tabs would stay readable on disk.
-  if (on && note.tabs && note.tabs.length > 1) return { ok: false, reason: 'tabs' };
   if (!vault.unlocked) return { ok: false, reason: vault.configured ? 'locked' : 'setup' };
   await windows.flushRenderer(windows.windowFor(id));
   if (on) {
-    const { html, text, title } = note;
-    const refs = attachmentNames(html);
+    const entry = plainEntry({ html: note.html, tabs: note.tabs, activeTab: note.activeTab });
+    const refs = privateRefs(note, entry);
+    const cipher = vault.encryptText(JSON.stringify({ html: entry.html, tabs: entry.tabs, activeTab: entry.activeTab }));
     store.update(id, {
-      private: true, cipher: vault.encryptText(JSON.stringify({ html })), refs,
+      private: true, cipher, refs, tabs: null, activeTab: 0,
       html: '', text: '', title: '', tags: [], links: [], imageText: '', tasks: { total: 0, done: 0 }
     });
-    plain.set(id, { html, text, title });
+    plain.set(id, entry);
     encryptPrivateImages(refs);
     history.remove(id); // old versions would be readable on disk
   } else {
@@ -557,7 +631,9 @@ async function setPrivate(id, on) {
       const file = store.attachmentPath(name);
       if (file) vault.decryptFile(file);
     }
-    store.update(id, { private: false, cipher: null, refs: [], html: p.html });
+    const patch = { private: false, cipher: null, refs: [], html: p.html };
+    if (p.tabs) Object.assign(patch, { tabs: p.tabs, activeTab: p.activeTab });
+    store.update(id, patch);
     plain.delete(id);
   }
   windows.sendToNote(id, 'note:changed', { private: !!on, privateLocked: false });
@@ -578,7 +654,7 @@ function onVaultLocked() {
   // The lightbox already holds the decrypted image, so it must not outlive the unlock.
   const lb = windows.lightboxNoteId && store.get(windows.lightboxNoteId);
   if (lb && lb.private) windows.closeLightbox();
-  for (const n of store.all().filter(x => x.private)) windows.sendToNote(n.id, 'note:changed', { privateLocked: true });
+  for (const n of store.all().filter(x => x.private)) windows.sendToNote(n.id, 'note:changed', { privateLocked: true, tabs: null, activeTab: 0 });
   windows.notifyManager('notes:changed');
   windows.broadcast('vault:changed', vault.status());
 }
@@ -586,7 +662,9 @@ function onVaultLocked() {
 function onVaultUnlocked() {
   for (const n of store.all().filter(x => x.private)) {
     const p = privatePlain(n);
-    if (p) windows.sendToNote(n.id, 'note:changed', { privateLocked: false, html: p.html });
+    if (!p) continue;
+    encryptPrivateBackground(n.id); // a background picked before 4.1 was still stored readable
+    windows.sendToNote(n.id, 'note:changed', { privateLocked: false, html: p.html, tabs: p.tabs, activeTab: p.activeTab });
   }
   windows.notifyManager('notes:changed');
   windows.broadcast('vault:changed', vault.status());
@@ -660,8 +738,15 @@ function noteSummary(n) {
   };
   if (n.private) {
     const p = privatePlain(n);
-    if (p) Object.assign(base, { html: p.html, text: p.text.slice(0, 4000), title: p.title, tags: scan.extractTags(p.html), tasks: scan.taskCounts(p.html) });
-    else base.privateLocked = true;
+    if (p) {
+      Object.assign(base, {
+        html: p.html, text: p.text.slice(0, 4000), title: p.title, tags: scan.extractTags(p.html), tasks: scan.taskCounts(p.html),
+        searchText: store.searchText(p).slice(0, 20000),
+        tabCount: p.tabs ? p.tabs.length : 1,
+        tabs: p.tabs ? p.tabs.map(t => ({ title: t.title, html: t.html })) : null,
+        hasImage: p.tabs ? p.tabs.some(t => /<img\b/.test(t.html)) : /<img\b/.test(p.html)
+      });
+    } else base.privateLocked = true;
   }
   return base;
 }
@@ -748,7 +833,7 @@ function registerIpc() {
     let privateLocked = false;
     if (note.private) {
       const p = privatePlain(store.get(id));
-      if (p) Object.assign(note, { html: p.html, text: p.text, title: p.title });
+      if (p) Object.assign(note, { html: p.html, text: p.text, title: p.title, tabs: p.tabs, activeTab: p.activeTab });
       else privateLocked = true;
       delete note.cipher;
     }
@@ -760,10 +845,11 @@ function registerIpc() {
     const note = store.get(id);
     const clean = cleanPatch(patch);
     if (note && note.private) {
-      const content = 'html' in clean ? clean.html : null;
-      for (const k of ['html', 'text', 'title', 'tasks', 'imageText']) delete clean[k];
-      delete clean.tabs; delete clean.activeTab; // private notes keep one page (see setPrivate)
-      if (content !== null) {
+      // The page and the tabs go into the cipher (see savePrivate), never into the plain record.
+      const content = {};
+      for (const k of ['html', 'tabs', 'activeTab']) if (k in clean) content[k] = clean[k];
+      for (const k of ['html', 'text', 'title', 'tasks', 'imageText', 'tabs', 'activeTab']) delete clean[k];
+      if (Object.keys(content).length) {
         if (!vault.unlocked) return false; // never write plaintext; the window shows its lock screen
         savePrivate(id, content);
         windows.applyNoteProps(id, ['title']);
@@ -774,6 +860,7 @@ function registerIpc() {
     const keys = Object.keys(clean);
     if (!keys.length) return true;
     store.update(id, clean);
+    if (note && note.private && 'background' in clean) encryptPrivateBackground(id);
     // Switching or renaming tabs changes the mirrored title, so the window title follows.
     if (('tabs' in clean || 'activeTab' in clean) && !keys.includes('title')) keys.push('title');
     windows.applyNoteProps(id, keys);
@@ -1174,6 +1261,8 @@ function registerIpc() {
   // The window saves its tabs first (note:update), so the closed tab is trashed with its latest text.
   ipcMain.handle('note:close-tab', (e, tabId) => {
     const id = noteOf(e);
+    const note = store.get(id);
+    if (note && note.private) return closePrivateTab(note, String(tabId || ''));
     const n = store.trashTab(id, String(tabId || ''));
     if (!n) return null;
     windows.applyNoteProps(id, ['title']);
@@ -1246,14 +1335,15 @@ function registerIpc() {
       let content = n.private ? privatePlain(n) : { html: n.html, text: n.text, title: n.title };
       if (!content) { skippedPrivate++; continue; }
       // html/text only mirror the open tab, so a tabbed note is written out tab by tab.
-      if (!n.private && n.tabs) {
+      const tabs = n.private ? content.tabs : n.tabs;
+      if (tabs) {
         const mdTabs = tabMarkdown.get(n.id);
         const name = (t) => t.title || tr('note.untitled');
         content = {
-          title: n.title,
-          text: n.tabs.map(t => `${name(t)}\n\n${t.text}`).join('\n\n'),
-          html: n.tabs.map(t => `<h2>${escapeHtml(name(t))}</h2>${t.html}`).join(''),
-          tabs: n.tabs.map((t, i) => ({ title: name(t), html: t.html, text: t.text, markdown: (mdTabs && mdTabs[i]) || '' }))
+          title: content.title,
+          text: tabs.map(t => `${name(t)}\n\n${t.text}`).join('\n\n'),
+          html: tabs.map(t => `<h2>${escapeHtml(name(t))}</h2>${t.html}`).join(''),
+          tabs: tabs.map((t, i) => ({ title: name(t), html: t.html, text: t.text, markdown: (mdTabs && mdTabs[i]) || '' }))
         };
       }
       items.push({ note: n, title: content.title, text: content.text, html: content.html, tabs: content.tabs, markdown: markdown.has(n.id) ? markdown.get(n.id) : content.text });

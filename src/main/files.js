@@ -7,6 +7,10 @@
 const { app, nativeImage, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const crypto = require('crypto');
+const { execFile } = require('child_process');
+const { pathToFileURL } = require('url');
 const { t: tr } = require('./i18n');
 
 const isWin = process.platform === 'win32';
@@ -80,6 +84,139 @@ function fitImage(img) {
   return out.toDataURL();
 }
 
+// ---------- Linux previews ----------
+// Electron has no createThumbnailFromPath on Linux. The desktop keeps the thumbnails it has made
+// for files the file manager showed (the freedesktop thumbnail spec), and lists the programs it
+// makes them with in *.thumbnailer files, so we take the cached picture when it's current and run
+// the matching thumbnailer otherwise. A file previews here whenever it previews in the file manager.
+
+const EXT_MIME = {
+  pdf: 'application/pdf', ps: 'application/postscript', eps: 'image/x-eps', djvu: 'image/vnd.djvu', epub: 'application/epub+zip',
+  cbz: 'application/vnd.comicbook+zip', cbr: 'application/vnd.comicbook-rar', xps: 'application/oxps',
+  odt: 'application/vnd.oasis.opendocument.text', ods: 'application/vnd.oasis.opendocument.spreadsheet',
+  odp: 'application/vnd.oasis.opendocument.presentation', odg: 'application/vnd.oasis.opendocument.graphics',
+  doc: 'application/msword', xls: 'application/vnd.ms-excel', ppt: 'application/vnd.ms-powerpoint',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  rtf: 'application/rtf', svg: 'image/svg+xml', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', tif: 'image/tiff',
+  tiff: 'image/tiff', avif: 'image/avif', heic: 'image/heif', heif: 'image/heif', ico: 'image/vnd.microsoft.icon',
+  xcf: 'image/x-xcf', psd: 'image/vnd.adobe.photoshop', kra: 'application/x-krita',
+  mp4: 'video/mp4', m4v: 'video/mp4', mkv: 'video/x-matroska', webm: 'video/webm', avi: 'video/x-msvideo',
+  mov: 'video/quicktime', wmv: 'video/x-ms-wmv', flv: 'video/x-flv', mpg: 'video/mpeg', mpeg: 'video/mpeg', ogv: 'video/ogg',
+  mp3: 'audio/mpeg', flac: 'audio/flac', ogg: 'audio/ogg', opus: 'audio/ogg', m4a: 'audio/mp4', wav: 'audio/x-wav',
+  ttf: 'font/ttf', otf: 'font/otf', woff: 'font/woff', woff2: 'font/woff2', stl: 'model/stl', blend: 'application/x-blender'
+};
+const mimeByExt = new Map(); // extension → Promise<mime> from xdg-mime, for types not in the table
+let thumbnailers = null; // [{ exec: argv, mimes: Set }] read once from *.thumbnailer files
+
+function run(cmd, args, timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { timeout, maxBuffer: 1 << 20, windowsHide: true }, (err, stdout) => (err ? reject(err) : resolve(String(stdout))));
+  });
+}
+
+function mimeTypeOf(p) {
+  const ext = extOf(path.basename(p));
+  if (EXT_MIME[ext]) return Promise.resolve(EXT_MIME[ext]);
+  if (!ext) return Promise.resolve('');
+  // The desktop's own database knows the rest. One xdg-mime run per extension, remembered.
+  if (!mimeByExt.has(ext)) mimeByExt.set(ext, run('xdg-mime', ['query', 'filetype', p]).then(out => out.trim(), () => ''));
+  return mimeByExt.get(ext);
+}
+
+function onPath(cmd) {
+  if (path.isAbsolute(cmd)) return fs.existsSync(cmd);
+  return (process.env.PATH || '').split(':').some(d => d && fs.existsSync(path.join(d, cmd)));
+}
+
+// Splits an Exec= line the way a shell would, enough for the quoting thumbnailer files use.
+function splitExec(line) {
+  const out = [];
+  for (const m of String(line).matchAll(/"((?:[^"\\]|\\.)*)"|'([^']*)'|(\S+)/g)) {
+    out.push(m[1] !== undefined ? m[1].replace(/\\(.)/g, '$1') : m[2] !== undefined ? m[2] : m[3]);
+  }
+  return out;
+}
+
+function loadThumbnailers() {
+  if (thumbnailers) return thumbnailers;
+  thumbnailers = [];
+  const home = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
+  const dirs = [home, ...(process.env.XDG_DATA_DIRS || '/usr/local/share:/usr/share').split(':').filter(Boolean)];
+  const seen = new Set();
+  for (const dir of dirs) {
+    let names;
+    try { names = fs.readdirSync(path.join(dir, 'thumbnailers')); } catch { continue; }
+    for (const name of names.sort()) {
+      // Same name earlier in the list wins, so a user's copy shadows the system one.
+      if (!name.endsWith('.thumbnailer') || seen.has(name)) continue;
+      seen.add(name);
+      let text;
+      try { text = fs.readFileSync(path.join(dir, 'thumbnailers', name), 'utf8'); } catch { continue; }
+      const entry = {};
+      let inEntry = false;
+      for (const raw of text.split('\n')) {
+        const line = raw.trim();
+        if (line.startsWith('[')) { inEntry = line === '[Thumbnailer Entry]'; continue; }
+        const eq = line.indexOf('=');
+        if (inEntry && eq > 0 && !line.startsWith('#')) entry[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+      }
+      const exec = splitExec(entry.Exec);
+      if (!exec.length || !onPath(entry.TryExec || exec[0])) continue;
+      thumbnailers.push({ exec, mimes: new Set((entry.MimeType || '').split(';').map(s => s.trim()).filter(Boolean)) });
+    }
+  }
+  return thumbnailers;
+}
+
+// The thumbnail the desktop already holds for this file, when it was made from the current
+// version (its Thumb::MTime text chunk matches the file's mtime; older thumbnailers that wrote
+// none pass when the thumbnail is the newer of the two).
+async function cachedThumb(p, stat) {
+  const hash = crypto.createHash('md5').update(pathToFileURL(p).href).digest('hex');
+  const base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
+  for (const size of ['x-large', 'large', 'normal']) {
+    const file = path.join(base, 'thumbnails', size, hash + '.png');
+    let buf;
+    try { buf = await fs.promises.readFile(file); } catch { continue; }
+    const m = /Thumb::MTime\0(\d+)/.exec(buf.toString('latin1', 0, Math.min(buf.length, 65536)));
+    let fresh;
+    if (m) fresh = Number(m[1]) === Math.floor(stat.mtimeMs / 1000);
+    else { try { fresh = (await fs.promises.stat(file)).mtimeMs >= stat.mtimeMs; } catch { fresh = false; } }
+    if (!fresh) continue;
+    try {
+      const img = nativeImage.createFromBuffer(buf);
+      if (!img.isEmpty()) return fitImage(img);
+    } catch { /* not a picture after all */ }
+  }
+  return '';
+}
+
+async function runThumbnailer(p, mime) {
+  const t = loadThumbnailers().find(x => x.mimes.has(mime));
+  if (!t) return '';
+  const out = path.join(os.tmpdir(), `openstickies-thumb-${crypto.randomBytes(6).toString('hex')}.png`);
+  const subs = { '%s': String(THUMB_SIZE), '%u': pathToFileURL(p).href, '%i': p, '%o': out, '%%': '%' };
+  const [cmd, ...args] = t.exec.map(a => a.replace(/%[suio%]/g, k => subs[k]));
+  try {
+    await run(cmd, args);
+    const img = nativeImage.createFromPath(out);
+    return img.isEmpty() ? '' : fitImage(img);
+  } catch {
+    return ''; // the thumbnailer couldn't read it, or took longer than we wait for a hover
+  } finally {
+    fs.promises.unlink(out).catch(() => {});
+  }
+}
+
+async function linuxThumb(p, stat) {
+  const cached = await cachedThumb(p, stat);
+  if (cached) return cached;
+  const mime = await mimeTypeOf(p);
+  return mime ? runThumbnailer(p, mime) : '';
+}
+
 async function makeThumb(p, stat) {
   const key = `${p}|${stat.mtimeMs}`;
   if (thumbs.has(key)) {
@@ -89,8 +226,11 @@ async function makeThumb(p, stat) {
     return v;
   }
   let url = '';
-  // createThumbnailFromPath exists on macOS and Windows only; on Linux it throws.
-  if (process.platform !== 'linux' && typeof nativeImage.createThumbnailFromPath === 'function') {
+  // createThumbnailFromPath exists on macOS and Windows only; Linux goes through the desktop's
+  // thumbnail cache and thumbnailers instead.
+  if (process.platform === 'linux') {
+    url = await linuxThumb(p, stat);
+  } else if (typeof nativeImage.createThumbnailFromPath === 'function') {
     try {
       const img = await nativeImage.createThumbnailFromPath(p, { width: THUMB_SIZE, height: THUMB_SIZE });
       if (img && !img.isEmpty()) url = img.toDataURL();

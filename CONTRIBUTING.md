@@ -138,7 +138,29 @@ For maintainers. Releases are built by the [Release workflow](.github/workflows/
    It uses that version's CHANGELOG section as the release notes.
 6. Open the draft on the [Releases page](https://github.com/ItsCetla/OpenStickies/releases), download and try the builds, edit the notes if needed, then click **Publish release**.
 
-To rebuild an existing tag (for example after a failed run), open **Actions → Release → Run workflow** and enter the tag. The Windows builds aren't code-signed, and the Mac builds are signed ad hoc but not notarized by Apple. If one platform fails, the others still build.
+To rebuild an existing tag (for example after a failed run), open **Actions → Release → Run workflow** and enter the tag. The Windows builds aren't code-signed. If one platform fails, the others still build.
+
+### Signing the Mac builds
+
+Without any setup the workflow signs the Mac app ad hoc (the `"identity": "-"` in `package.json`), which is enough for Apple silicon to run it, but macOS asks before the first launch. To have the builds signed with a Developer ID and notarized by Apple, so they open without a warning, add these repository secrets (**Settings → Secrets and variables → Actions**):
+
+| Secret | Value |
+| --- | --- |
+| `MAC_CERTIFICATE` | Your **Developer ID Application** certificate and private key, exported from Keychain Access as a `.p12` file and base64-encoded: `base64 -i certificate.p12 \| pbcopy` |
+| `MAC_CERTIFICATE_PASSWORD` | The password you gave the `.p12` file when exporting it |
+| `APPLE_ID` | The Apple ID of the developer account |
+| `APPLE_APP_SPECIFIC_PASSWORD` | An [app-specific password](https://support.apple.com/en-us/102654) for that Apple ID |
+| `APPLE_TEAM_ID` | The 10-character Team ID shown on the [Apple Developer membership page](https://developer.apple.com/account#MembershipDetailsCard) |
+
+The workflow signs with the Developer ID when `MAC_CERTIFICATE` and `APPLE_TEAM_ID` are both set (the Team ID picks the certificate), and notarizes when the Apple ID secrets are set too. The release notes then drop the "macOS says OpenStickies can't be opened?" paragraph. The entitlements are in `build/entitlements.mac.plist`.
+
+To sign a local build with a Developer ID certificate that's in your login keychain, pass the Team ID as the identity:
+
+```bash
+npx electron-builder --mac -c.mac.identity=ABCDE12345
+```
+
+Add `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` to the environment to have it notarized as well.
 
 > [!IMPORTANT]
 > Keep `build.nsis.guid` in `package.json` as it is. It's the installer identity electron-builder derived from the app's old id (`com.stickies.desktop`), and it's how the installer finds an existing Stickies or OpenStickies install to upgrade. Changing it makes new installers install a second copy next to the old one.
