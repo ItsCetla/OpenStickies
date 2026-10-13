@@ -104,8 +104,8 @@
       <nav class="primary-nav" id="primary-nav" aria-label="Primary">
         <ul>
           <li><a href="#features">Features</a></li>
-          <li><a href="#new">New in 4.0</a></li>
-          <li><a href="#opencode">OpenCode</a></li>
+          <li><a href="#new">New in 4.1</a></li>
+          <li><a href="#opencode">AI agents</a></li>
           <li><a href="#platforms">Mac &amp; Linux</a></li>
           <li><a href="#shortcuts">Shortcuts</a></li>
           <li><a href="#faq">FAQ</a></li>
@@ -174,7 +174,7 @@
       <div class="wrap wrap-wide hero-media">
         <a class="shot shot-hero" href="screenshots/hero.png" data-lightbox>
           <img src="screenshots/hero.png" width="2560" height="1440" fetchpriority="high" decoding="async"
-               alt="OpenStickies on the desktop: a meeting note with formatted text, a “Launch week” checklist with due dates and a 3/8 progress count, a hiking note with a picture, a daily-habits checklist, a rolled-up groceries note and an OpenCode task note working on step 3 of 7.">
+               alt="OpenStickies on the desktop: a meeting note with formatted text, a “Launch week” checklist with due dates and a 3/8 progress count, a hiking note with a picture, a daily-habits checklist, a rolled-up groceries note and an AI agent’s task note working on step 3 of 7.">
         </a>
       </div>
     </section>
@@ -464,11 +464,26 @@
     <section class="section" id="new" aria-labelledby="new-title">
       <div class="wrap">
         <div class="section-head">
-          <p class="eyebrow">New in 4.0</p>
+          <p class="eyebrow">New in 4.1</p>
           <h2 id="new-title">More room in every note.</h2>
-          <p>Version 4.0 runs on macOS and Linux as well as Windows, and adds these to every note.</p>
+          <p>Version 4.1 updates itself and puts Claude Code and Codex on your stickies. It builds on 4.0, which brought macOS and Linux alongside Windows and everything else below.</p>
         </div>
         <ul class="card-grid">
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-download"/></svg>
+            <h3>Updates inside the app <span class="badge">4.1</span></h3>
+            <p>OpenStickies checks for new versions and tells you when one is out. One click in Settings → <strong>Updates</strong> downloads it, installs it and restarts, with no trip back to this site. Every download is checked against its published fingerprint first.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-terminal"/></svg>
+            <h3>Claude Code and Codex <span class="badge">4.1</span></h3>
+            <p>Besides OpenCode, Claude Code and Codex can now keep their plan on a sticky and make checklist notes for you. Connect each one from Settings. <a href="#opencode">See how it works</a>.</p>
+          </li>
+          <li class="card">
+            <svg class="i card-icon" aria-hidden="true"><use href="#i-type"/></svg>
+            <h3>Exact text size <span class="badge">4.1</span></h3>
+            <p>Besides small, normal, large and huge, the style menu takes an exact size in points for the selected text.</p>
+          </li>
           <li class="card">
             <svg class="i card-icon" aria-hidden="true"><use href="#i-tabs"/></svg>
             <h3>Tabs</h3>
@@ -564,18 +579,18 @@
       <div class="wrap">
         <div class="feature-grid opencode-top">
           <div class="feature-copy">
-            <p class="tag">OpenCode integration</p>
+            <p class="tag">OpenCode, Claude Code &amp; Codex</p>
             <h2 id="opencode-title">Watch your AI agent’s plan on a sticky.</h2>
-            <p class="feature-lede">While <a href="https://opencode.ai">OpenCode</a> works on a multi-step task, a sticky on your desktop shows its plan.</p>
+            <p class="feature-lede">While <a href="https://opencode.ai">OpenCode</a>, <a href="https://claude.com/claude-code">Claude Code</a> or <a href="https://openai.com/codex">Codex</a> works on a multi-step task, a sticky on your desktop shows its plan.</p>
             <ul class="ticks">
               <li>The steps it has finished are ticked, and the step it’s on is marked ▶.</li>
               <li>The steps still to do stay open, so you can see where it’s going.</li>
-              <li>Sub-agents’ lists appear as sections of the same note.</li>
+              <li>With OpenCode, sub-agents’ lists appear as sections of the same note.</li>
               <li>A status line says <em>Working on step 3 of 7</em>, <em>Waiting for you</em>, <em>All 7 steps done</em> or <em>Stopped with an error</em>.</li>
             </ul>
             <ol class="steps" aria-label="Set up">
-              <li><span>In OpenStickies, open <strong>Settings → OpenCode → Connect</strong>. This adds a small plugin to <code>~/.config/opencode/plugins/</code>.</span></li>
-              <li><span>Restart OpenCode.</span></li>
+              <li><span>In OpenStickies, open <strong>Settings</strong> and press <strong>Connect</strong> under <strong>OpenCode</strong>, <strong>Claude Code</strong> or <strong>Codex</strong>. Connect as many as you use.</span></li>
+              <li><span>Restart the agent. Its next multi-part task shows up on a sticky.</span></li>
             </ol>
           </div>
           <figure class="feature-media">
@@ -589,7 +604,7 @@
         <div class="opencode-bottom">
           <div class="tools">
             <h3>Notes on request</h3>
-            <p>The plugin also gives the agent four tools, so you can just ask: <em>“put the deploy steps on a sticky”</em> or <em>“make me a checklist sticky for this refactor and tick items off as you go.”</em></p>
+            <p>Every connected agent also gets four tools, so you can just ask: <em>“put the deploy steps on a sticky”</em> or <em>“make me a checklist sticky for this refactor and tick items off as you go.”</em></p>
             <div class="table-wrap">
               <table class="tools-table">
                 <caption class="sr-only">The agent’s OpenStickies tools</caption>
@@ -602,6 +617,19 @@
                 </tbody>
               </table>
             </div>
+            <h3>What Connect sets up</h3>
+            <div class="table-wrap">
+              <table class="tools-table">
+                <caption class="sr-only">What Connect sets up for each agent</caption>
+                <thead><tr><th scope="col">Agent</th><th scope="col">How it’s connected</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">OpenCode</th><td>A small plugin in <code>~/.config/opencode/plugins/</code> that follows the agent’s to-do list. Notes are tagged <code>#opencode</code>.</td></tr>
+                  <tr><th scope="row">Claude Code</th><td>An MCP server with the tools, and a hook that mirrors Claude Code’s own to-do list to a sticky. Your other hooks are left alone. Notes are tagged <code>#claude-code</code>.</td></tr>
+                  <tr><th scope="row">Codex</th><td>A marked block in <code>~/.codex/config.toml</code> with the same MCP server and a <code>stickies_plan</code> tool, so Codex keeps its plan on a sticky as it works. Notes are tagged <code>#codex</code>.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="tools-foot"><strong>Disconnect</strong> removes everything Connect added. Claude Code and Codex use Node 18 or later if you have it, and OpenStickies’ own runtime if you don’t.</p>
           </div>
           <div class="opencode-notes">
             <div class="mini-card">
@@ -615,14 +643,14 @@
               <svg class="i" aria-hidden="true"><use href="#i-checklist"/></svg>
               <div>
                 <h3>Every multi-part task gets a sticky</h3>
-                <p>Requests with two or more distinct subtasks get a to-do list first. Quick questions don’t create a note. Task notes are blue, locked so your typing can’t clash with the agent, and tagged <code>#opencode</code> plus the project name.</p>
+                <p>Requests with two or more distinct subtasks get a to-do list first. Quick questions don’t create a note. Task notes are blue, locked so your typing can’t clash with the agent, and tagged with the agent and the project name.</p>
               </div>
             </div>
             <div class="mini-card">
               <svg class="i" aria-hidden="true"><use href="#i-terminal"/></svg>
               <div>
                 <h3>Local, and scriptable</h3>
-                <p>It runs over a small API on <code>127.0.0.1</code> with a random port and token; requests from web pages are refused. Scripts can use it too — <a href="https://github.com/ItsCetla/OpenStickies#opencode-integration">see the README</a>.</p>
+                <p>It runs over a small API on <code>127.0.0.1</code> with a random port and token; requests from web pages are refused. Scripts can use it too — <a href="https://github.com/ItsCetla/OpenStickies#local-api">see the README</a>.</p>
               </div>
             </div>
           </div>
@@ -975,7 +1003,15 @@ npm start</code></pre>
           <details>
             <summary>Do I need an account or an internet connection?</summary>
             <div class="faq-body">
-              <p>No account. Your notes are saved on your computer, not in the cloud. The OpenCode integration is local too: it talks to OpenStickies over a small API on <code>127.0.0.1</code>, and requests from web pages are refused.</p>
+              <p>No account. Your notes are saved on your computer, not in the cloud. The OpenCode, Claude Code and Codex integrations are local too: it talks to OpenStickies over a small API on <code>127.0.0.1</code>, and requests from web pages are refused.</p>
+              <p>The only thing OpenStickies asks the internet for on its own is the latest version number on GitHub, every few hours. It sends nothing about you or your notes, and you can turn it off in Settings → Updates.</p>
+            </div>
+          </details>
+          <details>
+            <summary>How do I update OpenStickies?</summary>
+            <div class="faq-body">
+              <p>From inside the app. When a new version is out, OpenStickies shows a notification and puts it at the top of the tray menu. Open Settings → <strong>Updates</strong> and click <strong>Download and install</strong>. The download is checked against the release’s SHA-256 hash, then OpenStickies installs it and starts again. Your notes and settings stay as they were.</p>
+              <p>This works for the Windows installer and portable version, the Mac app in Applications, the AppImage and the <code>.deb</code> package. A Mac copy still running from the disk image opens the new disk image instead.</p>
             </div>
           </details>
           <details>

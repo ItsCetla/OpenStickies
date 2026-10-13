@@ -760,3 +760,7 @@ h3 { letter-spacing: -0.01em; }
   .site-header, .hero::before, .hero::after, .mini-note, .copy-btn { display: none !important; }
   .shot { box-shadow: none; }
 }
+
+.card h3 .badge { margin-left: 6px; vertical-align: 2px; }
+.tools .table-wrap + h3 { margin-top: 28px; }
+.tools .tools-foot { margin: 12px 0 0; color: var(--ink-2); font-size: 0.9375rem; }

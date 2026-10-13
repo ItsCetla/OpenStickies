@@ -84,6 +84,7 @@ async function init() {
   api.onWorkspaces(loadWorkspaces);
   api.onTemplates(loadTemplates);
   api.onVault((v) => { vaultState = v; renderPrivacy(); refresh(); });
+  api.onUpdate(onUpdateState);
 }
 
 // The language setting changed: translate the page again and rebuild everything drawn from code.
@@ -98,7 +99,7 @@ function relocalize() {
   renderWorkspaces();
   renderTemplates();
   renderPrivacy();
-  if (!$('view-settings').hidden) { $('appbar-title').textContent = tr('manager.settings'); refreshHotkeyStatus(); renderOpenCode(); renderAgents(); }
+  if (!$('view-settings').hidden) { $('appbar-title').textContent = tr('manager.settings'); refreshHotkeyStatus(); renderOpenCode(); renderAgents(); renderUpdates(); }
   renderSidebar();
   render();
   return true;
@@ -124,7 +125,7 @@ async function loadTemplates() {
 function route(v) {
   if (v === 'settings') return showSettings();
   if (v === 'privacy') { showSettings(); $('privacy').scrollIntoView({ block: 'start' }); return; }
-  if (v === 'opencode' || v === 'claude' || v === 'codex') { showSettings(); $(v).scrollIntoView({ block: 'start' }); return; }
+  if (v === 'opencode' || v === 'claude' || v === 'codex' || v === 'updates') { showSettings(); $(v).scrollIntoView({ block: 'start' }); return; }
   if (v === 'workspaces') { setView('all'); openDrawer(); $('workspaces-section').scrollIntoView({ block: 'nearest' }); return; }
   if (v.startsWith('tag:')) { setView('all'); setQuery(`#${v.slice(4)}`); return; }
   setView(VIEW_TITLES[v] ? v : 'all');
@@ -227,6 +228,80 @@ function showSettings() {
   renderPrivacy();
   renderOpenCode();
   renderAgents();
+  renderUpdates();
+}
+
+// ---------- updates ----------
+let updState = null;
+
+const UPD_FOOT = {
+  nsis: 'manager.updFootNsis', portable: 'manager.updFootPortable', mac: 'manager.updFootMac', 'mac-dmg': 'manager.updFootMacDmg',
+  appimage: 'manager.updFootAppImage', deb: 'manager.updFootDeb', manual: 'manager.updFootManual', dev: 'manager.updFootDev'
+};
+
+async function renderUpdates(st) {
+  updState = st || await api.updateStatus();
+  const s = updState;
+  const v = s.latest ? s.latest.version : '';
+  const time = s.lastChecked ? new Date(s.lastChecked).toLocaleTimeString(uiLang(), { hour: 'numeric', minute: '2-digit' }) : '';
+  const sub = {
+    checking: tx('manager.updChecking'),
+    none: tx('manager.updNone') + (time ? ' ' + tx('manager.updLastChecked', { time }) : ''),
+    available: tx('manager.updAvailable', { version: v }),
+    downloading: tx('manager.updDownloading', { version: v }),
+    ready: tx('manager.updReady', { version: v }),
+    installing: tx('manager.updInstalling'),
+    error: tx('manager.updError', { error: s.error || '' })
+  }[s.status] || tx('manager.updIdle');
+  const pill = { none: ['manager.updUpToDatePill', ' ok'], available: ['manager.updNewPill', ''], ready: ['manager.updReadyPill', ' ok'] }[s.status];
+  const btn = (id, key, primary) => `<button class="btn${primary ? ' primary' : ''}" id="${id}">${tx(key)}</button>`;
+  const notes = s.latest && ['available', 'downloading', 'ready', 'error'].includes(s.status) ? btn('upd-notes', 'manager.updNotes') : '';
+  let buttons;
+  if (s.status === 'available' || (s.status === 'error' && s.latest && v !== s.current && s.canInstall)) {
+    buttons = notes + (s.canInstall ? btn('upd-download', 'manager.updDownload', true) : btn('upd-get', 'manager.updGet', true));
+  } else if (s.status === 'ready') {
+    buttons = notes + btn('upd-install', s.kind === 'mac-dmg' ? 'manager.updOpenDmg' : 'manager.updRestart', true);
+  } else if (s.status === 'downloading' || s.status === 'installing') {
+    buttons = notes;
+  } else {
+    buttons = `<button class="btn" id="upd-check"${s.status === 'checking' ? ' disabled' : ''}>${tx('manager.updCheck')}</button>`;
+  }
+  const progress = s.status === 'downloading'
+    ? `<div class="row column"><div class="upd-progress"><div id="upd-bar" style="width:${Math.round((s.progress || 0) * 100)}%"></div></div></div>`
+    : '';
+  const ready = s.status === 'ready' && s.error ? `<div class="row note-row warn">${tx('manager.updError', { error: s.error })}</div>` : '';
+  $('updates-card').innerHTML = `
+    <div class="row upd-main">
+      <div class="row-label">${icon('download', { size: 17 })}<div>
+        <div>${tx('manager.updVersion', { version: s.current })}${pill ? ` <span class="status-pill${pill[1]}">${tx(pill[0])}</span>` : ''}</div>
+        <div class="sub">${sub}</div>
+      </div></div>
+      <div class="upd-buttons">${buttons}</div>
+    </div>
+    ${progress}${ready}
+    <label class="row">
+      <div class="row-label">${icon('clock', { size: 17 })}<div><div>${tx('manager.updAuto')}</div><div class="sub">${tx('manager.updAutoSub')}</div></div></div>
+      <input type="checkbox" class="switch" id="upd-auto" ${settings.autoUpdateCheck !== false ? 'checked' : ''}>
+    </label>
+    <div class="row note-row">${tx(UPD_FOOT[s.kind] || 'manager.updFootManual')} ${tx('manager.updKeepNotes')}</div>`;
+  const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
+  on('upd-check', () => api.checkForUpdates());
+  on('upd-download', () => api.downloadUpdate());
+  on('upd-install', () => api.installUpdate());
+  on('upd-get', () => api.openReleaseNotes());
+  on('upd-notes', () => api.openReleaseNotes());
+  $('upd-auto').addEventListener('change', (e) => update({ autoUpdateCheck: e.target.checked }));
+}
+
+// Progress ticks only move the bar; anything else redraws the card.
+function onUpdateState(st) {
+  if (updState && st.status === 'downloading' && updState.status === 'downloading' && $('upd-bar')) {
+    updState = st;
+    $('upd-bar').style.width = `${Math.round((st.progress || 0) * 100)}%`;
+    return;
+  }
+  if (!$('view-settings').hidden || !updState) renderUpdates(st);
+  else updState = st;
 }
 
 function setQuery(q) {

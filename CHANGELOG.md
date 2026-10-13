@@ -8,9 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+## [4.1.0] - 2026-10-13
+
+4.0.1 was never published as a release of its own, so its changes, including the Claude Code and Codex integrations, also arrive with this version.
+
 ### Added
 
 - **Exact text size.** The Text style & size menu now has a size box in points next to the S/M/L/XL/2X buttons: type any size from 6 to 200 pt, pick a preset, or step through the presets with − and +. Exact sizes survive a restart and paste.
+- **In-app updates.** OpenStickies now checks GitHub for new versions a minute after it starts and every few hours, and shows a notification and a tray menu item when one is out. **Settings → Updates** downloads it, checks it against the release's SHA-256 hash, and installs it: the Windows installer runs silently, the portable `.exe`, the Mac app and the AppImage replace themselves, and the `.deb` installs after you enter your password. OpenStickies then starts again with your notes and settings as they were. The Mac app menu has **Check for Updates…**, and the automatic check can be turned off.
 
 ## [4.0.1] - 2026-10-13
 
@@ -150,7 +155,8 @@ First public release of OpenStickies: sticky notes for the Windows desktop, wher
 - Notes can be kept on top, rolled up, zoomed and printed.
 - `Stickies.exe --quit` closes a running copy cleanly, saving first.
 
-[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.0.1...HEAD
+[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.1.0...HEAD
+[4.1.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.0
 [4.0.1]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.0.1
 [4.0.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.0.0
 [3.1.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v3.1.0

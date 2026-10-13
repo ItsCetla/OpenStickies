@@ -84,6 +84,21 @@ On GNOME, the tray icon needs the AppIndicator extension; without a tray, OpenSt
 
 Every release has a `SHA256SUMS.txt`. On macOS and Linux, run `shasum -a 256 -c SHA256SUMS.txt --ignore-missing` in the folder you downloaded to. In PowerShell, compare `Get-FileHash .\OpenStickies-Setup-<version>.exe` with the matching line.
 
+### Updating
+
+Once OpenStickies is installed, you don't need to download new versions from the website again. OpenStickies asks GitHub for the latest version number a minute after it starts and then every few hours. When a new version is out, it shows a notification and adds an item at the top of the tray menu. Nothing downloads until you click **Download and install** in **Settings → Updates**. The file is checked against the SHA-256 hash published with the release before anything is installed, and your notes and settings are kept.
+
+| Your copy | How the update goes in |
+|---|---|
+| Windows installer | The new installer runs silently once OpenStickies closes, then starts it again. Windows may ask for permission if OpenStickies was installed for all users. |
+| Windows portable | The `.exe` is replaced with the new version once OpenStickies closes, then started again. |
+| macOS, in Applications | The app is replaced with the new version once OpenStickies closes, then opened again. |
+| macOS, still on the disk image | The new disk image opens. Drag OpenStickies to Applications. |
+| Linux AppImage | The AppImage file is replaced with the new version and started again. |
+| Linux `.deb` | The new package installs after you enter your password, then OpenStickies starts again. |
+
+To check right away, open **Settings → Updates** and click **Check now**, or choose **OpenStickies → Check for Updates…** on a Mac. You can turn off the automatic check in the same place. The check sends nothing about you or your notes, only a request for the latest release.
+
 Prefer to build it yourself? See [Build from source](#build-from-source).
 
 ## Highlights
@@ -448,6 +463,7 @@ src/
     opencode.js          installs/removes the OpenCode plugin
     agents.js            connects Claude Code (hook + MCP server) and Codex (MCP server)
     i18n.js              loads the interface language for the main process
+    updater.js           in-app updates from GitHub Releases
     reminders.js, exporter.js, markdown.js, context-menu.js, tray.js
   integrations/
     opencode-plugin.js   the plugin that runs inside OpenCode

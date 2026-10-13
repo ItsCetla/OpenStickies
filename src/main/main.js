@@ -16,6 +16,7 @@ const { Vault } = require('./vault');
 const { Workspaces } = require('./workspaces');
 const { Snipper } = require('./snip');
 const { ApiServer } = require('./api-server');
+const { Updater } = require('./updater');
 const { upsertAgentNote, createNoteFromApi, updateApiNote, checkApiNote, listApiNotes } = require('./agent-notes');
 const opencode = require('./opencode');
 const agents = require('./agents');
@@ -77,6 +78,7 @@ let vault;
 let workspaces;
 let snipper;
 let apiServer;
+let updater;
 let quitReady = false;
 let pendingDataMove = null; // new data folder a quit is moving to, synced once more on the way out
 const plain = new Map(); // decrypted private notes while unlocked: id -> { html, text, title }
@@ -177,8 +179,19 @@ function init() {
   // Switch strings before the tray and app menu rebuild on the same event (they listen after this).
   store.on('settings', () => { if (i18n.setLanguage(store.settings.language)) setUserTasks(); });
 
+  updater = new Updater({ store });
+  updater.on('changed', (state) => windows.broadcast('update:changed', state));
+  updater.on('available', notifyUpdate);
+  let checksOn = store.settings.autoUpdateCheck;
+  store.on('settings', () => {
+    if (store.settings.autoUpdateCheck === checksOn) return;
+    checksOn = store.settings.autoUpdateCheck;
+    updater.reschedule();
+  });
+  updater.start();
+
   tray = createTray({
-    windows, store, vault, workspaces, assetsDir: ASSETS,
+    windows, store, vault, workspaces, updater, assetsDir: ASSETS,
     onQuit: () => app.quit(),
     onSnip: () => snipper.start(),
     onTemplate: (id) => newNoteFromTemplate(id),
@@ -373,6 +386,18 @@ function reportHotkeyFailures(results) {
   } catch { /* notifications unavailable */ }
 }
 
+// Says once per version that an update is out; clicking opens Settings → Updates.
+function notifyUpdate(latest) {
+  if (!latest || store.settings.updateNotified === latest.version) return;
+  store.updateSettings({ updateNotified: latest.version });
+  try {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({ title: tr('update.notifyTitle'), body: tr('update.notifyBody', { version: latest.version }) });
+    n.on('click', () => windows.openManager('updates'));
+    n.show();
+  } catch { /* notifications unavailable */ }
+}
+
 // macOS expects an application menu: it carries the standard Edit shortcuts (copy, paste, undo)
 // for every window plus About, Hide and Quit. Other platforms keep no menu bar.
 function setupMac() {
@@ -390,6 +415,7 @@ function setupMac() {
         label: app.name,
         submenu: [
           { role: 'about' },
+          { label: tr('appMenu.checkUpdates'), click: () => { windows.openManager('updates'); updater.check(); } },
           { type: 'separator' },
           { label: tr('appMenu.settings'), accelerator: 'Command+,', click: () => windows.openManager('settings') },
           { type: 'separator' },
@@ -1105,6 +1131,13 @@ function registerIpc() {
   ipcMain.handle('workspaces:rename', (_e, id, name) => workspaces.rename(id, name));
   ipcMain.handle('workspaces:delete', (_e, id) => workspaces.remove(id));
 
+  // ----- updates -----
+  ipcMain.handle('update:status', () => updater.status());
+  ipcMain.handle('update:check', () => updater.check());
+  ipcMain.handle('update:download', () => updater.download());
+  ipcMain.handle('update:install', () => updater.installNow());
+  ipcMain.handle('update:open-release', () => openExternal(updater.releasePage()));
+
   // ----- settings -----
   ipcMain.handle('settings:get', () => ({ settings: store.settings, theme: themeName(), version: app.getVersion(), dataDir: store.dir, vault: vault.status() }));
 
@@ -1112,7 +1145,7 @@ function registerIpc() {
     const p = patch || {};
     const clean = {};
     const bool = (k) => { if (k in p) clean[k] = !!p[k]; };
-    ['showInTaskbar', 'launchAtLogin', 'spellcheck', 'confirmDelete', 'snapToEdges', 'opaqueOnHover', 'ocrImages', 'sinkTicked', 'autoWorkspace', 'apiEnabled', 'agentPlanNudge'].forEach(bool);
+    ['showInTaskbar', 'launchAtLogin', 'spellcheck', 'confirmDelete', 'snapToEdges', 'opaqueOnHover', 'ocrImages', 'sinkTicked', 'autoWorkspace', 'apiEnabled', 'agentPlanNudge', 'autoUpdateCheck'].forEach(bool);
     if (palette.notes[p.agentColor]) clean.agentColor = p.agentColor;
     if (['system', 'light', 'dark'].includes(p.theme)) clean.theme = p.theme;
     if (p.language === 'system' || i18n.SUPPORTED.includes(p.language)) clean.language = p.language;
@@ -1510,6 +1543,8 @@ app.on('will-quit', () => {
     try { dataLocation.copyDataFiles(store.dir, pendingDataMove); } catch (err) { console.error('[data] final sync failed:', err); }
   }
   if (vault) vault.lock();
+  // Last, so everything above is saved before an installer starts replacing files.
+  if (updater) { updater.stop(); updater.runPendingInstall(); }
 });
 
 const WELCOME_HTML = [

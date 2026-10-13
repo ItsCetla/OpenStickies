@@ -64,6 +64,8 @@ const DEFAULT_SETTINGS = {
   workspaces: [],               // [{ id, name, layout: [{ id, bounds, open, pinned, rolled, opacity }], displayKey, updatedAt }]
   activeWorkspace: null,
   workspaceByDisplay: {},       // display setup signature -> workspace id
+  autoUpdateCheck: true,        // look for a new release on GitHub now and then (nothing downloads without asking)
+  updateNotified: null,         // the newest version a notification has already announced
   autoWorkspace: true,          // switch workspace when the monitor setup changes
   autoLockMinutes: 5,           // lock private notes after this much inactivity (0 = never)
   managerBounds: null,

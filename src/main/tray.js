@@ -24,7 +24,7 @@ function linuxTrayHost() {
   return false;
 }
 
-function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSnip, onTemplate, onLock }) {
+function createTray({ windows, store, vault, workspaces, updater, assetsDir, onQuit, onSnip, onTemplate, onLock }) {
   // The macOS menu bar wants a black-and-clear "template" image that it tints for light and dark
   // bars; everywhere else gets the yellow note.
   const mac = process.platform === 'darwin';
@@ -72,6 +72,15 @@ function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSn
       });
     }
     if (vault.unlocked) template.push({ label: tr('tray.lockPrivate'), click: onLock });
+    const up = updater && updater.status();
+    if (up && ['available', 'ready'].includes(up.status) && up.latest) {
+      template.unshift(
+        up.status === 'ready'
+          ? { label: tr('tray.updateReady', { version: up.latest.version }), click: () => updater.installNow() }
+          : { label: tr('tray.updateAvailable', { version: up.latest.version }), click: () => windows.openManager('updates') },
+        { type: 'separator' }
+      );
+    }
     template.push(
       { type: 'separator' },
       { label: tr('tray.settings'), click: () => windows.openManager('settings') },
@@ -90,6 +99,9 @@ function createTray({ windows, store, vault, workspaces, assetsDir, onQuit, onSn
   store.on('templates', soon);
   vault.on('locked', soon);
   vault.on('unlocked', soon);
+  // Only the status matters to the menu, not every progress tick.
+  let lastUpdate = '';
+  if (updater) updater.on('changed', (s) => { if (s.status !== lastUpdate) { lastUpdate = s.status; soon(); } });
 
   // New tray icons start out hidden behind the taskbar's ^ arrow, and Windows doesn't let an
   // app move itself out, so point it out once.

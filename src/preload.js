@@ -121,6 +121,14 @@ contextBridge.exposeInMainWorld('stickies', {
   agentsConnect: (which) => invoke('agents:connect', which),
   agentsDisconnect: (which) => invoke('agents:disconnect', which),
 
+  // in-app updates
+  updateStatus: () => invoke('update:status'),
+  checkForUpdates: () => invoke('update:check'),
+  downloadUpdate: () => invoke('update:download'),
+  installUpdate: () => invoke('update:install'),
+  openReleaseNotes: () => invoke('update:open-release'),
+  onUpdate: listen('update:changed'),
+
   // data
   exportBackup: () => invoke('data:export-backup'),
   importBackup: () => invoke('data:import-backup'),

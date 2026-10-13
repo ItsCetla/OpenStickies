@@ -136,6 +136,8 @@ For maintainers. Releases are built by the [Release workflow](.github/workflows/
    - Linux: `OpenStickies-3.1.0-linux-x86_64.AppImage` and `openstickies_3.1.0_amd64.deb`
 
    It uses that version's CHANGELOG section as the release notes.
+
+   Keep these file names as they are. The in-app updater (`src/main/updater.js`) picks its download by name and checks it against the hash GitHub lists for the file, falling back to `SHA256SUMS.txt`. Installed copies only see a release once it is published and not marked as a pre-release.
 6. Open the draft on the [Releases page](https://github.com/ItsCetla/OpenStickies/releases), download and try the builds, edit the notes if needed, then click **Publish release**.
 
 To rebuild an existing tag (for example after a failed run), open **Actions → Release → Run workflow** and enter the tag. The Windows builds aren't code-signed. If one platform fails, the others still build.
