@@ -74,6 +74,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   max-width: calc(100vw - 12px);
   max-height: calc(100vh - 12px);
   overflow-y: auto;
+  /* overflow-y alone makes overflow-x compute to auto, which gave the note menu a sideways
+     scrollbar whenever a label (or a translation) ran wider than the popover. Long labels
+     truncate with an ellipsis instead; see .menu-item below. */
+  overflow-x: hidden;
   padding: 6px;
   background: var(--pop-bg);
   color: var(--pop-text);
@@ -110,7 +114,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   text-align: start;
   white-space: nowrap;
 }
-.menu-item > span:first-of-type { flex: 1; }
+.menu-item > span:first-of-type { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .menu-item:hover, .menu-item.active { background: var(--pop-hover); }
 .menu-item:active { background: var(--pop-active); }
 .menu-item.danger { color: var(--danger); }

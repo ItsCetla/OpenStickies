@@ -422,7 +422,7 @@ body.rolled .content { flex: 0 0 0; height: 0; overflow: hidden; }
 body.rolled #btn-roll { opacity: 0.72; }
 
 /* ---------- popover contents ---------- */
-.menu-pop { width: 244px; padding: 4px; }
+.menu-pop { width: 304px; padding: 4px; }
 .menu-pop .menu-item { min-height: 28px; padding: 4px 8px; }
 .menu-pop .menu-row { min-height: 30px; padding: 2px 8px; gap: 8px; }
 .menu-pop input[type="range"] { width: 78px; }

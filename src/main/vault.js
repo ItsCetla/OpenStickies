@@ -90,7 +90,12 @@ class Vault extends EventEmitter {
       unlocked: this.unlocked,
       hint: (this.cfg && this.cfg.hint) || '',
       hello: !!(this.cfg && this.cfg.helloKey),
-      helloAvailable: this.helloAvailable && safeStorage.isEncryptionAvailable()
+      // Only the biometric check here. safeStorage.isEncryptionAvailable() opens the login
+      // keychain on macOS, and status() runs on every launch and every note window, so it put a
+      // keychain prompt in front of people who never set up quick unlock (an ad-hoc signed build
+      // can't be remembered by the keychain, so it asked again each time). The keychain is still
+      // checked where it matters: unlockWithHello() and setHello().
+      helloAvailable: this.helloAvailable
     };
   }
 
