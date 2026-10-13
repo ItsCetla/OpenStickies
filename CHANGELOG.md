@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+## [4.0.1] - 2026-10-13
+
 ### Added
 
 - **Claude Code and Codex integrations.** Settings → Claude Code → Connect gives Claude Code the `stickies_*` tools through an MCP server and mirrors its to-do list to a locked task sticky through a hook, the way the OpenCode plugin does. Settings → Codex → Connect adds the same MCP server to Codex, plus a `stickies_plan` tool it uses to show its plan. Both share the task-note color and the planning rule from the OpenCode section.
@@ -144,7 +146,8 @@ First public release of OpenStickies: sticky notes for the Windows desktop, wher
 - Notes can be kept on top, rolled up, zoomed and printed.
 - `Stickies.exe --quit` closes a running copy cleanly, saving first.
 
-[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.0.1...HEAD
+[4.0.1]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.0.1
 [4.0.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.0.0
 [3.1.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v3.1.0
 [3.0.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/Release
