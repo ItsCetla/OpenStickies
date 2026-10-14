@@ -106,14 +106,26 @@ jobs:
           MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-        # The signing variables are exported only when the secrets exist: electron-builder treats
-        # an empty CSC_LINK as a certificate path and fails with "not a file".
+        # The certificate goes into a keychain made here and handed to electron-builder as
+        # CSC_KEYCHAIN, not through CSC_LINK: electron-builder 26 unlocks its own keychain with the
+        # certificate's password instead of the keychain's, and fails with "SecKeychainUnlock: The
+        # user name or passphrase you entered is not correct."
         run: |
           if [ -n "$APPLE_TEAM_ID" ] && [ -n "$MAC_CERTIFICATE" ]; then
+            keychain="$RUNNER_TEMP/signing.keychain-db"
+            keychain_pw=$(openssl rand -hex 24)
+            echo "$MAC_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+            security create-keychain -p "$keychain_pw" "$keychain"
+            security set-keychain-settings -lut 21600 "$keychain"
+            security unlock-keychain -p "$keychain_pw" "$keychain"
+            security import "$RUNNER_TEMP/signing.p12" -k "$keychain" -P "$MAC_CERTIFICATE_PASSWORD" \
+              -T /usr/bin/codesign -T /usr/bin/productbuild
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_pw" "$keychain" > /dev/null
+            security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+            rm "$RUNNER_TEMP/signing.p12"
             {
               echo "MAC_IDENTITY=$APPLE_TEAM_ID"
-              echo "CSC_LINK=$MAC_CERTIFICATE"
-              echo "CSC_KEY_PASSWORD=$MAC_CERTIFICATE_PASSWORD"
+              echo "CSC_KEYCHAIN=$keychain"
               echo "APPLE_ID=$APPLE_ID"
               echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_APP_SPECIFIC_PASSWORD"
               echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
