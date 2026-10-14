@@ -115,6 +115,7 @@ contextBridge.exposeInMainWorld('stickies', {
   opencodeStatus: () => invoke('opencode:status'),
   opencodeConnect: () => invoke('opencode:connect'),
   opencodeDisconnect: () => invoke('opencode:disconnect'),
+  opencodeVerify: () => invoke('opencode:verify'),
 
   // Claude Code and Codex integrations ('claude' | 'codex')
   agentsStatus: () => invoke('agents:status'),

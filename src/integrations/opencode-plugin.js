@@ -1,3 +1,6 @@
+// openstickies-plugin-version: __VERSION__
+// opencode-api: v1+v2
+//
 // OpenStickies for OpenCode
 // -------------------------
 // Mirrors what the OpenCode agent is doing into a sticky note on your desktop:
@@ -9,6 +12,9 @@
 // stickies_check and stickies_list. The agent can only change notes it created.
 // While OpenStickies runs it asks the agent to plan every multi-part task as a to-do list, so
 // each one gets a sticky (Settings → OpenCode → "Always plan multi-part tasks").
+//
+// One default export serves both plugin APIs: OpenCode 2 calls setup(), OpenCode 1 (1.18.29 or
+// newer) calls server(). Older OpenCode 1 releases get a separate build from OpenStickies.
 //
 // Installed by OpenStickies (Settings → OpenCode → Connect) into ~/.config/opencode/plugins/.
 // Talks only to OpenStickies on 127.0.0.1, using the token OpenStickies writes to its api.json.
@@ -54,12 +60,31 @@ const PLAN_RULE = [
   'so do this even for short tasks that have more than one part. Single-step requests and plain questions do not need a to-do list.'
 ].join(' ');
 
+// OpenCode 2 has no todowrite tool, so there the plan goes straight onto a checklist note.
+const PLAN_RULE_V2 = [
+  'The user\'s desktop sticky notes (OpenStickies) are connected to this session.',
+  'Whenever a request involves two or more distinct subtasks or steps, call stickies_create BEFORE starting the work',
+  'to write the plan as a checklist (one "- [ ] " line per subtask), then tick each item with stickies_check as soon as it is done.',
+  'Do this even for short tasks that have more than one part. Single-step requests and plain questions do not need a checklist.'
+].join(' ');
+
 // How to spot the rule among the agent's instructions so it is only added once. The second
 // marker is the wording used before the app was renamed, in case an older copy of this plugin added it.
 const PLAN_RULE_MARKERS = ['desktop sticky notes (OpenStickies)', 'desktop sticky notes (Stickies)'];
+const hasPlanRule = (text) => typeof text === 'string' && PLAN_RULE_MARKERS.some(m => text.includes(m));
+const planNudgeOn = () => {
+  const api = readApi();
+  return !!api && !(api.options && api.options.planNudge === false); // OpenStickies off, or the user turned this off
+};
 
 // A note appears once a plan has at least this many items (across the task and its sub-agents).
 const MIN_ITEMS = 2;
+
+const projectName = (dir) => basename(String(dir || '').replace(/[\\/]+$/, '')) || 'project';
+const shortPrompt = (text) => {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  return t.length > 80 ? t.slice(0, 77) + '…' : t;
+};
 
 async function callStickies(method, route, body) {
   const api = readApi();
@@ -86,73 +111,104 @@ function describeItems(items) {
   return items && items.length ? '\n' + items.map(i => `  ${i.n}. [${i.done ? 'x' : ' '}] ${i.text}`).join('\n') : '';
 }
 
-// Tools the agent can call directly. They need @opencode-ai/plugin (which OpenCode installs
-// in its config folder); without it the to-do mirroring below still works.
-async function makeTools(project) {
+// The tools, described once and turned into each API's format below. Each argument is
+// { type: 'string' | 'boolean' | 'color' | 'strings', description, optional }. run() returns the
+// text the agent sees and a short title for the tool call.
+const TOOLS = {
+  stickies_create: {
+    description: 'Put a sticky note on the user\'s desktop (the OpenStickies app) so they can keep it in view while they work. Use it when the user asks for a sticky/note, or for plans, checklists, summaries, commands or reminders they want to keep handy. Content is Markdown: "- [ ] task" makes a checkbox, "- [x] task" a ticked one, "# " headings, **bold**, `code`, links. Returns the note id for stickies_update and stickies_check.',
+    args: {
+      title: { type: 'string', description: 'Short title shown at the top of the note' },
+      content: { type: 'string', description: 'Note body in Markdown. Use "- [ ] item" lines for a checklist.' },
+      color: { type: 'color', optional: true, description: 'Note color (default: the user\'s color for agent notes)' },
+      tags: { type: 'strings', optional: true, description: 'Extra tags without "#", e.g. ["deploy"]. #opencode and the project name are added automatically.' }
+    },
+    async run(args, { project, sessionID }) {
+      const r = await callStickies('POST', '/v1/notes', { title: args.title, content: args.content, color: args.color, tags: args.tags, source: 'OpenCode', project, session: sessionID });
+      return { title: `Sticky: ${args.title}`, text: `Created sticky note "${r.title || args.title}" on the user's desktop (id: ${r.id}).${describeItems(r.items)}` };
+    }
+  },
+  stickies_update: {
+    description: 'Change a sticky note you created earlier with stickies_create: replace its content, append Markdown to the end, rename it or change its color. Only works on notes created by the agent.',
+    args: {
+      id: { type: 'string', description: 'The note id returned by stickies_create or stickies_list' },
+      content: { type: 'string', optional: true, description: 'New Markdown body; replaces the whole body' },
+      append: { type: 'string', optional: true, description: 'Markdown to add at the end, e.g. "- [ ] new step"' },
+      title: { type: 'string', optional: true, description: 'New title' },
+      color: { type: 'color', optional: true, description: 'New color' }
+    },
+    async run(args) {
+      const r = await callStickies('PATCH', `/v1/notes/${encodeURIComponent(args.id)}`, { content: args.content, append: args.append, title: args.title, color: args.color });
+      return { title: `Sticky updated: ${r.title || args.id}`, text: `Updated sticky note "${r.title || args.id}" (id: ${r.id}).${describeItems(r.items)}` };
+    }
+  },
+  stickies_check: {
+    description: 'Tick (or untick) a checklist item on a sticky note you created. Name the item by its text (exact or partial) or by its 1-based number.',
+    args: {
+      id: { type: 'string', description: 'The note id' },
+      item: { type: 'string', description: 'Item text (or part of it), or its number like "2"' },
+      done: { type: 'boolean', optional: true, description: 'true to tick (default), false to untick' }
+    },
+    async run(args) {
+      const r = await callStickies('POST', `/v1/notes/${encodeURIComponent(args.id)}/check`, { item: args.item, done: args.done !== false });
+      return { title: `${r.done ? 'Ticked' : 'Unticked'}: ${r.item}`, text: `${r.done ? 'Ticked' : 'Unticked'} "${r.item}".${describeItems(r.items)}` };
+    }
+  },
+  stickies_list: {
+    description: 'List the sticky notes the agent has created (with ids and checklist items), e.g. to find and continue a note from an earlier session. Does not show the user\'s own notes.',
+    args: {
+      this_project_only: { type: 'boolean', optional: true, description: 'Only notes created for the current project' }
+    },
+    async run(args, { project }) {
+      const r = await callStickies('GET', `/v1/notes${args.this_project_only ? `?project=${encodeURIComponent(project)}` : ''}`);
+      const text = !r.notes.length ? 'No agent-created sticky notes yet.'
+        : r.notes.map(n => `- ${n.title || '(untitled)'} — id: ${n.id}${n.project ? `, project: ${n.project}` : ''}${n.open ? '' : ' (not on the desktop)'}${describeItems(n.items)}`).join('\n');
+      return { title: 'Sticky notes', text };
+    }
+  }
+};
+
+// OpenCode 2 takes a plain JSON Schema for a tool's input.
+function jsonSchema(args) {
+  const properties = {};
+  for (const [name, a] of Object.entries(args)) {
+    const base = a.type === 'color' ? { type: 'string', enum: COLORS }
+      : a.type === 'strings' ? { type: 'array', items: { type: 'string' } }
+      : { type: a.type };
+    properties[name] = { ...base, description: a.description };
+  }
+  const required = Object.entries(args).filter(([, a]) => !a.optional).map(([name]) => name);
+  return { type: 'object', properties, required, additionalProperties: false };
+}
+
+// OpenCode 1 takes Zod schemas from @opencode-ai/plugin, which it installs in its config folder.
+// Without it the to-do mirroring still works.
+async function v1Tools(project) {
   let tool;
   try { ({ tool } = await import('@opencode-ai/plugin')); } catch { return null; }
   const s = tool.schema;
-  return {
-    stickies_create: tool({
-      description: 'Put a sticky note on the user\'s desktop (the OpenStickies app) so they can keep it in view while they work. Use it when the user asks for a sticky/note, or for plans, checklists, summaries, commands or reminders they want to keep handy. Content is Markdown: "- [ ] task" makes a checkbox, "- [x] task" a ticked one, "# " headings, **bold**, `code`, links. Returns the note id for stickies_update and stickies_check.',
-      args: {
-        title: s.string().describe('Short title shown at the top of the note'),
-        content: s.string().describe('Note body in Markdown. Use "- [ ] item" lines for a checklist.'),
-        color: s.enum(COLORS).optional().describe('Note color (default: the user\'s color for agent notes)'),
-        tags: s.array(s.string()).optional().describe('Extra tags without "#", e.g. ["deploy"]. #opencode and the project name are added automatically.')
-      },
-      async execute(args, ctx) {
-        const r = await callStickies('POST', '/v1/notes', { title: args.title, content: args.content, color: args.color, tags: args.tags, source: 'OpenCode', project, session: ctx && ctx.sessionID });
-        if (ctx && ctx.metadata) ctx.metadata({ title: `Sticky: ${args.title}` });
-        return `Created sticky note "${r.title || args.title}" on the user's desktop (id: ${r.id}).${describeItems(r.items)}`;
-      }
-    }),
-    stickies_update: tool({
-      description: 'Change a sticky note you created earlier with stickies_create: replace its content, append Markdown to the end, rename it or change its color. Only works on notes created by the agent.',
-      args: {
-        id: s.string().describe('The note id returned by stickies_create or stickies_list'),
-        content: s.string().optional().describe('New Markdown body; replaces the whole body'),
-        append: s.string().optional().describe('Markdown to add at the end, e.g. "- [ ] new step"'),
-        title: s.string().optional().describe('New title'),
-        color: s.enum(COLORS).optional().describe('New color')
-      },
-      async execute(args, ctx) {
-        const r = await callStickies('PATCH', `/v1/notes/${encodeURIComponent(args.id)}`, { content: args.content, append: args.append, title: args.title, color: args.color });
-        if (ctx && ctx.metadata) ctx.metadata({ title: `Sticky updated: ${r.title || args.id}` });
-        return `Updated sticky note "${r.title || args.id}" (id: ${r.id}).${describeItems(r.items)}`;
-      }
-    }),
-    stickies_check: tool({
-      description: 'Tick (or untick) a checklist item on a sticky note you created. Name the item by its text (exact or partial) or by its 1-based number.',
-      args: {
-        id: s.string().describe('The note id'),
-        item: s.string().describe('Item text (or part of it), or its number like "2"'),
-        done: s.boolean().optional().describe('true to tick (default), false to untick')
-      },
-      async execute(args, ctx) {
-        const r = await callStickies('POST', `/v1/notes/${encodeURIComponent(args.id)}/check`, { item: args.item, done: args.done !== false });
-        if (ctx && ctx.metadata) ctx.metadata({ title: `${r.done ? 'Ticked' : 'Unticked'}: ${r.item}` });
-        return `${r.done ? 'Ticked' : 'Unticked'} "${r.item}".${describeItems(r.items)}`;
-      }
-    }),
-    stickies_list: tool({
-      description: 'List the sticky notes the agent has created (with ids and checklist items), e.g. to find and continue a note from an earlier session. Does not show the user\'s own notes.',
-      args: {
-        this_project_only: s.boolean().optional().describe('Only notes created for the current project')
-      },
-      async execute(args) {
-        const r = await callStickies('GET', `/v1/notes${args.this_project_only ? `?project=${encodeURIComponent(project)}` : ''}`);
-        if (!r.notes.length) return 'No agent-created sticky notes yet.';
-        return r.notes.map(n => `- ${n.title || '(untitled)'} — id: ${n.id}${n.project ? `, project: ${n.project}` : ''}${n.open ? '' : ' (not on the desktop)'}${describeItems(n.items)}`).join('\n');
-      }
-    })
+  const zod = (a) => {
+    const z = a.type === 'color' ? s.enum(COLORS) : a.type === 'strings' ? s.array(s.string()) : a.type === 'boolean' ? s.boolean() : s.string();
+    return (a.optional ? z.optional() : z).describe(a.description);
   };
+  const tools = {};
+  for (const [name, def] of Object.entries(TOOLS)) {
+    tools[name] = tool({
+      description: def.description,
+      args: Object.fromEntries(Object.entries(def.args).map(([k, a]) => [k, zod(a)])),
+      async execute(args, ctx) {
+        const r = await def.run(args, { project, sessionID: ctx && ctx.sessionID });
+        if (ctx && ctx.metadata) ctx.metadata({ title: r.title });
+        return r.text;
+      }
+    });
+  }
+  return tools;
 }
 
-export const StickiesPlugin = async ({ directory, worktree }) => {
-  const project = basename(String(worktree || directory || '').replace(/[\\/]+$/, '')) || 'project';
-  const tools = await makeTools(project);
-  const sessions = new Map(); // id -> { title, prompt, todos, status, parentID, timer }
+// What both APIs share: the sessions seen so far, and pushing each task's plan to its note.
+function createMirror(project) {
+  const sessions = new Map(); // id -> { title, prompt, todos, status, parentID, timer, shown }
 
   const get = (id) => {
     if (!sessions.has(id)) sessions.set(id, { title: '', prompt: '', todos: [], status: 'busy', parentID: null, timer: null, shown: false });
@@ -207,66 +263,146 @@ export const StickiesPlugin = async ({ directory, worktree }) => {
   };
 
   return {
+    todos(id, list) {
+      if (!id) return;
+      const s = get(id);
+      // Accept the todo shapes of both APIs: { content, status } items, with text/title as fallbacks.
+      s.todos = (Array.isArray(list) ? list : [])
+        .map(t => ({ content: String((t && (t.content ?? t.text ?? t.title)) || '').trim(), status: (t && t.status) || 'pending' }))
+        .filter(t => t.content);
+      s.status = 'busy';
+      schedule(id);
+    },
+    session(id, { title, parentID } = {}) {
+      if (!id) return;
+      const s = get(id);
+      if (title) s.title = title;
+      if (parentID !== undefined) s.parentID = parentID || null;
+      if (s.todos.length || sessions.size > 1) schedule(id);
+    },
+    status(id, status) {
+      if (!id) return;
+      get(id).status = status;
+      schedule(id);
+    },
+    // The first thing the user asked becomes the note's title until OpenCode names the session.
+    prompt(id, text) {
+      if (!id) return;
+      const s = get(id);
+      if (!s.prompt && text) s.prompt = shortPrompt(text);
+    },
+    dispose() {
+      for (const s of sessions.values()) clearTimeout(s.timer);
+      sessions.clear();
+    }
+  };
+}
+
+// ----- OpenCode 1 -----
+
+async function server({ directory, worktree }) {
+  const mirror = createMirror(projectName(worktree || directory));
+  const tools = await v1Tools(projectName(worktree || directory));
+  return {
     ...(tools ? { tool: tools } : {}),
     // Ask the agent to plan any multi-part task as a to-do list (which becomes a sticky).
     'experimental.chat.system.transform': async (_input, output) => {
-      if (!output || !Array.isArray(output.system)) return;
-      const api = readApi();
-      if (!api || (api.options && api.options.planNudge === false)) return; // OpenStickies off, or the user turned this off
-      if (!output.system.some(s => typeof s === 'string' && PLAN_RULE_MARKERS.some(m => s.includes(m)))) output.system.push(PLAN_RULE);
+      if (!output || !Array.isArray(output.system) || !planNudgeOn()) return;
+      if (!output.system.some(hasPlanRule)) output.system.push(PLAN_RULE);
     },
     event: async ({ event }) => {
       const p = (event && event.properties) || {};
       switch (event && event.type) {
-        case 'todo.updated': {
-          if (!p.sessionID) break;
-          const s = get(p.sessionID);
-          s.todos = Array.isArray(p.todos) ? p.todos : [];
-          s.status = 'busy';
-          schedule(p.sessionID);
-          break;
-        }
+        case 'todo.updated': mirror.todos(p.sessionID, p.todos); break;
         case 'session.created':
-        case 'session.updated': {
-          const info = p.info;
-          if (!info || !info.id) break;
-          const s = get(info.id);
-          if (info.title) s.title = info.title;
-          s.parentID = info.parentID || null;
-          if (s.todos.length || sessions.size > 1) schedule(info.id);
+        case 'session.updated':
+          if (p.info && p.info.id) mirror.session(p.info.id, { title: p.info.title, parentID: p.info.parentID || null });
           break;
-        }
-        case 'session.status': {
-          if (!p.sessionID) break;
-          const s = get(p.sessionID);
-          s.status = p.status && p.status.type === 'idle' ? 'idle' : 'busy';
-          schedule(p.sessionID);
-          break;
-        }
-        case 'session.idle': {
-          if (!p.sessionID) break;
-          get(p.sessionID).status = 'idle';
-          schedule(p.sessionID);
-          break;
-        }
-        case 'session.error': {
-          if (!p.sessionID) break;
-          get(p.sessionID).status = 'error';
-          schedule(p.sessionID);
-          break;
-        }
-        default:
-          break;
+        case 'session.status': mirror.status(p.sessionID, p.status && p.status.type === 'idle' ? 'idle' : 'busy'); break;
+        case 'session.idle': mirror.status(p.sessionID, 'idle'); break;
+        case 'session.error': mirror.status(p.sessionID, 'error'); break;
+        default: break;
       }
     },
-    // The first thing the user asked becomes the note's title until OpenCode names the session.
     'chat.message': async (input, output) => {
-      const id = input && input.sessionID;
-      if (!id) return;
-      const s = get(id);
-      if (s.prompt) return;
-      const text = ((output && output.parts) || []).filter(x => x && x.type === 'text').map(x => x.text).join(' ').replace(/\s+/g, ' ').trim();
-      if (text) s.prompt = text.length > 80 ? text.slice(0, 77) + '…' : text;
+      const text = ((output && output.parts) || []).filter(x => x && x.type === 'text').map(x => x.text).join(' ');
+      mirror.prompt(input && input.sessionID, text);
     }
   };
-};
+}
+
+// ----- OpenCode 2 -----
+
+// OpenCode 2 has no to-do event, so the plan is read from each todowrite call instead.
+const isTodoTool = (name) => /(^|[_.])todo_?write$/i.test(String(name || ''));
+
+async function setup(ctx) {
+  // An OpenCode 1 host that somehow calls setup() gets nothing; it uses server() above.
+  if (!ctx || !ctx.session || typeof ctx.session.hook !== 'function' || !ctx.tool || typeof ctx.tool.transform !== 'function') return;
+  const loc = ctx.location || {};
+  const project = projectName(loc.directory || (loc.project && loc.project.directory));
+  const mirror = createMirror(project);
+  const registrations = [];
+  const stop = new AbortController();
+
+  registrations.push(await ctx.tool.transform((editor) => {
+    for (const [name, def] of Object.entries(TOOLS)) {
+      editor.add({
+        name,
+        description: def.description,
+        input: jsonSchema(def.args),
+        // Plain tools the model calls directly, like the built-in ones, rather than code-mode helpers
+        // it would only reach through the execute tool.
+        options: { codemode: false },
+        async execute(input, tc) {
+          const r = await def.run(input || {}, { project, sessionID: tc && tc.sessionID });
+          if (tc && typeof tc.progress === 'function') { try { await tc.progress({ title: r.title }); } catch { /* cosmetic */ } }
+          return { content: r.text, metadata: { title: r.title } };
+        }
+      });
+    }
+  }));
+
+  // Ask the agent to plan any multi-part task as a checklist note.
+  registrations.push(await ctx.session.hook('context', (e) => {
+    if (!e || !Array.isArray(e.system) || !planNudgeOn()) return;
+    if (!e.system.some(part => hasPlanRule(typeof part === 'string' ? part : part && part.text))) e.system.push({ type: 'text', text: PLAN_RULE_V2 });
+  }));
+
+  registrations.push(await ctx.session.hook('prompt', (e) => {
+    mirror.prompt(e && e.sessionID, e && e.prompt && e.prompt.text);
+  }));
+
+  registrations.push(await ctx.tool.hook('execute.after', (e) => {
+    try {
+      if (!e || e.status !== 'completed' || !isTodoTool(e.tool)) return;
+      const input = e.input && typeof e.input === 'object' ? e.input : {};
+      mirror.todos(e.sessionID, input.todos);
+    } catch { /* never fail the agent's own tool call */ }
+  }));
+
+  (async () => {
+    try {
+      const events = await ctx.event.subscribe({ signal: stop.signal });
+      for await (const ev of events) {
+        const d = (ev && (ev.data || ev.properties)) || {};
+        switch (ev && ev.type) {
+          case 'session.created': mirror.session(d.sessionID, { title: d.title, parentID: d.parentID || null }); break;
+          case 'session.renamed': mirror.session(d.sessionID, { title: d.title }); break;
+          case 'session.status': mirror.status(d.sessionID, d.status && d.status.type === 'idle' ? 'idle' : 'busy'); break;
+          case 'session.idle': mirror.status(d.sessionID, 'idle'); break;
+          case 'session.execution.failed': mirror.status(d.sessionID, 'error'); break;
+          default: break;
+        }
+      }
+    } catch { /* stream closed: the plugin is unloading */ }
+  })();
+
+  return async () => {
+    stop.abort();
+    mirror.dispose();
+    await Promise.all(registrations.map(r => r && r.dispose && r.dispose().catch(() => {})));
+  };
+}
+
+export default { id: 'openstickies', setup, server };

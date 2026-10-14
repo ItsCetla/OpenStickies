@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+## [4.1.3] - 2026-10-14
+
+### Fixed
+
+- **OpenCode 2 support.** OpenCode 2 changed its plugin format and refused to load the OpenStickies plugin, so the `stickies_*` tools and task notes stopped working. The plugin now works with OpenCode 2 and with OpenCode 1. OpenStickies updates an existing plugin file when it starts and keeps the old one as `stickies.js.bak`. OpenCode 2 has no to-do list for OpenStickies to mirror, so there the planning rule asks the agent to make a checklist sticky and tick it off as it goes.
+
+### Added
+
+- **Settings → OpenCode** now checks with OpenCode 2 whether the plugin actually loaded, and shows OpenCode's error if it didn't.
+
 ## [4.1.2] - 2026-10-13
 
 ### Changed
@@ -171,7 +181,8 @@ First public release of OpenStickies: sticky notes for the Windows desktop, wher
 - Notes can be kept on top, rolled up, zoomed and printed.
 - `Stickies.exe --quit` closes a running copy cleanly, saving first.
 
-[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.1.2...HEAD
+[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.1.3...HEAD
+[4.1.3]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.3
 [4.1.2]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.2
 [4.1.1]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.1
 [4.1.0]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.0

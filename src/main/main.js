@@ -226,6 +226,8 @@ function init() {
     }
   });
   if (store.settings.apiEnabled !== false) apiServer.start();
+  // Rewrite an installed OpenCode plugin that an OpenStickies or OpenCode upgrade left behind.
+  opencode.heal().catch(err => console.warn('OpenStickies: could not update the OpenCode plugin', err));
 
   nativeTheme.on('updated', () => {
     windows.applyThemeToWindows();
@@ -1182,11 +1184,13 @@ function registerIpc() {
 
   // ----- OpenCode -----
   ipcMain.handle('opencode:status', () => ({ ...opencode.status(), api: apiServer.running }));
-  ipcMain.handle('opencode:connect', () => {
+  ipcMain.handle('opencode:connect', async () => {
     if (!apiServer.running) { store.updateSettings({ apiEnabled: true }); apiServer.start(); }
-    return { ...opencode.connect(), api: true };
+    return { ...(await opencode.connect()), api: true };
   });
   ipcMain.handle('opencode:disconnect', () => ({ ...opencode.disconnect(), api: apiServer.running }));
+  // Slow (it asks OpenCode itself), so it's separate from opencode:status.
+  ipcMain.handle('opencode:verify', () => opencode.verify().catch(() => null));
 
   // ----- Claude Code and Codex -----
   const agentOf = (which) => { if (!agents[which] || which === 'runtime') throw new Error(`Unknown agent: ${which}`); return agents[which]; };

@@ -145,7 +145,9 @@ function setView(view) {
   (view === 'tasks' ? $('task-search') : $('search')).focus();
 }
 
+let ocRender = 0;
 async function renderOpenCode() {
+  const run = ++ocRender;
   const st = await api.opencodeStatus();
   const color = settings.agentColor || 'blue';
   const pill = tr(st.connected ? (st.outdated ? 'manager.ocUpdateReady' : 'manager.ocConnected') : 'manager.ocNotConnected');
@@ -166,6 +168,7 @@ async function renderOpenCode() {
       </div></div>
       ${buttons}
     </div>
+    <div class="row note-row" id="oc-verify" hidden></div>
     <label class="row">
       <div class="row-label">${icon('listOl', { size: 17 })}<div><div>${tx('manager.ocPlan')}</div><div class="sub">${tx('manager.ocPlanSub')}</div></div></div>
       <input type="checkbox" class="switch" id="oc-nudge" ${settings.agentPlanNudge !== false ? 'checked' : ''}>
@@ -181,6 +184,21 @@ async function renderOpenCode() {
   if (disc) disc.addEventListener('click', async () => { await api.opencodeDisconnect(); toast(tr('manager.ocDisconnected')); renderOpenCode(); });
   $('oc-color').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) update({ agentColor: b.dataset.v }).then(renderOpenCode); });
   $('oc-nudge').addEventListener('change', (e) => update({ agentPlanNudge: e.target.checked }).then(() => toast(tr(e.target.checked ? 'manager.ocPlanOn' : 'manager.ocPlanOff'))));
+  if (st.connected && !st.outdated) verifyOpenCode(run);
+}
+
+// Asks OpenCode 2 whether it actually loaded the plugin. OpenCode 1 can't say, so nothing is shown there.
+async function verifyOpenCode(run) {
+  const box = $('oc-verify');
+  box.textContent = tr('manager.ocChecking');
+  box.hidden = false;
+  const v = await api.opencodeVerify().catch(() => null);
+  if (run !== ocRender) return;
+  if (!v) { box.hidden = true; return; }
+  box.classList.toggle('warn', v.state !== 'active');
+  box.textContent = v.state === 'active' ? tr('manager.ocLoaded')
+    : v.state === 'failed' ? tr('manager.ocLoadFailed', { error: v.error || '?' })
+      : tr('manager.ocNotLoaded');
 }
 
 // The Claude Code and Codex cards. They share the task-note color and the planning rule with

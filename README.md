@@ -276,6 +276,8 @@ While [OpenCode](https://opencode.ai) works on a multi-step task, a sticky on yo
 1. In OpenStickies: **Settings → OpenCode → Connect**. This adds a small plugin to `~/.config/opencode/plugins/`.
 2. Restart OpenCode.
 
+The plugin works with OpenCode 1 and OpenCode 2. On OpenCode 2, Settings also shows whether OpenCode loaded the plugin, and its error if it didn't. OpenCode 2 has no to-do list, so there a multi-part task gets a checklist sticky that the agent ticks off as it works.
+
 Task notes are blue (you can change the color), locked so typing can't clash with the agent, and tagged `#opencode` plus the project name. Quick questions without a plan don't create a note, and a task note you delete stays deleted. **Disconnect** removes the plugin.
 
 **Every multi-part task gets a sticky.** While OpenStickies is running, the plugin adds a standing instruction for the agent: any request with two or more distinct subtasks gets a to-do list first, which then appears as a sticky. One-item lists don't create a note. Turn this off with **Settings → OpenCode → Always plan multi-part tasks**; the change applies right away.
@@ -466,7 +468,8 @@ src/
     updater.js           in-app updates from GitHub Releases
     reminders.js, exporter.js, markdown.js, context-menu.js, tray.js
   integrations/
-    opencode-plugin.js   the plugin that runs inside OpenCode
+    opencode-plugin.js   the plugin that runs inside OpenCode (1 and 2)
+    opencode-plugin-v1.js  the plugin for OpenCode before 1.18.29
     stickies-mcp.mjs     the MCP server Claude Code and Codex talk to
     claude-hook.mjs      the hook that mirrors Claude Code's to-do list
   locales/               interface strings, one JSON file per language (en.json is the reference)
