@@ -567,6 +567,8 @@ export class Editor {
   }
 
   formatBlock(tag) {
+    // Quote again (or Code block, whose bar looks the same) inside a quote takes the quote off.
+    if ((tag === 'blockquote' || (tag === 'pre' && this.closest('ul.checklist'))) && this.unquote()) return;
     // Inside a checklist, Title/Heading/Subheading style the whole item and keep its checkbox.
     const items = this.checklistItems();
     if (items.length) {
@@ -588,6 +590,39 @@ export class Editor {
     if (tag === 'blockquote' && inQuote) return this.exec('formatBlock', 'p');
     if (name === tag && tag !== 'p') return this.exec('formatBlock', 'p');
     this.exec('formatBlock', tag);
+  }
+
+  // Takes apart the quote around the caret, keeping what's in it. Chromium's formatBlock can't
+  // when the quote holds a list (its bar stays down the side of the checklist), and its
+  // insertHTML puts the content back inside the quote, so this edits the DOM directly. Loose
+  // text and line breaks in the quote become paragraphs.
+  unquote() {
+    const quote = this.closest('blockquote');
+    if (!quote || this.locked) return false;
+    const r = this.range();
+    // Moving the nodes resets a live range, so remember its ends to put the caret back.
+    const ends = r && [r.startContainer, r.startOffset, r.endContainer, r.endOffset];
+    const parts = [];
+    let run = null;
+    for (const n of [...quote.childNodes]) {
+      if (n.nodeType === 3 && !n.data.trim()) { n.remove(); continue; }
+      const inline = n.nodeType === 3 || (n.nodeType === 1 && getComputedStyle(n).display.startsWith('inline'));
+      if (!inline) { run = null; parts.push(n); continue; }
+      if (!run) { run = document.createElement('p'); parts.push(run); }
+      run.appendChild(n);
+    }
+    if (!parts.length) { const p = document.createElement('p'); p.innerHTML = '<br>'; parts.push(p); }
+    quote.replaceWith(...parts);
+    // The nodes moved rather than being copied, so the old ends still point at the same text.
+    if (ends && ends[0] !== quote && ends[2] !== quote && this.el.contains(ends[0]) && this.el.contains(ends[2])) {
+      const back = document.createRange();
+      back.setStart(ends[0], ends[1]);
+      back.setEnd(ends[2], ends[3]);
+      this.selectRange(back);
+    } else this._caretInto(parts[0]);
+    this.changed();
+    this.onSelection();
+    return true;
   }
 
   setFontSize(size) {

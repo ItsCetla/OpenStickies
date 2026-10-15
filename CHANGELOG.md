@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Add changes here as they land, under Added / Changed / Fixed / Removed / Security. They move into a version section when a release is made (see CONTRIBUTING.md). -->
 
+## [4.1.4] - 2026-10-15
+
+4.1.3 was never published as a release of its own, so its changes, including OpenCode 2 support, also arrive with this version.
+
+### Fixed
+
+- A quote around a checklist can be taken off again. Its bar used to stay down the side of the checklist and every line below it; now Quote (or Code block) with the caret in it removes the quote and keeps the text.
+
 ## [4.1.3] - 2026-10-14
 
 ### Fixed
@@ -181,7 +189,8 @@ First public release of OpenStickies: sticky notes for the Windows desktop, wher
 - Notes can be kept on top, rolled up, zoomed and printed.
 - `Stickies.exe --quit` closes a running copy cleanly, saving first.
 
-[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.1.3...HEAD
+[Unreleased]: https://github.com/ItsCetla/OpenStickies/compare/v4.1.4...HEAD
+[4.1.4]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.4
 [4.1.3]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.3
 [4.1.2]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.2
 [4.1.1]: https://github.com/ItsCetla/OpenStickies/releases/tag/v4.1.1
